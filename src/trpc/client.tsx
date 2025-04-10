@@ -7,6 +7,8 @@ import { useState } from 'react'
 import superjson from 'superjson'
 import { makeQueryClient } from './query-client'
 import type { AppRouter } from './routers/_app'
+import { addBasePath } from 'next/dist/client/add-base-path';
+
 
 export const trpc = createTRPCReact<AppRouter>()
 
@@ -25,7 +27,7 @@ export const trpcClient = getQueryClient()
 
 function getUrl() {
   const base = (() => {
-    if (typeof window !== 'undefined') return ''
+    if (typeof window !== 'undefined') return addBasePath('/')
     if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
     return 'http://localhost:3000'
   })()

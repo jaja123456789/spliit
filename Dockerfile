@@ -2,7 +2,6 @@ FROM node:21-alpine AS base
 
 WORKDIR /usr/app
 COPY ./package.json \
-     ./package-lock.json \
      ./next.config.mjs \
      ./tsconfig.json \
      ./reset.d.ts \
@@ -12,7 +11,7 @@ COPY ./scripts ./scripts
 COPY ./prisma ./prisma
 
 RUN apk add --no-cache openssl && \
-    npm ci --ignore-scripts && \
+    npm install --ignore-scripts && \
     npx prisma generate
 
 COPY ./src ./src

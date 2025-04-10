@@ -32,7 +32,8 @@ const nextConfig = {
     serverActions: {
         allowedOrigins: ['localhost:3000'],
     },
-},
+  },
+  basePath: '/spliit'
 }
 
 export default withNextIntl(nextConfig)

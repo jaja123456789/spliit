@@ -68,7 +68,8 @@
     "use-debounce": "^10.0.4",
     "uuid": "^9.0.1",
     "vaul": "^0.8.0",
-    "zod": "^3.23.8"
+    "zod": "^3.23.8",
+    "csv-parser": "^3.0.0"
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.0",
