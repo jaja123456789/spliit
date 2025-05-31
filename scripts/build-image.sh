@@ -9,4 +9,4 @@ docker buildx build \
     -t ${SPLIIT_APP_NAME}:latest \
     .
 
-docker image prune -f
+#docker image prune -f
