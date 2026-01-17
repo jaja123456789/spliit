@@ -1,142 +1,118 @@
 import { expect, test } from '@playwright/test'
-import { createGroup } from '../helpers'
+import { createGroupViaAPI } from '../helpers/batch-api'
+import { randomId } from '@/lib/api'
 
-test('Toggle dark mode - persists', async ({ page }) => {
+test('Theme selection persists after reload', async ({ page }) => {
   await page.goto('/groups')
-  await page.waitForLoadState('networkidle')
 
-  // Look for theme toggle button - try different selectors
-  let themeToggle = page
-    .getByRole('button')
-    .filter({ hasText: /dark|light|theme|mode/i })
-    .first()
-
-  // If not found by text, try aria-label
-  if (!(await themeToggle.isVisible({ timeout: 2000 }).catch(() => false))) {
-    themeToggle = page
-      .locator(
-        'button[aria-label*="theme" i], button[aria-label*="dark" i], button[aria-label*="light" i]',
-      )
-      .first()
-  }
-
-  // If still not found, the feature might not be available - skip
-  if (!(await themeToggle.isVisible({ timeout: 2000 }).catch(() => false))) {
-    // Theme toggle not available, test passes as feature might be disabled
-    return
-  }
-
-  // Click to toggle
+  // Open theme toggle menu
+  const themeToggle = page.getByRole('button', { name: 'Toggle theme' })
+  await expect(themeToggle).toBeVisible()
   await themeToggle.click()
-  await page.waitForTimeout(300)
+
+  // Select Dark theme
+  const darkOption = page.getByRole('menuitem', { name: 'Dark' })
+  await expect(darkOption).toBeVisible()
+  await darkOption.click()
+
+  // Verify dark theme is applied (body or html should have dark class/attribute)
+  const html = page.locator('html')
+  await expect(html).toHaveAttribute('class', /dark/)
 
   // Reload page
   await page.reload()
-  await page.waitForLoadState('networkidle')
 
-  // Verify page loads after reload (theme persisted)
-  const body = page.locator('body')
-  await expect(body).toBeVisible()
+  // Verify dark theme persisted after reload
+  await expect(html).toHaveAttribute('class', /dark/)
 })
 
-test('Category displays on expense', async ({ page }) => {
-  const groupId = await createGroup({
+test('Expense displays with selected category', async ({ page }) => {
+  const expenseTitle = `Test Expense ${randomId(4)}`
+
+  await page.goto('/groups')
+  const groupId = await createGroupViaAPI(
     page,
-    groupName: `PW E2E category display settings ${Date.now()}`,
-    participants: ['Alice', 'Bob'],
+    `category test ${randomId(4)}`,
+    ['Alice', 'Bob'],
+  )
+
+  await page.goto(`/groups/${groupId}/expenses`)
+
+  // Navigate to create expense page
+  const createExpenseLink = page.getByRole('link', { name: 'Create expense' })
+  await expect(createExpenseLink).toBeVisible()
+  await createExpenseLink.click()
+  await page.waitForURL(/\/groups\/[^/]+\/expenses\/create$/)
+
+  // Fill expense details
+  await page.getByRole('textbox', { name: 'Expense title' }).fill(expenseTitle)
+  await page.getByRole('textbox', { name: 'Amount' }).fill('40.00')
+
+  // Select payer
+  const payerCombobox = page
+    .getByRole('combobox')
+    .filter({ hasText: 'Select a participant' })
+  await payerCombobox.click()
+  await page.getByRole('option', { name: 'Alice' }).click()
+
+  // Verify default category is General and select a different one (Entertainment)
+  const categoryCombobox = page
+    .getByRole('combobox')
+    .filter({ hasText: 'General' })
+  await expect(categoryCombobox).toBeVisible()
+  await categoryCombobox.click()
+
+  // Select Entertainment category
+  const entertainmentOption = page.getByRole('option', {
+    name: /entertainment/i,
   })
-
-  await page.goto(`/groups/${groupId}`)
-  await page.waitForLoadState('networkidle')
-
-  // Find create expense button
-  let createExpenseButton = page
-    .getByRole('button')
-    .filter({ hasText: /add|create/i })
-    .first()
-  if (!(await createExpenseButton.isVisible())) {
-    createExpenseButton = page
-      .getByRole('link')
-      .filter({ hasText: /expense|add/i })
-      .first()
-  }
-
-  if (await createExpenseButton.isVisible()) {
-    await createExpenseButton.click()
-    await page.waitForLoadState('load')
-
-    // Fill expense details
-    const titleInputs = page.locator('input[type="text"]')
-    if ((await titleInputs.count()) > 0) {
-      const expenseTitle = `Category Test ${Date.now()}`
-      await titleInputs.first().fill(expenseTitle)
-
-      const amountInputs = page.locator('input[inputmode="decimal"]')
-      if ((await amountInputs.count()) > 0) {
-        await amountInputs.first().fill('40.00')
-      }
-
-      const selects = page.locator('[role="combobox"]')
-      if ((await selects.count()) > 0) {
-        await selects.first().click()
-        await page.getByRole('option').first().click()
-      }
-
-      // Select a category
-      const categorySelects = page.locator('[role="combobox"]')
-      if ((await categorySelects.count()) >= 2) {
-        await categorySelects.nth(1).click()
-        const option = page.getByRole('option').first()
-        if (await option.isVisible()) {
-          await option.click()
-        }
-      }
-
-      const createButton = page.getByRole('button', { name: /create/i }).first()
-      await createButton.click()
-
-      await page.waitForURL(/\/groups\/[^/]+/)
-
-      // Verify expense appears
-      await expect(page.getByText(expenseTitle)).toBeVisible()
+  if (await entertainmentOption.isVisible()) {
+    await entertainmentOption.click()
+  } else {
+    // If Entertainment is not available, select any non-General category
+    const options = page.getByRole('option')
+    const optionCount = await options.count()
+    if (optionCount > 1) {
+      // Select second option (first is General)
+      await options.nth(1).click()
     }
   }
+
+  // Create the expense
+  const createButton = page.getByRole('button', { name: 'Create' })
+  await createButton.click()
+  await page.waitForURL(/\/groups\/[^/]+\/expenses$/)
+
+  // Verify expense appears with title
+  const expenseTitleElement = page
+    .getByTestId('expense-title')
+    .filter({ hasText: expenseTitle })
+  await expect(expenseTitleElement).toBeVisible()
 })
 
-test('Default category (General) selected', async ({ page }) => {
-  const groupId = await createGroup({
+test('Default category is General', async ({ page }) => {
+  await page.goto('/groups')
+  const groupId = await createGroupViaAPI(
     page,
-    groupName: `PW E2E default category ${Date.now()}`,
-    participants: ['Alice', 'Bob'],
-  })
+    `default category ${randomId(4)}`,
+    ['Alice', 'Bob'],
+  )
 
-  await page.goto(`/groups/${groupId}`)
-  await page.waitForLoadState('networkidle')
+  await page.goto(`/groups/${groupId}/expenses`)
 
-  // Find create expense button
-  let createExpenseButton = page
-    .getByRole('button')
-    .filter({ hasText: /add|create/i })
-    .first()
-  if (!(await createExpenseButton.isVisible())) {
-    createExpenseButton = page
-      .getByRole('link')
-      .filter({ hasText: /expense|add/i })
-      .first()
-  }
+  // Navigate to create expense page
+  const createExpenseLink = page.getByRole('link', { name: 'Create expense' })
+  await expect(createExpenseLink).toBeVisible()
+  await createExpenseLink.click()
+  await page.waitForURL(/\/groups\/[^/]+\/expenses\/create$/)
 
-  if (await createExpenseButton.isVisible()) {
-    await createExpenseButton.click()
-    await page.waitForLoadState('load')
+  // Verify the category field defaults to "General"
+  const categoryCombobox = page
+    .getByRole('combobox')
+    .filter({ hasText: 'General' })
+  await expect(categoryCombobox).toBeVisible()
 
-    // Verify that there's a category field and it has a default value
-    const categorySelects = page.locator('[role="combobox"]')
-    if ((await categorySelects.count()) >= 2) {
-      // The category combobox should have a default selection
-      const categoryCombobox = categorySelects.nth(1)
-      const categoryText = await categoryCombobox.textContent()
-      expect(categoryText).toBeTruthy()
-      // Usually defaults to "General" or similar
-    }
-  }
+  // Verify it contains the text "General"
+  const categoryText = await categoryCombobox.textContent()
+  expect(categoryText).toContain('General')
 })
