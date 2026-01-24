@@ -41,45 +41,15 @@ test.describe('Magic Link Authentication', () => {
   test('magic link can only be used once', async ({ page, context }) => {
     const testEmail = `test-${randomId(4)}@example.com`
 
-    await page.goto('/settings')
-
-    // Request magic link
-    const emailInput = page.getByRole('textbox', { name: 'Email' })
-    await emailInput.fill(testEmail)
-    await page.getByRole('button', { name: /send magic link/i }).click()
-
-    await expect(page.getByText(/check your email/i)).toBeVisible()
-    await page.waitForTimeout(1000)
-
-    // Get the magic link
-    const { readRecentEmail: getMostRecentEmail, extractMagicLinkFromEmail } = await import(
-      '../helpers/auth'
-    )
-    const emailContent = await getMostRecentEmail()
-    const magicLink = extractMagicLinkFromEmail(emailContent)
-
-    // Use the link in first page
-    await page.goto(magicLink)
-    await page.waitForTimeout(2000)
-
-    // Verify signed in
-    await page.goto('/settings')
-    await expect(page.getByRole('button', { name: /sign out/i })).toBeVisible()
+    // Sign in
+    const { usedMagicLink } = await signInWithMagicLink(page, testEmail)
 
     // Try using the same link in a new page (simulate sharing link)
     const newPage = await context.newPage()
-    await newPage.goto(magicLink)
-    await newPage.waitForTimeout(2000)
+    await newPage.goto(usedMagicLink)
 
     // Should show error or redirect to login (link already used)
-    await newPage.goto('/settings')
-    const isStillSignedIn = await newPage
-      .getByRole('button', { name: /sign out/i })
-      .isVisible({ timeout: 2000 })
-      .catch(() => false)
-
-    // The new page should NOT be signed in (link was already consumed)
-    expect(isStillSignedIn).toBe(false)
+    await expect(newPage.getByRole('heading', { name: 'Authentication Error' })).toBeVisible()
 
     await newPage.close()
   })

@@ -68,7 +68,7 @@ export function extractMagicLinkFromEmail(emailContent: string): string {
 export async function signInWithMagicLink(
   page: Page,
   email: string,
-): Promise<void> {
+): Promise<{usedMagicLink: string}> {
   await page.goto('/settings')
 
   // Enter email
@@ -98,6 +98,7 @@ export async function signInWithMagicLink(
   await expect(page.getByText('Signed in as')).toBeVisible()
   // Verify signed in by checking for sign out button
   await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
+  return { usedMagicLink: magicLink }
 }
 
 /**
@@ -127,7 +128,7 @@ export async function signOut(
   }
 
   // Wait for sign out to complete
-  await page.waitForTimeout(1000)
+  await expect(page.getByText('Sign in to sync your groups')).toBeVisible();
 }
 
 /**
@@ -136,6 +137,6 @@ export async function signOut(
 export async function isSignedIn(page: Page): Promise<boolean> {
   await page.goto('/settings')
   await page.waitForLoadState('networkidle')
-  const signOutButton = page.getByRole('button', { name: /sign out|log out/i })
-  return signOutButton.isVisible({ timeout: 5000 }).catch(() => false)
+  const signOutButton = page.getByRole('button', { name: 'Sign out' })
+  return signOutButton.waitFor({state: 'visible', timeout: 500}).then(() => true, () => false)
 }
