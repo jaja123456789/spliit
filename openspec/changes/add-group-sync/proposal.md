@@ -200,3 +200,7 @@ export const groupWithMetadataSchema = z
   - Sync/unsync group flow
   - Auto-sync preferences
   - Logout with clear prompt
+
+## Related Changes
+
+- **refactor-group-state**: A follow-up change that centralizes all group state management into a React Context with hooks. This simplifies the sync-restore integration by providing `replaceAllGroups()` action and eliminates the prop-drilling of `refreshGroupsFromStorage` callbacks. See `openspec/changes/refactor-group-state/` for details.

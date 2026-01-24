@@ -1,27 +1,35 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { trpc } from '@/trpc/client'
+import { useGroupActions, useGroups } from '@/contexts'
 import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
+import { useState } from 'react'
 
 export function SyncedGroupsList() {
-  const {
-    data: syncedGroups,
-    isLoading,
-    refetch,
-  } = trpc.sync.listGroups.useQuery()
-  const removeGroup = trpc.sync.removeGroup.useMutation({
-    onSuccess: () => {
-      refetch()
-    },
-  })
+  const { recentGroups, syncedGroupIds, isRefetching, isStarred, isArchived } =
+    useGroups()
+  const { unsyncGroup } = useGroupActions()
+  const [unsyncingId, setUnsyncingId] = useState<string | null>(null)
 
-  if (isLoading) {
+  // Filter to only synced groups
+  const syncedGroups = recentGroups.filter((g) => syncedGroupIds.has(g.id))
+
+  const handleUnsync = async (groupId: string) => {
+    setUnsyncingId(groupId)
+    try {
+      await unsyncGroup(groupId)
+    } finally {
+      setUnsyncingId(null)
+    }
+  }
+
+  // Show loading on initial fetch (when data is empty and refetching)
+  if (syncedGroups.length === 0 && isRefetching) {
     return <Loader2 className="w-4 h-4 animate-spin" />
   }
 
-  if (!syncedGroups || syncedGroups.length === 0) {
+  if (syncedGroups.length === 0) {
     return <p className="text-sm text-muted-foreground">No synced groups yet</p>
   }
 
@@ -32,48 +40,37 @@ export function SyncedGroupsList() {
         to the cloud
       </p>
       <ul className="space-y-2">
-        {syncedGroups.map(
-          (syncedGroup: {
-            groupId: string
-            isStarred: boolean
-            isArchived: boolean
-            syncedAt: Date
-            group: { id: string; name: string }
-          }) => (
-            <li
-              key={syncedGroup.groupId}
-              className="flex items-center justify-between p-3 bg-muted rounded-lg"
-            >
-              <div>
-                <Link
-                  href={`/groups/${syncedGroup.groupId}`}
-                  className="font-medium hover:underline"
-                >
-                  {syncedGroup.group.name}
-                </Link>
-                <p className="text-xs text-muted-foreground">
-                  {syncedGroup.isStarred && '⭐ '}
-                  {syncedGroup.isArchived && '📦 '}
-                  Synced {new Date(syncedGroup.syncedAt).toLocaleDateString()}
-                </p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() =>
-                  removeGroup.mutate({ groupId: syncedGroup.groupId })
-                }
-                disabled={removeGroup.isPending}
+        {syncedGroups.map((syncedGroup) => (
+          <li
+            key={syncedGroup.id}
+            className="flex items-center justify-between p-3 bg-muted rounded-lg"
+          >
+            <div>
+              <Link
+                href={`/groups/${syncedGroup.id}`}
+                className="font-medium hover:underline"
               >
-                {removeGroup.isPending ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  'Unsync'
-                )}
-              </Button>
-            </li>
-          ),
-        )}
+                {syncedGroup.name}
+              </Link>
+              <p className="text-xs text-muted-foreground">
+                {isStarred(syncedGroup.id) && '⭐ '}
+                {isArchived(syncedGroup.id) && '📦 '}
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => handleUnsync(syncedGroup.id)}
+              disabled={unsyncingId === syncedGroup.id}
+            >
+              {unsyncingId === syncedGroup.id ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                'Unsync'
+              )}
+            </Button>
+          </li>
+        ))}
       </ul>
     </div>
   )

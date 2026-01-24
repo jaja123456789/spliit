@@ -11,7 +11,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { clearSyncRestoreFlag } from '@/lib/sync-restore'
+import { useGroupActions } from '@/contexts'
 import { LogOut } from 'lucide-react'
 import { signOut, useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
@@ -21,14 +21,12 @@ export function AccountInfo() {
   const { data: session } = useSession()
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const router = useRouter()
+  const { clearLocalData } = useGroupActions()
 
-  const handleLogout = async (clearLocalData: boolean) => {
-    if (clearLocalData) {
-      localStorage.removeItem('recentGroups')
-      localStorage.removeItem('starredGroups')
-      localStorage.removeItem('archivedGroups')
+  const handleLogout = async (shouldClearData: boolean) => {
+    if (shouldClearData) {
+      clearLocalData()
     }
-    clearSyncRestoreFlag()
     await signOut({ redirect: false })
     setShowLogoutDialog(false)
     router.refresh()

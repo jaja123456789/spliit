@@ -1,8 +1,7 @@
 'use client'
 
-import { getRecentGroups } from '@/app/groups/recent-groups-helpers'
 import { Button } from '@/components/ui/button'
-import { trpc } from '@/trpc/client'
+import { useGroupActions } from '@/contexts'
 import { Loader2 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -12,28 +11,14 @@ export function SyncAllGroups() {
     synced: number
     skipped: number
   } | null>(null)
-  const syncAll = trpc.sync.syncAll.useMutation()
+  const { syncAllGroups } = useGroupActions()
 
   const handleSyncAll = async () => {
     setSyncing(true)
     setSyncResult(null)
 
     try {
-      const recentGroups = getRecentGroups()
-      const starredGroups = JSON.parse(
-        localStorage.getItem('starredGroups') || '[]',
-      ) as string[]
-      const archivedGroups = JSON.parse(
-        localStorage.getItem('archivedGroups') || '[]',
-      ) as string[]
-
-      const groups = recentGroups.map((group) => ({
-        groupId: group.id,
-        isStarred: starredGroups.includes(group.id),
-        isArchived: archivedGroups.includes(group.id),
-      }))
-
-      const result = await syncAll.mutateAsync({ groups, clearOmitList: true })
+      const result = await syncAllGroups()
       setSyncResult(result)
     } catch (error) {
       console.error('Sync error:', error)

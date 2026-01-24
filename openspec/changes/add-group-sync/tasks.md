@@ -129,3 +129,7 @@
 - [x] TypeScript compilation passes (`npm run check-types`)
 - [x] All 173 unit tests pass (`npm test`)
 - [x] Production build succeeds (`npm run build`)
+
+## Related Changes
+
+- **refactor-group-state**: Centralizes group state management into React Context, which simplifies the sync-restore integration and eliminates the scattered localStorage access patterns currently used. See `openspec/changes/refactor-group-state/` for details.

@@ -2,11 +2,11 @@ import { ApplePwaSplash } from '@/app/apple-pwa-splash'
 import { AuthProvider } from '@/components/auth-provider'
 import { LocaleSwitcher } from '@/components/locale-switcher'
 import { ProgressBar } from '@/components/progress-bar'
-import { SyncRestoreProvider } from '@/components/sync-restore-provider'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import { Toaster } from '@/components/ui/toaster'
+import { GroupsProvider } from '@/contexts'
 import { env } from '@/lib/env'
 import { TRPCProvider } from '@/trpc/client'
 import type { Metadata, Viewport } from 'next'
@@ -70,7 +70,7 @@ function Content({ children }: { children: React.ReactNode }) {
   return (
     <TRPCProvider>
       <AuthProvider>
-        <SyncRestoreProvider>
+        <GroupsProvider>
           <header className="fixed top-0 left-0 right-0 h-16 flex justify-between bg-white dark:bg-gray-950 bg-opacity-50 dark:bg-opacity-50 p-2 border-b backdrop-blur-sm z-50">
             <Link
               className="flex items-center gap-2 hover:scale-105 transition-transform"
@@ -161,7 +161,7 @@ function Content({ children }: { children: React.ReactNode }) {
             </div>
           </footer>
           <Toaster />
-        </SyncRestoreProvider>
+        </GroupsProvider>
       </AuthProvider>
     </TRPCProvider>
   )

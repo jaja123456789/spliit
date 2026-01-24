@@ -1,15 +1,6 @@
 'use client'
 
 import {
-  RecentGroup,
-  archiveGroup,
-  deleteRecentGroup,
-  starGroup,
-  unarchiveGroup,
-  unstarGroup,
-} from '@/app/groups/recent-groups-helpers'
-import { useGroupSync } from '@/app/groups/use-group-sync'
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -28,7 +19,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
-import { trpc } from '@/trpc/client'
+import { useGroupActions, useGroups, type RecentGroup } from '@/contexts'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { StarFilledIcon } from '@radix-ui/react-icons'
 import {
@@ -49,39 +40,41 @@ import { useState } from 'react'
 export function RecentGroupListCard({
   group,
   groupDetail,
-  isStarred,
-  isArchived,
-  refreshGroupsFromStorage,
 }: {
   group: RecentGroup
   groupDetail?: AppRouterOutput['groups']['list']['groups'][number]
-  isStarred: boolean
-  isArchived: boolean
-  refreshGroupsFromStorage: () => void
 }) {
   const router = useRouter()
   const locale = useLocale()
   const toast = useToast()
   const t = useTranslations('Groups')
   const { data: session } = useSession()
-  const {
-    isSynced,
-    isLoading: isSyncLoading,
-    toggleSync,
-    canSync,
-  } = useGroupSync(group.id)
   const [showUnsyncDialog, setShowUnsyncDialog] = useState(false)
+  const [isSyncLoading, setIsSyncLoading] = useState(false)
+
+  const { isSynced, isStarred, isArchived } = useGroups()
+  const {
+    starGroup,
+    unstarGroup,
+    archiveGroup,
+    unarchiveGroup,
+    deleteRecentGroup,
+    syncGroup,
+    unsyncGroup,
+  } = useGroupActions()
+
+  const groupIsSynced = isSynced(group.id)
+  const groupIsStarred = isStarred(group.id)
+  const groupIsArchived = isArchived(group.id)
+  const canSync = !!session
 
   const handleRemoveRecent = (event: React.MouseEvent) => {
     event.stopPropagation()
 
-    // If group is synced, show confirmation dialog
-    if (isSynced) {
+    if (groupIsSynced) {
       setShowUnsyncDialog(true)
     } else {
-      // Just remove from local storage
-      deleteRecentGroup(group)
-      refreshGroupsFromStorage()
+      deleteRecentGroup(group.id)
       toast.toast({
         title: t('RecentRemovedToast.title'),
         description: t('RecentRemovedToast.description'),
@@ -90,12 +83,8 @@ export function RecentGroupListCard({
   }
 
   const handleUnsyncAndRemove = async () => {
-    // Unsync from server
-    await toggleSync(isStarred, isArchived)
-
-    // Remove from local storage
-    deleteRecentGroup(group)
-    refreshGroupsFromStorage()
+    await unsyncGroup(group.id)
+    deleteRecentGroup(group.id)
 
     setShowUnsyncDialog(false)
     toast.toast({
@@ -105,30 +94,19 @@ export function RecentGroupListCard({
     })
   }
 
-  const handleKeepSyncedAndRemove = () => {
-    // Just remove from local storage, keep synced
-    deleteRecentGroup(group)
-    refreshGroupsFromStorage()
-
-    setShowUnsyncDialog(false)
-    toast.toast({
-      title: t('RecentRemovedToast.title'),
-      description: 'The group is still synced to your account',
-    })
-  }
-
   const handleToggleSync = async (event: React.MouseEvent) => {
     event.stopPropagation()
-    await toggleSync(isStarred, isArchived)
+    setIsSyncLoading(true)
+    try {
+      if (groupIsSynced) {
+        await unsyncGroup(group.id)
+      } else {
+        await syncGroup(group.id)
+      }
+    } finally {
+      setIsSyncLoading(false)
+    }
   }
-
-  // Mutation for updating metadata
-  const updateMetadata = trpc.sync.updateMetadata.useMutation({
-    onError: (error) => {
-      // Silent error - local update already succeeded
-      console.error('Failed to sync metadata:', error)
-    },
-  })
 
   return (
     <li key={group.id}>
@@ -165,11 +143,13 @@ export function RecentGroupListCard({
                     className="-my-3 -ml-3 -mr-1.5"
                     onClick={handleToggleSync}
                     disabled={isSyncLoading}
-                    title={isSynced ? 'Unsync from cloud' : 'Sync to cloud'}
+                    title={
+                      groupIsSynced ? 'Unsync from cloud' : 'Sync to cloud'
+                    }
                   >
                     {isSyncLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : isSynced ? (
+                    ) : groupIsSynced ? (
                       <Cloud className="w-4 h-4 text-blue-500" />
                     ) : (
                       <CloudOff className="w-4 h-4 text-muted-foreground" />
@@ -180,33 +160,16 @@ export function RecentGroupListCard({
                   size="icon"
                   variant="ghost"
                   className="-my-3 -ml-3 -mr-1.5"
-                  onClick={(event) => {
+                  onClick={async (event) => {
                     event.stopPropagation()
-                    if (isStarred) {
-                      unstarGroup(group.id)
-                      // Sync to server if logged in and group is synced
-                      if (session && isSynced) {
-                        updateMetadata.mutate({
-                          groupId: group.id,
-                          isStarred: false,
-                        })
-                      }
+                    if (groupIsStarred) {
+                      await unstarGroup(group.id)
                     } else {
-                      starGroup(group.id)
-                      unarchiveGroup(group.id)
-                      // Sync to server if logged in and group is synced
-                      if (session && isSynced) {
-                        updateMetadata.mutate({
-                          groupId: group.id,
-                          isStarred: true,
-                          isArchived: false,
-                        })
-                      }
+                      await starGroup(group.id)
                     }
-                    refreshGroupsFromStorage()
                   }}
                 >
-                  {isStarred ? (
+                  {groupIsStarred ? (
                     <StarFilledIcon className="w-4 h-4 text-orange-400" />
                   ) : (
                     <Star className="w-4 h-4 text-muted-foreground" />
@@ -230,33 +193,16 @@ export function RecentGroupListCard({
                       {t('removeRecent')}
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      onClick={(event) => {
+                      onClick={async (event) => {
                         event.stopPropagation()
-                        if (isArchived) {
-                          unarchiveGroup(group.id)
-                          // Sync to server if logged in and group is synced
-                          if (session && isSynced) {
-                            updateMetadata.mutate({
-                              groupId: group.id,
-                              isArchived: false,
-                            })
-                          }
+                        if (groupIsArchived) {
+                          await unarchiveGroup(group.id)
                         } else {
-                          archiveGroup(group.id)
-                          unstarGroup(group.id)
-                          // Sync to server if logged in and group is synced
-                          if (session && isSynced) {
-                            updateMetadata.mutate({
-                              groupId: group.id,
-                              isArchived: true,
-                              isStarred: false,
-                            })
-                          }
+                          await archiveGroup(group.id)
                         }
-                        refreshGroupsFromStorage()
                       }}
                     >
-                      {t(isArchived ? 'unarchive' : 'archive')}
+                      {t(groupIsArchived ? 'unarchive' : 'archive')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -303,9 +249,6 @@ export function RecentGroupListCard({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <Button variant="outline" onClick={handleKeepSyncedAndRemove}>
-              Remove from device only
-            </Button>
             <AlertDialogAction onClick={handleUnsyncAndRemove}>
               Remove and unsync
             </AlertDialogAction>
