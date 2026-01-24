@@ -1,27 +1,32 @@
 import { expect, Page } from '@playwright/test'
-import { readdir, readFile } from 'fs/promises'
+import { readdir, readFile, rm } from 'fs/promises'
 import path from 'path'
 
 /**
  * Helper to read the most recent email from .mail/ directory
  * Returns the email content
  */
-export async function getMostRecentEmail(): Promise<string> {
+export async function readRecentEmail(mailAddress: string): Promise<string> {
   const mailDir = path.join(process.cwd(), '.mail')
   const files = await readdir(mailDir)
 
   // Filter .eml files and sort by name (which includes timestamp)
+  const normalizedEmail = mailAddress.replace(/[^a-zA-Z0-9@.-]/g, '_').toLowerCase()
   const emlFiles = files
-    .filter((f) => f.endsWith('.eml'))
+    .filter((f) => f.endsWith(`${normalizedEmail}.eml`))
     .sort()
     .reverse()
 
   if (emlFiles.length === 0) {
-    throw new Error('No emails found in .mail/ directory')
+    throw new Error(`No emails found in .mail/ directory for ${normalizedEmail}`)
   }
 
   const latestFile = emlFiles[0]!
   const content = await readFile(path.join(mailDir, latestFile), 'utf-8')
+  // cleanup
+  rm(path.join(mailDir, latestFile)).catch(() => {
+    console.warn(`Failed to delete email file: ${latestFile}`)
+  })
   return content
 }
 
@@ -76,30 +81,23 @@ export async function signInWithMagicLink(
   await sendButton.click()
 
   // Wait for confirmation message
-  await expect(page.getByText(/check your email/i)).toBeVisible({
-    timeout: 10000,
-  })
+  await expect(page.getByText(/check your email/i)).toBeVisible()
 
   // Wait a bit for email to be written
   await page.waitForTimeout(1000)
 
   // Read email and extract link
-  const emailContent = await getMostRecentEmail()
+  const emailContent = await readRecentEmail(email)
   const magicLink = extractMagicLinkFromEmail(emailContent)
 
-  // Navigate to magic link
-  await page.goto(magicLink)
+  // Navigate to magic link and wait for auth to complete
+  const response = await page.goto(magicLink, { waitUntil: 'networkidle' })
 
-  // Wait for redirect and sign-in to complete
-  await page.waitForTimeout(2000)
-
+  // NextAuth will redirect to the callback URL after successful authentication
+  // Wait for either redirect or load to complete
+  await expect(page.getByText('Signed in as')).toBeVisible()
   // Verify signed in by checking for sign out button
-  await page.goto('/settings')
-  await expect(
-    page.getByRole('button', { name: /sign out|log out/i }),
-  ).toBeVisible({
-    timeout: 10000,
-  })
+  await expect(page.getByRole('button', { name: 'Sign out' })).toBeVisible()
 }
 
 /**
@@ -137,6 +135,7 @@ export async function signOut(
  */
 export async function isSignedIn(page: Page): Promise<boolean> {
   await page.goto('/settings')
+  await page.waitForLoadState('networkidle')
   const signOutButton = page.getByRole('button', { name: /sign out|log out/i })
-  return signOutButton.isVisible({ timeout: 2000 }).catch(() => false)
+  return signOutButton.isVisible({ timeout: 5000 }).catch(() => false)
 }

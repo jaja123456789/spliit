@@ -52,7 +52,7 @@ test.describe('Magic Link Authentication', () => {
     await page.waitForTimeout(1000)
 
     // Get the magic link
-    const { getMostRecentEmail, extractMagicLinkFromEmail } = await import(
+    const { readRecentEmail: getMostRecentEmail, extractMagicLinkFromEmail } = await import(
       '../helpers/auth'
     )
     const emailContent = await getMostRecentEmail()
