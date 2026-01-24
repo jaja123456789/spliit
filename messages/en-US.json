@@ -8,7 +8,8 @@
     }
   },
   "Header": {
-    "groups": "Groups"
+    "groups": "Groups",
+    "settings": "Settings"
   },
   "Footer": {
     "madeIn": "Made in Montréal, Québec 🇨🇦",

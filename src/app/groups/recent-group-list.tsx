@@ -6,11 +6,13 @@ import {
   getRecentGroups,
   getStarredGroups,
 } from '@/app/groups/recent-groups-helpers'
+import { SyncFeatureAnnouncement } from '@/components/sync-feature-announcement'
 import { Button } from '@/components/ui/button'
 import { getGroups } from '@/lib/api'
 import { trpc } from '@/trpc/client'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { Loader2 } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { PropsWithChildren, useEffect, useState } from 'react'
@@ -103,6 +105,7 @@ function RecentGroupList_({
   refreshGroupsFromStorage: () => void
 }) {
   const t = useTranslations('Groups')
+  const { data: session } = useSession()
   const { data, isLoading } = trpc.groups.list.useQuery({
     groupIds: groups.map((group) => group.id),
   })
@@ -129,6 +132,14 @@ function RecentGroupList_({
             </Button>{' '}
             {t('NoRecent.orAsk')}
           </p>
+          {!session && (
+            <p className="mt-4 text-muted-foreground">
+              <Link href="/settings" className="text-primary hover:underline">
+                Enable cloud sync
+              </Link>{' '}
+              to access your groups across devices.
+            </p>
+          )}
         </div>
       </GroupsPage>
     )
@@ -142,6 +153,8 @@ function RecentGroupList_({
 
   return (
     <GroupsPage reload={refreshGroupsFromStorage}>
+      <SyncFeatureAnnouncement />
+
       {starredGroupInfo.length > 0 && (
         <>
           <h2 className="mb-2">{t('starred')}</h2>

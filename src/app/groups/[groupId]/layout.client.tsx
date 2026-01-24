@@ -4,6 +4,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { trpc } from '@/trpc/client'
 import { useTranslations } from 'next-intl'
 import { PropsWithChildren, useEffect } from 'react'
+import { AutoSyncOnVisit } from './auto-sync-on-visit'
 import { CurrentGroupProvider } from './current-group-context'
 import { GroupHeader } from './group-header'
 import { SaveGroupLocally } from './save-recent-group'
@@ -23,7 +24,7 @@ export function GroupLayoutClient({
         variant: 'destructive',
       })
     }
-  }, [data])
+  }, [data, toast, t])
 
   const props =
     isLoading || !data?.group
@@ -44,6 +45,7 @@ export function GroupLayoutClient({
       <GroupHeader />
       {children}
       <SaveGroupLocally />
+      <AutoSyncOnVisit groupId={groupId} />
     </CurrentGroupProvider>
   )
 }

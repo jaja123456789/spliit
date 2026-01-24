@@ -35,7 +35,7 @@ Spliit is a free and open source alternative to Splitwise. You can either use th
 
 ## Contribute
 
-The project is open to contributions. Feel free to open an issue or even a pull-request! 
+The project is open to contributions. Feel free to open an issue or even a pull-request!
 Join the discussion in [the Spliit Discord server](https://discord.gg/YSyVXbwvSY).
 
 If you want to contribute financially and help us keep the application free and without ads, you can also:
@@ -45,7 +45,7 @@ If you want to contribute financially and help us keep the application free and 
 
 ### Translation
 
-The project's translations are managed using [our Weblate project](https://hosted.weblate.org/projects/spliit/spliit/). 
+The project's translations are managed using [our Weblate project](https://hosted.weblate.org/projects/spliit/spliit/).
 You can easily add missing translations to the project or even add a new language!
 Here is the current state of translation:
 
@@ -122,6 +122,49 @@ You can offer users to automatically deduce the expense category from the title.
 NEXT_PUBLIC_ENABLE_CATEGORY_EXTRACT=true
 OPENAI_API_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXX
 ```
+
+### Group cloud sync
+
+Spliit allows users to sync their groups to the cloud and access them across multiple devices. This feature uses magic link authentication via email.
+
+#### How it works
+
+1. Users can opt-in to sync a group by providing their email address
+2. A magic link is sent to their email for authentication
+3. Once verified, the group is associated with their account
+4. They can access all their synced groups from any device by signing in with their email
+5. Users control sync preferences per group (sync can be enabled/disabled at any time)
+
+#### SMTP setup
+
+To enable group sync, configure an SMTP server for sending magic link emails:
+
+```.env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASS=your-app-password
+EMAIL_FROM=noreply@yourdomain.com
+NEXTAUTH_SECRET=<run: openssl rand -base64 32>
+```
+
+**Popular SMTP providers:**
+
+- **Gmail**: Use `smtp.gmail.com:587` with an [app-specific password](https://support.google.com/accounts/answer/185833)
+- **SendGrid**: Use `smtp.sendgrid.net:587` with your API key as password
+- **Mailgun**: Use `smtp.mailgun.org:587` with your Mailgun credentials
+
+#### Local development
+
+When `SMTP_HOST` is not configured, Spliit writes emails to the `.mail/` directory instead of sending them. Check this folder for magic link emails during development.
+
+#### Sync behavior
+
+- Groups are stored locally by default (no account required)
+- Users can enable sync for individual groups at any time
+- Synced groups appear in "My groups" when signed in
+- Local groups remain accessible even when signed out
+- Disabling sync does not delete the group, only removes cloud association
 
 ## License
 
