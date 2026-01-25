@@ -1,5 +1,6 @@
 'use client'
 
+import { useTranslations } from 'next-intl'
 import { useCallback, useMemo } from 'react'
 import { useCoreGroupsContext } from './core-context'
 import type { GroupActions, RecentGroup } from './types'
@@ -35,6 +36,7 @@ export function useGroupActions(): GroupActions {
     _clearLocalData,
     _refresh,
   } = useCoreGroupsContext()
+  const t = useTranslations('SyncErrors.toast')
 
   const saveRecentGroup = useCallback(
     async (group: RecentGroup) => {
@@ -76,7 +78,7 @@ export function useGroupActions(): GroupActions {
             return { ...old, syncedGroupIds: newSynced }
           })
         } catch (error) {
-          handleSyncError(error, 'Group saved locally but not synced to cloud')
+          handleSyncError(error, t('saveLocalFailed'))
         }
       }
     },
@@ -88,6 +90,7 @@ export function useGroupActions(): GroupActions {
       utils.sync.isOmitted,
       mutations.addGroup,
       handleSyncError,
+      t,
     ],
   )
 
@@ -128,7 +131,7 @@ export function useGroupActions(): GroupActions {
             isArchived: false,
           })
         } catch (error) {
-          handleSyncError(error, 'Failed to sync star status to cloud')
+          handleSyncError(error, t('starFailed'))
         }
       }
     },
@@ -138,6 +141,7 @@ export function useGroupActions(): GroupActions {
       groupsQuery.data,
       mutations.updateMetadata,
       handleSyncError,
+      t,
     ],
   )
 
@@ -161,7 +165,7 @@ export function useGroupActions(): GroupActions {
             isStarred: false,
           })
         } catch (error) {
-          handleSyncError(error, 'Failed to sync unstar status to cloud')
+          handleSyncError(error, t('unstarFailed'))
         }
       }
     },
@@ -171,6 +175,7 @@ export function useGroupActions(): GroupActions {
       groupsQuery.data,
       mutations.updateMetadata,
       handleSyncError,
+      t,
     ],
   )
 
@@ -201,7 +206,7 @@ export function useGroupActions(): GroupActions {
             isArchived: true,
           })
         } catch (error) {
-          handleSyncError(error, 'Failed to sync archive status to cloud')
+          handleSyncError(error, t('archiveFailed'))
         }
       }
     },
@@ -211,6 +216,7 @@ export function useGroupActions(): GroupActions {
       groupsQuery.data,
       mutations.updateMetadata,
       handleSyncError,
+      t,
     ],
   )
 
@@ -234,7 +240,7 @@ export function useGroupActions(): GroupActions {
             isArchived: false,
           })
         } catch (error) {
-          handleSyncError(error, 'Failed to sync unarchive status to cloud')
+          handleSyncError(error, t('unarchiveFailed'))
         }
       }
     },
@@ -244,6 +250,7 @@ export function useGroupActions(): GroupActions {
       groupsQuery.data,
       mutations.updateMetadata,
       handleSyncError,
+      t,
     ],
   )
 

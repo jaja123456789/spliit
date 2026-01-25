@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { useGroupActions, useGroups } from '@/contexts'
 import { Loader2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useState } from 'react'
 
@@ -11,6 +12,7 @@ export function SyncedGroupsList() {
     useGroups()
   const { unsyncGroup } = useGroupActions()
   const [unsyncingId, setUnsyncingId] = useState<string | null>(null)
+  const t = useTranslations('Settings.SyncedGroups')
 
   // Filter to only synced groups
   const syncedGroups = recentGroups.filter((g) => syncedGroupIds.has(g.id))
@@ -30,14 +32,13 @@ export function SyncedGroupsList() {
   }
 
   if (syncedGroups.length === 0) {
-    return <p className="text-sm text-muted-foreground">No synced groups yet</p>
+    return <p className="text-sm text-muted-foreground">{t('empty')}</p>
   }
 
   return (
     <div className="space-y-2">
       <p className="text-sm text-muted-foreground mb-3">
-        {syncedGroups.length} group{syncedGroups.length !== 1 ? 's' : ''} synced
-        to the cloud
+        {t('count', { count: syncedGroups.length })}
       </p>
       <ul className="space-y-2">
         {syncedGroups.map((syncedGroup) => (
@@ -66,7 +67,7 @@ export function SyncedGroupsList() {
               {unsyncingId === syncedGroup.id ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                'Unsync'
+                t('actions.unsync')
               )}
             </Button>
           </li>

@@ -48,6 +48,7 @@ export function RecentGroupListCard({
   const locale = useLocale()
   const toast = useToast()
   const t = useTranslations('Groups')
+  const groupFormT = useTranslations('GroupForm.Settings')
   const { data: session } = useSession()
   const [showUnsyncDialog, setShowUnsyncDialog] = useState(false)
   const [isSyncLoading, setIsSyncLoading] = useState(false)
@@ -88,9 +89,8 @@ export function RecentGroupListCard({
 
     setShowUnsyncDialog(false)
     toast.toast({
-      title: 'Group removed and unsynced',
-      description:
-        'The group has been removed from this device and unsynced from your account',
+      title: t('Card.toast.unsyncRemoved.title'),
+      description: t('Card.toast.unsyncRemoved.description'),
     })
   }
 
@@ -126,136 +126,138 @@ export function RecentGroupListCard({
             }
           }}
         >
-          <div className="w-full flex flex-col gap-1">
-            <div className="text-base flex gap-2 justify-between">
-              <Link
-                href={`/groups/${group.id}`}
-                className="flex-1 overflow-hidden text-ellipsis flex items-center gap-2"
-              >
-                <span className="truncate">{group.name}</span>
-              </Link>
-              <span className="flex-shrink-0 flex items-center">
-                {/* Sync toggle button - only show when logged in */}
-                {canSync && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="-my-3 -ml-3 -mr-1.5"
-                    onClick={handleToggleSync}
-                    disabled={isSyncLoading}
-                    title={
-                      groupIsSynced ? 'Unsync from cloud' : 'Sync to cloud'
-                    }
-                  >
-                    {isSyncLoading ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : groupIsSynced ? (
-                      <Cloud className="w-4 h-4 text-blue-500" />
-                    ) : (
-                      <CloudOff className="w-4 h-4 text-muted-foreground" />
-                    )}
-                  </Button>
-                )}
+        <div className="w-full flex flex-col gap-1">
+          <div className="text-base flex gap-2 justify-between">
+            <Link
+              href={`/groups/${group.id}`}
+              className="flex-1 overflow-hidden text-ellipsis flex items-center gap-2"
+            >
+              <span className="truncate">{group.name}</span>
+            </Link>
+            <span className="flex-shrink-0 flex items-center">
+              {/* Sync toggle button - only show when logged in */}
+              {canSync && (
                 <Button
                   size="icon"
                   variant="ghost"
                   className="-my-3 -ml-3 -mr-1.5"
-                  title={
-                    groupIsStarred
-                      ? 'Remove from favorites'
-                      : 'Add to favorites'
-                  }
-                  onClick={async (event) => {
-                    event.stopPropagation()
-                    if (groupIsStarred) {
-                      await unstarGroup(group.id)
-                    } else {
-                      await starGroup(group.id)
-                    }
-                  }}
+                    onClick={handleToggleSync}
+                  disabled={isSyncLoading}
+                  title={t(
+                    groupIsSynced
+                      ? 'Card.actions.unsyncTooltip'
+                      : 'Card.actions.syncTooltip',
+                  )}
                 >
-                  {groupIsStarred ? (
-                    <StarFilledIcon className="w-4 h-4 text-orange-400" />
+                  {isSyncLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : groupIsSynced ? (
+                    <Cloud className="w-4 h-4 text-blue-500" />
                   ) : (
-                    <Star className="w-4 h-4 text-muted-foreground" />
+                    <CloudOff className="w-4 h-4 text-muted-foreground" />
                   )}
                 </Button>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="-my-3 -mr-3 -ml-1.5"
-                    >
-                      <MoreHorizontal className="w-4 h-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      className="text-destructive"
-                      onClick={handleRemoveRecent}
-                    >
-                      {t('removeRecent')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={async (event) => {
-                        event.stopPropagation()
-                        if (groupIsArchived) {
-                          await unarchiveGroup(group.id)
-                        } else {
-                          await archiveGroup(group.id)
-                        }
-                      }}
-                    >
-                      {t(groupIsArchived ? 'unarchive' : 'archive')}
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </span>
-            </div>
-            <div className="text-muted-foreground font-normal text-xs">
-              {groupDetail ? (
-                <div className="w-full flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Users className="w-3 h-3 inline mr-1" />
-                    <span>{groupDetail._count.participants}</span>
-                  </div>
-                  <div className="flex items-center">
-                    <Calendar className="w-3 h-3 inline mx-1" />
-                    <span>
-                      {new Date(groupDetail.createdAt).toLocaleDateString(
-                        locale,
-                        {
-                          dateStyle: 'medium',
-                        },
-                      )}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="flex justify-between">
-                  <Skeleton className="h-4 w-6 rounded-full" />
-                  <Skeleton className="h-4 w-24 rounded-full" />
-                </div>
               )}
-            </div>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="-my-3 -ml-3 -mr-1.5"
+                title={
+                  groupIsStarred
+                    ? t('Card.actions.unfavoriteTooltip')
+                    : t('Card.actions.favoriteTooltip')
+                }
+                onClick={async (event) => {
+                  event.stopPropagation()
+                  if (groupIsStarred) {
+                    await unstarGroup(group.id)
+                  } else {
+                    await starGroup(group.id)
+                  }
+                }}
+              >
+                {groupIsStarred ? (
+                  <StarFilledIcon className="w-4 h-4 text-orange-400" />
+                ) : (
+                  <Star className="w-4 h-4 text-muted-foreground" />
+                )}
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="-my-3 -mr-3 -ml-1.5"
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className="text-destructive"
+                      onClick={handleRemoveRecent}
+                  >
+                    {t('removeRecent')}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={async (event) => {
+                      event.stopPropagation()
+                      if (groupIsArchived) {
+                        await unarchiveGroup(group.id)
+                      } else {
+                        await archiveGroup(group.id)
+                      }
+                    }}
+                  >
+                    {t(groupIsArchived ? 'unarchive' : 'archive')}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </span>
+          </div>
+          <div className="text-muted-foreground font-normal text-xs">
+            {groupDetail ? (
+              <div className="w-full flex items-center justify-between">
+                <div className="flex items-center">
+                  <Users className="w-3 h-3 inline mr-1" />
+                  <span>{groupDetail._count.participants}</span>
+                </div>
+                <div className="flex items-center">
+                  <Calendar className="w-3 h-3 inline mx-1" />
+                  <span>
+                    {new Date(groupDetail.createdAt).toLocaleDateString(
+                      locale,
+                      {
+                        dateStyle: 'medium',
+                      },
+                    )}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <div className="flex justify-between">
+                <Skeleton className="h-4 w-6 rounded-full" />
+                <Skeleton className="h-4 w-24 rounded-full" />
+              </div>
+            )}
           </div>
         </div>
+      </div>
       </Button>
 
       {/* Confirmation dialog for removing synced group */}
       <AlertDialog open={showUnsyncDialog} onOpenChange={setShowUnsyncDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove synced group</AlertDialogTitle>
+            <AlertDialogTitle>{t('Card.unsyncDialog.title')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This group is synced to your account. What would you like to do?
+              {t('Card.unsyncDialog.description')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{groupFormT('cancel')}</AlertDialogCancel>
             <AlertDialogAction onClick={handleUnsyncAndRemove}>
-              Remove and unsync
+              {t('Card.unsyncDialog.actions.removeAndUnsync')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

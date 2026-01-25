@@ -118,10 +118,10 @@ function RecentGroupList_({
             <p>
               <Button variant="link" asChild className="-m-4">
                 <Link href="/settings" className="text-primary hover:underline">
-                  Enable cloud sync
+                  {t('NoRecent.enableCloudSync')}
                 </Link>
               </Button>{' '}
-              to access your groups across devices.
+              {t('NoRecent.enableCloudSyncHelp')}
             </p>
           )}
           <p>

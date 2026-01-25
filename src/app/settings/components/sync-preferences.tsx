@@ -4,8 +4,10 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { trpc } from '@/trpc/client'
 import { Loader2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 
 export function SyncPreferences() {
+  const t = useTranslations('Settings.SyncPreferences')
   const {
     data: preferences,
     isLoading,
@@ -27,10 +29,10 @@ export function SyncPreferences() {
     <div className="flex items-center justify-between space-x-2">
       <div className="flex-1">
         <Label htmlFor="sync-new" className="font-medium">
-          Sync new groups automatically
+          {t('syncNewGroups.label')}
         </Label>
         <p className="text-sm text-muted-foreground">
-          Automatically sync when visiting or creating groups
+          {t('syncNewGroups.description')}
         </p>
       </div>
       <Switch

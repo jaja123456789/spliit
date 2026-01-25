@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button'
 import { useGroupActions } from '@/contexts'
 import { Loader2 } from 'lucide-react'
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 
 export function SyncAllGroups() {
@@ -12,6 +13,7 @@ export function SyncAllGroups() {
     skipped: number
   } | null>(null)
   const { syncAllGroups } = useGroupActions()
+  const t = useTranslations('Settings.SyncAll')
 
   const handleSyncAll = async () => {
     setSyncing(true)
@@ -37,23 +39,21 @@ export function SyncAllGroups() {
         {syncing ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Syncing...
+            {t('actions.syncing')}
           </>
         ) : (
-          'Sync all groups now'
+          t('actions.syncNow')
         )}
       </Button>
 
       {syncResult && (
         <div className="p-4 bg-muted rounded-lg">
           <p className="text-sm font-medium">
-            Synced {syncResult.synced} group
-            {syncResult.synced !== 1 ? 's' : ''}
+            {t('result.synced', { count: syncResult.synced })}
           </p>
           {syncResult.skipped > 0 && (
             <p className="text-sm text-muted-foreground">
-              Skipped {syncResult.skipped} group
-              {syncResult.skipped !== 1 ? 's' : ''}
+              {t('result.skipped', { count: syncResult.skipped })}
             </p>
           )}
         </div>

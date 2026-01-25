@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { TRPCError } from '@trpc/server'
+import { getTranslations } from 'next-intl/server'
 import { protectedProcedure } from './protected'
 import { syncAllInputSchema } from './schemas'
 import { hashGroupId } from './utils'
@@ -11,12 +12,13 @@ export const syncAllProcedure = protectedProcedure
   .mutation(async ({ ctx, input }) => {
     const { user } = ctx
     const { groups, clearOmitList } = input
+    const t = await getTranslations('SyncErrors')
 
     // Enforce rate limit
     if (groups.length > MAX_GROUPS_PER_SYNC) {
       throw new TRPCError({
         code: 'BAD_REQUEST',
-        message: `Cannot sync more than ${MAX_GROUPS_PER_SYNC} groups at once`,
+        message: t('validation.tooManyGroups', { max: MAX_GROUPS_PER_SYNC }),
       })
     }
 
@@ -52,7 +54,9 @@ export const syncAllProcedure = protectedProcedure
           if (!participant) {
             throw new TRPCError({
               code: 'BAD_REQUEST',
-              message: `Invalid participant for group ${group.groupId}`,
+              message: t('validation.invalidParticipantForGroup', {
+                groupId: group.groupId,
+              }),
             })
           }
         }

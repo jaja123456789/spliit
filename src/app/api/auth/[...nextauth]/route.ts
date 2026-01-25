@@ -59,7 +59,7 @@ export const authOptions: NextAuthOptions = {
         // Normalize email to lowercase
         const normalizedEmail = email.toLowerCase()
 
-        const { subject, text, html } = magicLinkEmail(url, 'Spliit')
+        const { subject, text, html } = await magicLinkEmail(url, 'Spliit')
         await sendEmail({ to: normalizedEmail, subject, text, html })
       },
       // Normalize email before lookup

@@ -4,6 +4,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Cloud } from 'lucide-react'
 import { useSession } from 'next-auth/react'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
@@ -13,6 +14,7 @@ const STORAGE_KEY = 'sync-feature-dismissed'
 export function SyncFeatureAnnouncement() {
   const { data: session } = useSession()
   const [isVisible, setIsVisible] = useState(false)
+  const t = useTranslations('SyncAnnouncement')
 
   useEffect(() => {
     // Don't show if signed in
@@ -54,11 +56,11 @@ export function SyncFeatureAnnouncement() {
   return (
     <Alert className="mb-4">
       <Cloud className="h-4 w-4" />
-      <AlertTitle>New: Cloud Sync</AlertTitle>
+      <AlertTitle>{t('title')}</AlertTitle>
       <AlertDescription>
-        Sync your groups across devices.{' '}
+        {t('body')}{' '}
         <Link href="/settings" className="underline">
-          Set up in Settings
+          {t('actions.settings')}
         </Link>
         <Button
           variant="ghost"
@@ -66,7 +68,7 @@ export function SyncFeatureAnnouncement() {
           onClick={handleDismiss}
           className="ml-2"
         >
-          Dismiss
+          {t('actions.dismiss')}
         </Button>
       </AlertDescription>
     </Alert>

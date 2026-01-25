@@ -1,6 +1,7 @@
 import { getServerSession } from '@/lib/auth'
 import { baseProcedure } from '@/trpc/init'
 import { TRPCError } from '@trpc/server'
+import { getTranslations } from 'next-intl/server'
 
 /**
  * Protected procedure that requires authentication
@@ -8,11 +9,12 @@ import { TRPCError } from '@trpc/server'
  */
 export const protectedProcedure = baseProcedure.use(async ({ next }) => {
   const session = await getServerSession()
+  const t = await getTranslations('SyncErrors')
 
   if (!session?.user?.email || !session?.user?.id) {
     throw new TRPCError({
       code: 'UNAUTHORIZED',
-      message: 'You must be logged in to perform this action',
+      message: t('auth.required'),
     })
   }
 

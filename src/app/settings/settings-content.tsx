@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/card'
 import { Loader2, Settings2 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
+import { useTranslations } from 'next-intl'
 import {
   AccountInfo,
   SignInForm,
@@ -19,13 +20,15 @@ import {
 
 export function SettingsContent() {
   const { data: session, status } = useSession()
+  const t = useTranslations('Settings')
+  const commonT = useTranslations('Common')
 
   if (status === 'loading') {
     return (
       <div className="container max-w-4xl py-8">
         <div className="flex items-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin" />
-          <p className="text-sm text-muted-foreground">Loading...</p>
+          <p className="text-sm text-muted-foreground">{commonT('loading')}</p>
         </div>
       </div>
     )
@@ -35,16 +38,16 @@ export function SettingsContent() {
     <div className="container max-w-4xl py-8 space-y-6">
       <div className="flex items-center gap-3">
         <Settings2 className="w-8 h-8" />
-        <h1 className="text-3xl font-bold">Settings</h1>
+        <h1 className="text-3xl font-bold">{t('title')}</h1>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Cloud Sync</CardTitle>
+          <CardTitle>{t('CloudSync.title')}</CardTitle>
           <CardDescription>
             {session
-              ? 'Manage your synced groups and preferences'
-              : 'Sign in to sync your groups across devices'}
+              ? t('CloudSync.description.signedIn')
+              : t('CloudSync.description.signedOut')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -53,19 +56,27 @@ export function SettingsContent() {
           ) : (
             <div className="space-y-6">
               <div>
-                <h3 className="text-sm font-medium mb-3">Account</h3>
+                <h3 className="text-sm font-medium mb-3">
+                  {t('sections.account')}
+                </h3>
                 <AccountInfo />
               </div>
               <div className="border-t pt-4">
-                <h3 className="text-sm font-medium mb-3">Preferences</h3>
+                <h3 className="text-sm font-medium mb-3">
+                  {t('sections.preferences')}
+                </h3>
                 <SyncPreferences />
               </div>
               <div className="border-t pt-4">
-                <h3 className="text-sm font-medium mb-3">Actions</h3>
+                <h3 className="text-sm font-medium mb-3">
+                  {t('sections.actions')}
+                </h3>
                 <SyncAllGroups />
               </div>
               <div className="border-t pt-4">
-                <h3 className="text-sm font-medium mb-3">Synced Groups</h3>
+                <h3 className="text-sm font-medium mb-3">
+                  {t('sections.syncedGroups')}
+                </h3>
                 <SyncedGroupsList />
               </div>
             </div>

@@ -6,10 +6,12 @@ import { Label } from '@/components/ui/label'
 import { useMutation } from '@tanstack/react-query'
 import { Loader2, Mail } from 'lucide-react'
 import { signIn } from 'next-auth/react'
+import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 
 export function SignInForm() {
   const [email, setEmail] = useState('')
+  const t = useTranslations('Settings.SignIn')
 
   const signInMutation = useMutation({
     mutationFn: async (email: string) => {
@@ -34,10 +36,10 @@ export function SignInForm() {
       <div className="space-y-4">
         <div className="p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
           <p className="text-sm font-medium text-green-900 dark:text-green-100">
-            Check your email for the magic link
+            {t('success.title')}
           </p>
           <p className="text-sm text-green-700 dark:text-green-300 mt-1">
-            We sent a sign-in link to {email}
+            {t('success.body', { email })}
           </p>
         </div>
         <Button
@@ -47,7 +49,7 @@ export function SignInForm() {
             setEmail('')
           }}
         >
-          Try different email
+          {t('actions.tryDifferentEmail')}
         </Button>
       </div>
     )
@@ -56,11 +58,11 @@ export function SignInForm() {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="email">Email</Label>
+        <Label htmlFor="email">{t('email.label')}</Label>
         <Input
           id="email"
           type="email"
-          placeholder="your@email.com"
+          placeholder={t('email.placeholder')}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           onKeyDown={(e) => {
@@ -76,12 +78,12 @@ export function SignInForm() {
         {signInMutation.isPending ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Sending...
+            {t('actions.sending')}
           </>
         ) : (
           <>
             <Mail className="w-4 h-4 mr-2" />
-            Send magic link
+            {t('actions.send')}
           </>
         )}
       </Button>

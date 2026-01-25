@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button'
 import { useGroupActions } from '@/contexts'
 import { LogOut } from 'lucide-react'
 import { signOut, useSession } from 'next-auth/react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
@@ -22,6 +23,8 @@ export function AccountInfo() {
   const [showLogoutDialog, setShowLogoutDialog] = useState(false)
   const router = useRouter()
   const { clearLocalData } = useGroupActions()
+  const t = useTranslations('Settings.Account')
+  const groupFormT = useTranslations('GroupForm.Settings')
 
   const handleLogout = async (shouldClearData: boolean) => {
     if (shouldClearData) {
@@ -36,7 +39,7 @@ export function AccountInfo() {
     <>
       <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
         <div>
-          <p className="text-sm font-medium">Signed in as</p>
+          <p className="text-sm font-medium">{t('signedInAs')}</p>
           <p className="text-sm text-muted-foreground">
             {session?.user?.email}
           </p>
@@ -47,25 +50,25 @@ export function AccountInfo() {
           onClick={() => setShowLogoutDialog(true)}
         >
           <LogOut className="w-4 h-4 mr-2" />
-          Sign out
+          {t('signOut')}
         </Button>
       </div>
 
       <AlertDialog open={showLogoutDialog} onOpenChange={setShowLogoutDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Sign out</AlertDialogTitle>
+            <AlertDialogTitle>{t('signOut')}</AlertDialogTitle>
             <AlertDialogDescription>
-              Do you want to clear synced groups from this device?
+              {t('signOutDialog.description')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>{groupFormT('cancel')}</AlertDialogCancel>
             <Button variant="outline" onClick={() => handleLogout(false)}>
-              No, keep groups
+              {t('signOutDialog.keepGroups')}
             </Button>
             <AlertDialogAction onClick={() => handleLogout(true)}>
-              Yes, clear groups
+              {t('signOutDialog.clearGroups')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

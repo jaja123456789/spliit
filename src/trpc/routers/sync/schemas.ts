@@ -32,9 +32,7 @@ export const removeGroupInputSchema = z.object({
 
 /** Bulk sync multiple groups */
 export const syncAllInputSchema = z.object({
-  groups: z
-    .array(groupWithMetadataSchema)
-    .max(100, 'Maximum 100 groups per request'),
+  groups: z.array(groupWithMetadataSchema),
   clearOmitList: z.boolean().optional(),
 })
 

@@ -1,10 +1,13 @@
-export function magicLinkEmail(
+import { getTranslations } from 'next-intl/server'
+
+export async function magicLinkEmail(
   url: string,
   host: string,
-): { subject: string; text: string; html: string } {
+): Promise<{ subject: string; text: string; html: string }> {
+  const t = await getTranslations('Emails.MagicLink')
   return {
-    subject: `Sign in to ${host}`,
-    text: `Sign in to ${host}\n\nClick the link below to sign in:\n\n${url}\n\nIf you didn't request this email, you can safely ignore it.`,
+    subject: t('subject', { host }),
+    text: t('text', { host, url }),
     html: `
       <!DOCTYPE html>
       <html>
@@ -37,16 +40,16 @@ export function magicLinkEmail(
                   <tr>
                     <td style="padding: 32px 40px 40px 40px; text-align: center;">
                       <h1 style="margin: 0 0 16px 0; font-size: 22px; font-weight: 600; color: #1a1a1a;">
-                        Sign in to your account
+                        ${t('html.title')}
                       </h1>
                       <p style="margin: 0 0 32px 0; font-size: 15px; color: #6b7280; line-height: 1.6;">
-                        Click the button below to securely sign in.
+                        ${t('html.body')}
                       </p>
                       <a href="${url}" style="display: inline-block; background-color: #0d9669; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; transition: background-color 0.2s;">
-                        Sign in
+                        ${t('html.cta')}
                       </a>
                       <p style="margin: 32px 0 0 0; font-size: 13px; color: #9ca3af;">
-                        Or copy this link:
+                        ${t('html.copyLabel')}
                       </p>
                       <p style="margin: 8px 0 0 0; font-size: 13px; color: #0d7d5f; word-break: break-all;">
                         ${url}
@@ -56,7 +59,7 @@ export function magicLinkEmail(
                   <tr>
                     <td style="padding: 0 40px 32px 40px; text-align: center;">
                       <p style="margin: 0; font-size: 12px; color: #9ca3af; line-height: 1.5;">
-                        If you didn't request this email, you can safely ignore it.
+                        ${t('html.footer')}
                       </p>
                     </td>
                   </tr>

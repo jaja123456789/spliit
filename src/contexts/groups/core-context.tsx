@@ -5,6 +5,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { trpc } from '@/trpc/client'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
+import { useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
 import {
   createContext,
@@ -49,6 +50,7 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   const utils = trpc.useUtils()
   const router = useRouter()
   const { toast } = useToast()
+  const t = useTranslations('SyncErrors.toast')
 
   // tRPC mutations
   const addGroupMutation = trpc.sync.addGroup.useMutation()
@@ -137,13 +139,13 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
         router.push('/login')
       } else {
         toast({
-          title: 'Sync failed',
+          title: t('title'),
           description: fallbackMessage,
           variant: 'destructive',
         })
       }
     },
-    [router, toast],
+    [router, t, toast],
   )
 
   // Clear local data action (needed here for queryClient access)
