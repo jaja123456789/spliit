@@ -1,4 +1,5 @@
 'use client'
+
 import { AddGroupByUrlButton } from '@/app/groups/add-group-by-url-button'
 import { RecentGroups } from '@/app/groups/recent-groups-helpers'
 import { SyncFeatureAnnouncement } from '@/components/sync-feature-announcement'
@@ -117,20 +118,23 @@ function RecentGroupList_({
       <GroupsPage isRefetching={isRefetching}>
         <div className="text-sm space-y-2">
           <p>{t('NoRecent.description')}</p>
+          {!session && (
+            <p>
+              <Button variant="link" asChild className="-m-4">
+                <Link href="/settings" className="text-primary hover:underline">
+                  Enable cloud sync
+                </Link>
+              </Button>{' '}
+              to access your groups across devices.
+            </p>
+          )}
           <p>
             <Button variant="link" asChild className="-m-4">
               <Link href={`/groups/create`}>{t('NoRecent.create')}</Link>
             </Button>{' '}
             {t('NoRecent.orAsk')}
           </p>
-          {!session && (
-            <p className="mt-4 text-muted-foreground">
-              <Link href="/settings" className="text-primary hover:underline">
-                Enable cloud sync
-              </Link>{' '}
-              to access your groups across devices.
-            </p>
-          )}
+          
         </div>
       </GroupsPage>
     )
