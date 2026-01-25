@@ -89,8 +89,13 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
   const groupsQuery = useQuery({
     queryKey,
     queryFn: loadGroupsPipeline,
-    enabled: sessionStatus !== 'loading',
-    placeholderData: loadFromLocalStorage(),
+    placeholderData: () => {
+      if (typeof window === 'undefined') {
+        // Workaround for empty server-side data issue
+        return {archivedGroupIds: new Set(), recentGroups: [], source: 'local-only', starredGroupIds: new Set(), syncedGroupIds: new Set(), syncError: undefined} satisfies GroupsData
+      }
+      return loadFromLocalStorage()
+    },
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: true,
   })
