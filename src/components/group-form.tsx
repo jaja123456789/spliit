@@ -88,7 +88,6 @@ export function GroupForm({
   })
 
   const [activeUser, setActiveUser] = useState<string | null>(null)
-
   useEffect(() => {
     if (activeUser === null) {
       const currentActiveUser =
@@ -327,24 +326,6 @@ export function GroupForm({
                     <Select
                       onValueChange={(value) => {
                         setActiveUser(value)
-
-                        // Update localStorage immediately
-                        if (group?.id) {
-                          const participant = group.participants.find(
-                            (p) => p.name === value,
-                          )
-                          if (participant?.id) {
-                            localStorage.setItem(
-                              `${group.id}-activeUser`,
-                              participant.id,
-                            )
-                          } else {
-                            localStorage.setItem(
-                              `${group.id}-activeUser`,
-                              value,
-                            )
-                          }
-                        }
                       }}
                       defaultValue={activeUser}
                     >
