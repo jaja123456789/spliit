@@ -28,7 +28,10 @@ export function getRecentGroups() {
 
 export function saveRecentGroup(group: RecentGroup) {
   const recentGroups = getRecentGroups()
-  return saveRecentGroups([group, ...recentGroups.filter((rg) => rg.id !== group.id)])
+  return saveRecentGroups([
+    group,
+    ...recentGroups.filter((rg) => rg.id !== group.id),
+  ])
 }
 
 export function saveRecentGroups(groups: RecentGroup[]) {
@@ -66,7 +69,6 @@ export function starGroup(groupId: string) {
   const starredGroups = getStarredGroups()
   return saveStarredGroups([...starredGroups, groupId])
 }
-
 
 export function unstarGroup(groupId: string) {
   const starredGroups = getStarredGroups()

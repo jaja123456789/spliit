@@ -38,16 +38,16 @@ function sortGroups({
   archivedGroups,
 }: {
   groups: RecentGroups
-  starredGroups: string[]
-  archivedGroups: string[]
+  starredGroups: Set<string>
+  archivedGroups: Set<string>
 }) {
   const starredGroupInfo = []
   const groupInfo = []
   const archivedGroupInfo = []
   for (const group of groups) {
-    if (starredGroups.includes(group.id)) {
+    if (starredGroups.has(group.id)) {
       starredGroupInfo.push(group)
-    } else if (archivedGroups.includes(group.id)) {
+    } else if (archivedGroups.has(group.id)) {
       archivedGroupInfo.push(group)
     } else {
       groupInfo.push(group)
@@ -69,17 +69,13 @@ export function RecentGroupList() {
     isPending,
   } = useGroups()
 
-  // Convert Sets to arrays for the sortGroups function
-  const starredGroups = Array.from(starredGroupIds) as string[]
-  const archivedGroups = Array.from(archivedGroupIds) as string[]
-
   if (isPending && recentGroups.length === 0) return null
 
   return (
     <RecentGroupList_
       groups={recentGroups}
-      starredGroups={starredGroups}
-      archivedGroups={archivedGroups}
+      starredGroups={starredGroupIds}
+      archivedGroups={archivedGroupIds}
       isRefetching={isRefetching}
     />
   )
@@ -92,8 +88,8 @@ function RecentGroupList_({
   isRefetching,
 }: {
   groups: RecentGroups
-  starredGroups: string[]
-  archivedGroups: string[]
+  starredGroups: Set<string>
+  archivedGroups: Set<string>
   isRefetching: boolean
 }) {
   const t = useTranslations('Groups')
@@ -134,7 +130,6 @@ function RecentGroupList_({
             </Button>{' '}
             {t('NoRecent.orAsk')}
           </p>
-          
         </div>
       </GroupsPage>
     )

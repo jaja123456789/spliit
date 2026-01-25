@@ -151,7 +151,10 @@ export function useGroupActions(): GroupActions {
       })
 
       // If authenticated + synced → call sync.updateMetadata
-      if (sessionStatus === 'authenticated' && groupsQuery.data?.syncedGroupIds.has(groupId)) {
+      if (
+        sessionStatus === 'authenticated' &&
+        groupsQuery.data?.syncedGroupIds.has(groupId)
+      ) {
         try {
           await mutations.updateMetadata.mutateAsync({
             groupId,
@@ -187,7 +190,10 @@ export function useGroupActions(): GroupActions {
       })
 
       // If authenticated + synced → call sync.updateMetadata
-      if (sessionStatus === 'authenticated' && groupsQuery.data?.syncedGroupIds.has(groupId)) {
+      if (
+        sessionStatus === 'authenticated' &&
+        groupsQuery.data?.syncedGroupIds.has(groupId)
+      ) {
         try {
           await mutations.updateMetadata.mutateAsync({
             groupId,
@@ -218,7 +224,10 @@ export function useGroupActions(): GroupActions {
       })
 
       // If authenticated + synced → call sync.updateMetadata
-      if (sessionStatus === 'authenticated' && groupsQuery.data?.syncedGroupIds.has(groupId)) {
+      if (
+        sessionStatus === 'authenticated' &&
+        groupsQuery.data?.syncedGroupIds.has(groupId)
+      ) {
         try {
           await mutations.updateMetadata.mutateAsync({
             groupId,

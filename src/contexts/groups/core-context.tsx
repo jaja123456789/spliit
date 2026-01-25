@@ -92,7 +92,14 @@ export function GroupsProvider({ children }: { children: ReactNode }) {
     placeholderData: () => {
       if (typeof window === 'undefined') {
         // Workaround for empty server-side data issue
-        return {archivedGroupIds: new Set(), recentGroups: [], source: 'local-only', starredGroupIds: new Set(), syncedGroupIds: new Set(), syncError: undefined} satisfies GroupsData
+        return {
+          archivedGroupIds: new Set(),
+          recentGroups: [],
+          source: 'local-only',
+          starredGroupIds: new Set(),
+          syncedGroupIds: new Set(),
+          syncError: undefined,
+        } satisfies GroupsData
       }
       return loadFromLocalStorage()
     },

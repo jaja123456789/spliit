@@ -160,7 +160,11 @@ export function RecentGroupListCard({
                   size="icon"
                   variant="ghost"
                   className="-my-3 -ml-3 -mr-1.5"
-                  title={groupIsStarred ? 'Remove from favorites' : 'Add to favorites'}
+                  title={
+                    groupIsStarred
+                      ? 'Remove from favorites'
+                      : 'Add to favorites'
+                  }
                   onClick={async (event) => {
                     event.stopPropagation()
                     if (groupIsStarred) {
