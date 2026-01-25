@@ -12,8 +12,8 @@ The system SHALL store group sync relationships with metadata and starred/archiv
 
 - **GIVEN** a user syncs a group
 - **WHEN** the system stores the relationship
-- **THEN** it includes visitorId, groupId, activeParticipantId, isStarred, isArchived, syncedAt
-- **AND** a unique constraint on (visitorId, groupId) prevents duplicates
+- **THEN** it includes profileId, groupId, activeParticipantId, isStarred, isArchived, syncedAt
+- **AND** a unique constraint on (profileId, groupId) prevents duplicates
 
 #### Scenario: Foreign key integrity
 
@@ -28,7 +28,7 @@ The system SHALL maintain a list of hashed group IDs that should not be re-synce
 
 #### Scenario: Omit list structure
 
-- **GIVEN** a SyncVisitor record
+- **GIVEN** a SyncProfile record
 - **WHEN** storing omitted groups
 - **THEN** the omittedGroupIds field contains SHA-256 hashes of group IDs
 - **AND** hashes are stored as hex strings (64 characters each)

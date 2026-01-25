@@ -10,8 +10,8 @@ export const removeGroupProcedure = protectedProcedure
     const { groupId } = input
 
     return await prisma.$transaction(async (tx) => {
-      // Ensure SyncVisitor exists
-      const visitor = await tx.syncVisitor.upsert({
+      // Ensure SyncProfile exists
+      const syncProfile = await tx.syncProfile.upsert({
         where: { userId: user.id },
         create: { userId: user.id },
         update: {},
@@ -20,7 +20,7 @@ export const removeGroupProcedure = protectedProcedure
       // Delete SyncedGroup
       await tx.syncedGroup.deleteMany({
         where: {
-          visitorId: visitor.id,
+          profileId: syncProfile.id,
           groupId,
         },
       })
@@ -29,8 +29,8 @@ export const removeGroupProcedure = protectedProcedure
       const groupHash = hashGroupId(groupId)
 
       // Use push which is atomic and won't duplicate if already exists
-      await tx.syncVisitor.update({
-        where: { id: visitor.id },
+      await tx.syncProfile.update({
+        where: { id: syncProfile.id },
         data: {
           omittedGroupIds: {
             push: groupHash,

@@ -46,19 +46,19 @@ CREATE TABLE "VerificationToken" (
 );
 
 -- CreateTable
-CREATE TABLE "SyncVisitor" (
+CREATE TABLE "SyncProfile" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "omittedGroupIds" TEXT[],
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "SyncVisitor_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "SyncProfile_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "SyncPreferences" (
     "id" TEXT NOT NULL,
-    "visitorId" TEXT NOT NULL,
+    "profileId" TEXT NOT NULL,
     "syncExisting" BOOLEAN NOT NULL DEFAULT false,
     "syncNewGroups" BOOLEAN NOT NULL DEFAULT false,
 
@@ -68,7 +68,7 @@ CREATE TABLE "SyncPreferences" (
 -- CreateTable
 CREATE TABLE "SyncedGroup" (
     "id" TEXT NOT NULL,
-    "visitorId" TEXT NOT NULL,
+    "profileId" TEXT NOT NULL,
     "groupId" TEXT NOT NULL,
     "activeParticipantId" TEXT,
     "isStarred" BOOLEAN NOT NULL DEFAULT false,
@@ -91,13 +91,13 @@ CREATE UNIQUE INDEX "Session_sessionToken_key" ON "Session"("sessionToken");
 CREATE UNIQUE INDEX "VerificationToken_identifier_token_key" ON "VerificationToken"("identifier", "token");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "SyncVisitor_userId_key" ON "SyncVisitor"("userId");
+CREATE UNIQUE INDEX "SyncProfile_userId_key" ON "SyncProfile"("userId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "SyncPreferences_visitorId_key" ON "SyncPreferences"("visitorId");
+CREATE UNIQUE INDEX "SyncPreferences_profileId_key" ON "SyncPreferences"("profileId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "SyncedGroup_visitorId_groupId_key" ON "SyncedGroup"("visitorId", "groupId");
+CREATE UNIQUE INDEX "SyncedGroup_profileId_groupId_key" ON "SyncedGroup"("profileId", "groupId");
 
 -- AddForeignKey
 ALTER TABLE "Account" ADD CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -106,13 +106,13 @@ ALTER TABLE "Account" ADD CONSTRAINT "Account_userId_fkey" FOREIGN KEY ("userId"
 ALTER TABLE "Session" ADD CONSTRAINT "Session_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "SyncVisitor" ADD CONSTRAINT "SyncVisitor_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "SyncProfile" ADD CONSTRAINT "SyncProfile_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "SyncPreferences" ADD CONSTRAINT "SyncPreferences_visitorId_fkey" FOREIGN KEY ("visitorId") REFERENCES "SyncVisitor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "SyncPreferences" ADD CONSTRAINT "SyncPreferences_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "SyncProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "SyncedGroup" ADD CONSTRAINT "SyncedGroup_visitorId_fkey" FOREIGN KEY ("visitorId") REFERENCES "SyncVisitor"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "SyncedGroup" ADD CONSTRAINT "SyncedGroup_profileId_fkey" FOREIGN KEY ("profileId") REFERENCES "SyncProfile"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "SyncedGroup" ADD CONSTRAINT "SyncedGroup_groupId_fkey" FOREIGN KEY ("groupId") REFERENCES "Group"("id") ON DELETE CASCADE ON UPDATE CASCADE;

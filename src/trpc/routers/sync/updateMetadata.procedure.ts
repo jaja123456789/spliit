@@ -23,8 +23,8 @@ export const updateMetadataProcedure = protectedProcedure
         }
       }
 
-      // Ensure SyncVisitor exists
-      const visitor = await tx.syncVisitor.upsert({
+      // Ensure SyncProfile exists
+      const syncProfile = await tx.syncProfile.upsert({
         where: { userId: user.id },
         create: { userId: user.id },
         update: {},
@@ -33,8 +33,8 @@ export const updateMetadataProcedure = protectedProcedure
       // Check if the group is synced
       const existingSync = await tx.syncedGroup.findUnique({
         where: {
-          visitorId_groupId: {
-            visitorId: visitor.id,
+          profileId_groupId: {
+            profileId: syncProfile.id,
             groupId,
           },
         },
@@ -62,8 +62,8 @@ export const updateMetadataProcedure = protectedProcedure
       // Update the synced group
       return await tx.syncedGroup.update({
         where: {
-          visitorId_groupId: {
-            visitorId: visitor.id,
+          profileId_groupId: {
+            profileId: syncProfile.id,
             groupId,
           },
         },

@@ -3,13 +3,13 @@
 ## 1. Database Schema
 
 - [x] 1.1 Add NextAuth models (User, Account, Session, VerificationToken) via Prisma adapter
-- [x] 1.2 Add `SyncVisitor` model (links User to sync data, 1:1 with User)
+- [x] 1.2 Add `SyncProfile` model (links User to sync data, 1:1 with User)
 - [x] 1.3 Add `SyncPreferences` model (syncNewGroups only - syncExisting removed)
 - [x] 1.4 Add `SyncedGroup` model with:
   - Starred/archived flags (`isStarred`, `isArchived`)
   - Active participant (`activeParticipantId` FK to Participant, ON DELETE SET NULL)
-  - Unique constraint `@@unique([visitorId, groupId])`
-- [x] 1.4b Add `omittedGroupIds String[]` field to SyncVisitor (hashed IDs to skip)
+  - Unique constraint `@@unique([profileId, groupId])`
+- [x] 1.4b Add `omittedGroupIds String[]` field to SyncProfile (hashed IDs to skip)
 - [x] 1.5 Add relation from Group to SyncedGroup (cascade delete)
 - [x] 1.6 Add relation from Participant to SyncedGroup (set null on delete)
 - [x] 1.7 Create and run migration

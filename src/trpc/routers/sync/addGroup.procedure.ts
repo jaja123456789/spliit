@@ -24,8 +24,8 @@ export const addGroupProcedure = protectedProcedure
         }
       }
 
-      // Ensure SyncVisitor exists
-      const visitor = await tx.syncVisitor.upsert({
+      // Ensure SyncProfile exists
+      const syncProfile = await tx.syncProfile.upsert({
         where: { userId: user.id },
         create: { userId: user.id },
         update: {},
@@ -37,21 +37,21 @@ export const addGroupProcedure = protectedProcedure
       // Remove hash from omittedGroupIds if present
       // Note: Using raw SQL for PostgreSQL array_remove which is atomic and more efficient than read-filter-write
       await tx.$executeRaw`
-        UPDATE "SyncVisitor"
+        UPDATE "SyncProfile"
         SET "omittedGroupIds" = array_remove("omittedGroupIds", ${groupHash}::text)
-        WHERE "id" = ${visitor.id}
+        WHERE "id" = ${syncProfile.id}
       `
 
       // Upsert SyncedGroup
       return await tx.syncedGroup.upsert({
         where: {
-          visitorId_groupId: {
-            visitorId: visitor.id,
+          profileId_groupId: {
+            profileId: syncProfile.id,
             groupId,
           },
         },
         create: {
-          visitorId: visitor.id,
+          profileId: syncProfile.id,
           groupId,
           isStarred: isStarred ?? false,
           isArchived: isArchived ?? false,

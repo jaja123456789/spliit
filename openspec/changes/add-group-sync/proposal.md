@@ -8,7 +8,7 @@ Users want to access their groups across multiple devices without manually shari
 
 - **New**: Global settings page (`/settings`) for sign-in/sign-out and sync preferences
 - **New**: NextAuth integration with magic link (email) provider for future OAuth extensibility
-- **New**: Database tables for NextAuth (users, accounts, sessions) + SyncVisitor, SyncedGroup, SyncPreferences
+- **New**: Database tables for NextAuth (users, accounts, sessions) + SyncProfile, SyncedGroup, SyncPreferences
 - **New**: tRPC procedures for sync (list, add, remove groups, update metadata, preferences)
 - **New**: Sync status indicator (cloud icon) on group cards with toggle button
 - **New**: Bidirectional sync: server→localStorage restore on sign-in, localStorage→server on sync
@@ -29,7 +29,7 @@ Users want to access their groups across multiple devices without manually shari
 
 - Affected specs: `group-sync-auth` (new), `group-sync-storage` (new), `group-sync-ui` (new)
 - Affected code:
-  - `prisma/schema.prisma` - NextAuth models + SyncVisitor, SyncedGroup, SyncPreferences
+  - `prisma/schema.prisma` - NextAuth models + SyncProfile, SyncedGroup, SyncPreferences
   - `src/app/api/auth/[...nextauth]/route.ts` - NextAuth route handler
   - `src/app/auth/error/page.tsx` - Auth error page
   - `src/trpc/routers/sync/` - sync router with shared schemas
@@ -124,11 +124,11 @@ model User {
   emailVerified DateTime?
   accounts      Account[]
   sessions      Session[]
-  syncVisitor   SyncVisitor?
+  syncProfile   SyncProfile?
   createdAt     DateTime  @default(now())
 }
 
-model SyncVisitor {
+model SyncProfile {
   id              String           @id @default(cuid())
   userId          String           @unique
   user            User             @relation(...)
@@ -140,20 +140,20 @@ model SyncVisitor {
 
 model SyncPreferences {
   id            String      @id @default(cuid())
-  visitorId     String      @unique
-  visitor       SyncVisitor @relation(...)
+  profileId     String      @unique
+  profile       SyncProfile @relation(...)
   syncNewGroups Boolean     @default(false)
 }
 
 model SyncedGroup {
   id                  String       @id @default(cuid())
-  visitorId           String
+  profileId           String
   groupId             String
   activeParticipantId String?
   isStarred           Boolean      @default(false)
   isArchived          Boolean      @default(false)
   syncedAt            DateTime     @default(now())
-  @@unique([visitorId, groupId])
+  @@unique([profileId, groupId])
 }
 ```
 

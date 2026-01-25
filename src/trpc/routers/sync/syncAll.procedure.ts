@@ -21,8 +21,8 @@ export const syncAllProcedure = protectedProcedure
     }
 
     return await prisma.$transaction(async (tx) => {
-      // Ensure SyncVisitor exists and optionally clear omit list
-      const visitor = await tx.syncVisitor.upsert({
+      // Ensure SyncProfile exists and optionally clear omit list
+      const syncProfile = await tx.syncProfile.upsert({
         where: { userId: user.id },
         create: { userId: user.id },
         update: clearOmitList ? { omittedGroupIds: [] } : {},
@@ -33,7 +33,7 @@ export const syncAllProcedure = protectedProcedure
         ? groups
         : groups.filter((group) => {
             const hash = hashGroupId(group.groupId)
-            return !visitor.omittedGroupIds.includes(hash)
+            return !syncProfile.omittedGroupIds.includes(hash)
           })
 
       const skipped = groups.length - groupsToSync.length
@@ -55,13 +55,13 @@ export const syncAllProcedure = protectedProcedure
 
         await tx.syncedGroup.upsert({
           where: {
-            visitorId_groupId: {
-              visitorId: visitor.id,
+            profileId_groupId: {
+              profileId: syncProfile.id,
               groupId: group.groupId,
             },
           },
           create: {
-            visitorId: visitor.id,
+            profileId: syncProfile.id,
             groupId: group.groupId,
             isStarred: group.isStarred ?? false,
             isArchived: group.isArchived ?? false,

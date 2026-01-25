@@ -5,8 +5,8 @@ export const getPreferencesProcedure = protectedProcedure.query(
   async ({ ctx }) => {
     const { user } = ctx
 
-    // Ensure SyncVisitor exists
-    const visitor = await prisma.syncVisitor.upsert({
+    // Ensure SyncProfile exists
+    const syncProfile = await prisma.syncProfile.upsert({
       where: { userId: user.id },
       create: { userId: user.id },
       update: {},
@@ -14,7 +14,7 @@ export const getPreferencesProcedure = protectedProcedure.query(
 
     // Get preferences or return defaults
     const preferences = await prisma.syncPreferences.findUnique({
-      where: { visitorId: visitor.id },
+      where: { profileId: syncProfile.id },
     })
 
     return {

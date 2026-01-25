@@ -8,8 +8,8 @@ export const updatePreferencesProcedure = protectedProcedure
     const { user } = ctx
     const { syncNewGroups } = input
 
-    // Ensure SyncVisitor exists
-    const visitor = await prisma.syncVisitor.upsert({
+    // Ensure SyncProfile exists
+    const syncProfile = await prisma.syncProfile.upsert({
       where: { userId: user.id },
       create: { userId: user.id },
       update: {},
@@ -24,9 +24,9 @@ export const updatePreferencesProcedure = protectedProcedure
 
     // Upsert preferences
     const preferences = await prisma.syncPreferences.upsert({
-      where: { visitorId: visitor.id },
+      where: { profileId: syncProfile.id },
       create: {
-        visitorId: visitor.id,
+        profileId: syncProfile.id,
         syncNewGroups: syncNewGroups ?? false,
       },
       update: updateData,

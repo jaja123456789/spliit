@@ -73,7 +73,7 @@ model User {
   emailVerified DateTime?
   accounts      Account[]
   sessions      Session[]
-  syncVisitor   SyncVisitor?
+  syncProfile   SyncProfile?
   createdAt     DateTime  @default(now())
 }
 
@@ -82,7 +82,7 @@ model Session { /* NextAuth standard */ }
 model VerificationToken { /* NextAuth standard */ }
 
 // Sync-specific models
-model SyncVisitor {
+model SyncProfile {
   id              String           @id @default(cuid())
   userId          String           @unique
   user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -94,16 +94,16 @@ model SyncVisitor {
 
 model SyncPreferences {
   id            String      @id @default(cuid())
-  visitorId     String      @unique
-  visitor       SyncVisitor @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  profileId     String      @unique
+  profile       SyncProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   syncExisting  Boolean     @default(false)
   syncNewGroups Boolean     @default(false)
 }
 
 model SyncedGroup {
   id                  String      @id @default(cuid())
-  visitorId           String
-  visitor             SyncVisitor @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  profileId           String
+  profile             SyncProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   groupId             String
   group               Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
   activeParticipantId String?
@@ -112,7 +112,7 @@ model SyncedGroup {
   isArchived          Boolean     @default(false)
   syncedAt            DateTime    @default(now())
 
-  @@unique([visitorId, groupId])
+  @@unique([profileId, groupId])
 }
 
 // Add relation to existing Group model
@@ -124,10 +124,10 @@ model Group {
 
 **Key design**:
 
-- `@@unique([visitorId, groupId])` prevents duplicate syncs
+- `@@unique([profileId, groupId])` prevents duplicate syncs
 - `onDelete: Cascade` on Group FK removes orphaned SyncedGroups
 - `onDelete: SetNull` on Participant FK handles deleted participants gracefully
-- `omittedGroupIds` on SyncVisitor: hashed group IDs that won't be re-synced
+- `omittedGroupIds` on SyncProfile: hashed group IDs that won't be re-synced
   - GDPR-safe: hash can't be reversed to identify group
   - No metadata stored (no dates, no orphaned records)
   - Checked during sync operations to prevent re-sync from other devices
