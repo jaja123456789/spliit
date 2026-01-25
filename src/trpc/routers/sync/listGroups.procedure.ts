@@ -4,13 +4,6 @@ import { protectedProcedure } from './protected'
 export const listGroupsProcedure = protectedProcedure.query(async ({ ctx }) => {
   const { user } = ctx
 
-  // Ensure SyncProfile exists for this user
-  await prisma.syncProfile.upsert({
-    where: { userId: user.id },
-    create: { userId: user.id },
-    update: {},
-  })
-
   // Fetch all synced groups with group metadata
   const syncedGroups = await prisma.syncedGroup.findMany({
     where: {

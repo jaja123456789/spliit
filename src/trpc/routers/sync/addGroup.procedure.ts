@@ -24,11 +24,8 @@ export const addGroupProcedure = protectedProcedure
         }
       }
 
-      // Ensure SyncProfile exists
-      const syncProfile = await tx.syncProfile.upsert({
+      const syncProfile = await tx.syncProfile.findUniqueOrThrow({
         where: { userId: user.id },
-        create: { userId: user.id },
-        update: {},
       })
 
       // Calculate hash for this group

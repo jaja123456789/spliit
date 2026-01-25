@@ -8,11 +8,8 @@ export const updatePreferencesProcedure = protectedProcedure
     const { user } = ctx
     const { syncNewGroups } = input
 
-    // Ensure SyncProfile exists
-    const syncProfile = await prisma.syncProfile.upsert({
+    const syncProfile = await prisma.syncProfile.findUniqueOrThrow({
       where: { userId: user.id },
-      create: { userId: user.id },
-      update: {},
     })
 
     // Build update data with only provided fields

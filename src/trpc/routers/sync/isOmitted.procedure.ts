@@ -9,11 +9,8 @@ export const isOmittedProcedure = protectedProcedure
     const { user } = ctx
     const { groupId } = input
 
-    // Ensure SyncProfile exists
-    const syncProfile = await prisma.syncProfile.upsert({
+    const syncProfile = await prisma.syncProfile.findUniqueOrThrow({
       where: { userId: user.id },
-      create: { userId: user.id },
-      update: {},
     })
 
     // Check if hash is in omittedGroupIds

@@ -23,11 +23,8 @@ export const updateMetadataProcedure = protectedProcedure
         }
       }
 
-      // Ensure SyncProfile exists
-      const syncProfile = await tx.syncProfile.upsert({
+      const syncProfile = await tx.syncProfile.findUniqueOrThrow({
         where: { userId: user.id },
-        create: { userId: user.id },
-        update: {},
       })
 
       // Check if the group is synced

@@ -21,12 +21,16 @@ export const syncAllProcedure = protectedProcedure
     }
 
     return await prisma.$transaction(async (tx) => {
-      // Ensure SyncProfile exists and optionally clear omit list
-      const syncProfile = await tx.syncProfile.upsert({
+      const syncProfile = await tx.syncProfile.findUniqueOrThrow({
         where: { userId: user.id },
-        create: { userId: user.id },
-        update: clearOmitList ? { omittedGroupIds: [] } : {},
       })
+
+      if (clearOmitList) {
+        await tx.syncProfile.update({
+          where: { id: syncProfile.id },
+          data: { omittedGroupIds: [] },
+        })
+      }
 
       // Filter out omitted groups (unless we're clearing the list)
       const groupsToSync = clearOmitList
