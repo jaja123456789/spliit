@@ -136,7 +136,10 @@ export async function signOut(
  */
 export async function isSignedIn(page: Page): Promise<boolean> {
   await page.goto('/settings')
-  await page.waitForLoadState('networkidle')
-  const signOutButton = page.getByRole('button', { name: 'Sign out' })
-  return signOutButton.waitFor({state: 'visible', timeout: 500}).then(() => true, () => false)
+  const signedOutElement = page.getByText('Sign in to sync your groups')
+  const signedInElement = page.getByText('Signed in as')
+  return Promise.race([
+    signedInElement.waitFor({state: 'visible'}).then(() => true),
+    signedOutElement.waitFor({state: 'visible'}).then(() => false)
+  ])
 }

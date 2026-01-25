@@ -31,11 +31,7 @@ test.describe('Magic Link Authentication', () => {
     await signOut(page, false)
 
     // Verify signed out
-    expect(await isSignedIn(page)).toBe(false)
-
-    // Verify sign-in form is visible again
-    await page.goto('/settings')
-    await expect(page.getByRole('textbox', { name: 'Email' })).toBeVisible()
+    await expect(page.getByText('Sign in to sync your groups')).toBeVisible();
   })
 
   test('magic link can only be used once', async ({ page, context }) => {
