@@ -129,11 +129,11 @@ Spliit allows users to sync their groups to the cloud and access them across mul
 
 #### How it works
 
-1. Users can opt-in to sync a group by providing their email address
+1. Users can opt-in to sync a group by providing their email address (upcoming oauth provide support)
 2. A magic link is sent to their email for authentication
-3. Once verified, the group is associated with their account
-4. They can access all their synced groups from any device by signing in with their email
-5. Users control sync preferences per group (sync can be enabled/disabled at any time)
+3. Once verified, the group is synced with their sync profile
+4. They can access all their synced groups from any device by signing in with their sync profile
+5. Users control sync preferences (sync can be enabled/disabled at any time for each group)
 
 #### SMTP setup
 
@@ -150,6 +150,7 @@ NEXTAUTH_SECRET=<run: openssl rand -base64 32>
 
 **Popular SMTP providers:**
 
+- **Smtp2go**: Use `mail.smtp2go.com:2525` with your SMTP2GO credentials. Generous free tier.
 - **Gmail**: Use `smtp.gmail.com:587` with an [app-specific password](https://support.google.com/accounts/answer/185833)
 - **SendGrid**: Use `smtp.sendgrid.net:587` with your API key as password
 - **Mailgun**: Use `smtp.mailgun.org:587` with your Mailgun credentials
