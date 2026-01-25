@@ -2,19 +2,19 @@
 
 ## Purpose
 
-Manage persistent storage of group synchronization relationships, including metadata, user preferences, and lists of groups to omit from syncing.
+Database and API layer for group sync relationships, preferences, and omit lists.
 
 ## Requirements
 
 ### Requirement: Synced Groups Storage
 
-The system SHALL store group sync relationships with metadata and starred/archived flags.
+The system SHALL store group sync relationships with metadata (starred, archived, active participant).
 
-#### Scenario: Sync relationship structure
+#### Scenario: Sync a group
 
-- **GIVEN** a user syncs a group
-- **WHEN** the system stores the relationship
-- **THEN** it includes profileId, groupId, activeParticipantId, isStarred, isArchived, syncedAt
+- **GIVEN** an authenticated user
+- **WHEN** they sync a group with state flags
+- **THEN** a SyncedGroup record is created with profileId, groupId, isStarred, isArchived, activeParticipantId, syncedAt
 - **AND** a unique constraint on (profileId, groupId) prevents duplicates
 
 #### Scenario: Foreign key integrity
@@ -26,168 +26,139 @@ The system SHALL store group sync relationships with metadata and starred/archiv
 
 ### Requirement: Omitted Groups List
 
-The system SHALL maintain a list of hashed group IDs that should not be re-synced.
+The system SHALL maintain a list of hashed group IDs to prevent re-syncing unwanted groups.
 
 #### Scenario: Omit list structure
 
 - **GIVEN** a SyncProfile record
 - **WHEN** storing omitted groups
-- **THEN** the omittedGroupIds field contains SHA-256 hashes of group IDs
-- **AND** hashes are stored as hex strings (64 characters each)
+- **THEN** omittedGroupIds field contains SHA-256 hashes of group IDs as hex strings
 
 #### Scenario: GDPR compliance
 
 - **GIVEN** hashed group IDs in omittedGroupIds
 - **WHEN** data is inspected
-- **THEN** original group IDs cannot be recovered from hashes
+- **THEN** original group IDs cannot be recovered
 
-### Requirement: List Synced Groups
+### Requirement: List Synced Groups API
 
-The system SHALL provide an API to list active synced groups for the authenticated user.
+The system SHALL return synced groups for the authenticated user.
 
-#### Scenario: User with synced groups
+#### Scenario: List synced groups
 
-- **GIVEN** an authenticated user with synced groups
-- **WHEN** they request their synced groups
-- **THEN** the system returns groups where removedAt is null
-- **AND** includes group name, currency, isStarred, isArchived, activeParticipantId
-
-#### Scenario: Excludes soft-deleted groups
-
-- **GIVEN** an authenticated user with some soft-deleted synced groups
-- **WHEN** they request their synced groups
-- **THEN** groups with removedAt set are excluded from results
+- **GIVEN** an authenticated user
+- **WHEN** they request synced groups
+- **THEN** all active SyncedGroup records are returned with name, currency, isStarred, isArchived, activeParticipantId
+- **AND** soft-deleted groups (removedAt set) are excluded
 
 #### Scenario: Unauthenticated request
 
-- **GIVEN** an unauthenticated request
-- **WHEN** attempting to list synced groups
-- **THEN** the system returns an authentication error
+- **GIVEN** no session
+- **WHEN** requesting synced groups
+- **THEN** an authentication error is returned
 
-### Requirement: Add Group to Sync
+### Requirement: Add Group to Sync API
 
-The system SHALL allow authenticated users to sync a group with its current state.
+The system SHALL sync a group or update an existing sync record.
 
-#### Scenario: Sync a new group
+#### Scenario: Sync new group
 
 - **GIVEN** an authenticated user
-- **WHEN** they sync a group with isStarred and isArchived flags
-- **THEN** the system creates a SyncedGroup record with those flags
-- **AND** returns success
-
-#### Scenario: Re-sync an omitted group
-
-- **GIVEN** an authenticated user with a group hash in omittedGroupIds
-- **WHEN** they explicitly sync that group again
-- **THEN** the system removes the hash from omittedGroupIds
-- **AND** creates a new SyncedGroup record
-
-#### Scenario: Sync already active group
-
-- **GIVEN** an authenticated user with an active sync for a group
-- **WHEN** they sync the same group with updated flags
-- **THEN** the system updates isStarred, isArchived, activeParticipantId
-- **AND** returns success (upsert behavior)
+- **WHEN** they sync a group with state flags
+- **THEN** a SyncedGroup is created or updated (upsert)
+- **AND** if the group hash is in omittedGroupIds, it is removed
 
 #### Scenario: Sync non-existent group
 
 - **GIVEN** an authenticated user
-- **WHEN** they sync a group ID that does not exist
-- **THEN** the system returns an error
+- **WHEN** they sync a non-existent group ID
+- **THEN** an error is returned
 
-### Requirement: Remove Group from Sync
+### Requirement: Remove Group from Sync API
 
-The system SHALL hard-delete sync relationships and add to omit list when users unsync groups.
+The system SHALL unsync a group and add it to the omit list.
 
-#### Scenario: Unsync a synced group
+#### Scenario: Unsync a group
 
-- **GIVEN** an authenticated user with an active synced group
+- **GIVEN** an authenticated user with a synced group
 - **WHEN** they unsync the group
-- **THEN** the system deletes the SyncedGroup record
-- **AND** adds SHA-256 hash of groupId to omittedGroupIds
-- **AND** returns success
+- **THEN** the SyncedGroup record is deleted
+- **AND** the SHA-256 hash of groupId is added to omittedGroupIds
 
-#### Scenario: Unsync already removed group
-
-- **GIVEN** an authenticated user with no sync record but hash in omittedGroupIds
-- **WHEN** they unsync the same group
-- **THEN** the system returns success (idempotent, hash already present)
-
-### Requirement: Bulk Sync Groups
-
-The system SHALL allow syncing multiple groups in a single request with rate limiting.
-
-#### Scenario: Sync all recent groups
+#### Scenario: Idempotent unsync
 
 - **GIVEN** an authenticated user
-- **WHEN** they request to sync multiple groups (max 100 per request)
-- **THEN** the system creates/updates SyncedGroup records for valid groups
-- **AND** skips groups whose hash is in omittedGroupIds
-- **AND** returns count of successfully synced groups and list of skipped groups
+- **WHEN** they unsync a group with hash already in omittedGroupIds
+- **THEN** success is returned (no-op if already unsynced)
+
+### Requirement: Bulk Sync API
+
+The system SHALL sync multiple groups in one request with rate limiting.
+
+#### Scenario: Sync multiple groups
+
+- **GIVEN** an authenticated user
+- **WHEN** they sync up to 100 groups
+- **THEN** SyncedGroup records are created/updated for valid groups
+- **AND** groups with hashes in omittedGroupIds are skipped
+- **AND** results show count of synced and list of skipped groups
 
 #### Scenario: Bulk sync exceeds limit
 
-- **GIVEN** a request with more than 100 groups
+- **GIVEN** a request with >100 groups
 - **WHEN** processed
-- **THEN** the system rejects the request with a rate limit error
-- **AND** client must batch into smaller requests
+- **THEN** a rate limit error is returned and client must batch into smaller requests
 
-#### Scenario: Auto-sync respects omit list
+### Requirement: Update Sync Metadata API
 
-- **GIVEN** a user with syncNewGroups enabled and a group hash in omittedGroupIds
-- **WHEN** auto-sync attempts to sync that group
-- **THEN** the group is NOT synced due to omit list
-
-### Requirement: Update Sync Metadata
-
-The system SHALL allow updating metadata on synced groups.
+The system SHALL update metadata on synced groups.
 
 #### Scenario: Update active participant
 
 - **GIVEN** an authenticated user with a synced group
-- **WHEN** they update the activeParticipantId
-- **THEN** the system updates the SyncedGroup record (last-write-wins)
+- **WHEN** they update activeParticipantId
+- **THEN** the SyncedGroup record is updated (last-write-wins)
 
 #### Scenario: Update starred status
 
 - **GIVEN** an authenticated user with a synced group
 - **WHEN** they toggle isStarred
-- **THEN** the system updates the flag (last-write-wins)
+- **THEN** the flag is updated on the record
 
 #### Scenario: Update archived status
 
 - **GIVEN** an authenticated user with a synced group
 - **WHEN** they toggle isArchived
-- **THEN** the system updates the flag (last-write-wins)
+- **THEN** the flag is updated on the record
 
-### Requirement: Sync Preferences
+### Requirement: Sync Preferences API
 
-The system SHALL store per-user sync behavior preferences.
+The system SHALL store and retrieve per-user sync preferences.
 
 #### Scenario: Get preferences
 
 - **GIVEN** an authenticated user
-- **WHEN** they request their sync preferences
-- **THEN** the system returns syncExisting and syncNewGroups flags
+- **WHEN** they request preferences
+- **THEN** syncExisting and syncNewGroups flags are returned (default false)
 
 #### Scenario: Update preferences
 
 - **GIVEN** an authenticated user
 - **WHEN** they update sync preferences
-- **THEN** the system saves the new values
+- **THEN** the SyncPreferences record is saved
 
-#### Scenario: Default preferences
+#### Scenario: New user defaults
 
 - **GIVEN** a new user with no preferences set
-- **WHEN** preferences are queried
+- **WHEN** preferences are accessed
 - **THEN** syncExisting and syncNewGroups default to false (manual mode)
 
-### Requirement: Cascade Delete on Group Deletion
+### Requirement: Omit List Query API
 
-The system SHALL automatically remove sync relationships when a group is deleted.
+The system SHALL check if a group ID is in the omit list.
 
-#### Scenario: Group deleted
+#### Scenario: Check if group is omitted
 
-- **GIVEN** a group that is synced by one or more users
-- **WHEN** the group is deleted from the database
-- **THEN** all associated SyncedGroup records are hard-deleted via cascade
+- **GIVEN** an authenticated user
+- **WHEN** they check if a group hash is in omittedGroupIds
+- **THEN** true/false is returned indicating omit status
