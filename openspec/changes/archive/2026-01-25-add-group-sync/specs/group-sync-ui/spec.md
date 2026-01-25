@@ -196,19 +196,9 @@ The system SHALL hydrate localStorage from server on sign-in, merging with local
 - **WHEN** hydration merges them
 - **THEN** server data takes precedence (activeParticipantId, isStarred, isArchived)
 
-#### Scenario: Local-only groups preserved
-
 - **GIVEN** a user with local groups not on server
 - **WHEN** they sign in
 - **THEN** those groups remain in localStorage alongside synced groups
-- **AND** they are NOT automatically synced unless syncExisting is enabled
-
-#### Scenario: Sync existing on sign-in
-
-- **GIVEN** a user with syncExisting enabled
-- **WHEN** they sign in
-- **THEN** all local groups (pre-existing + newly hydrated) are synced to server
-- **AND** soft-deleted groups are NOT re-synced
 
 #### Scenario: Hydration failure recovery
 

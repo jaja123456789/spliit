@@ -166,7 +166,7 @@ The system SHALL store per-user sync behavior preferences.
 
 - **GIVEN** an authenticated user
 - **WHEN** they request their sync preferences
-- **THEN** the system returns syncExisting and syncNewGroups flags
+- **THEN** the system returns syncNewGroups flags
 
 #### Scenario: Update preferences
 
@@ -178,7 +178,7 @@ The system SHALL store per-user sync behavior preferences.
 
 - **GIVEN** a new user with no preferences set
 - **WHEN** preferences are queried
-- **THEN** syncExisting and syncNewGroups default to false (manual mode)
+- **THEN** syncNewGroups default to false (manual mode)
 
 ### Requirement: Cascade Delete on Group Deletion
 

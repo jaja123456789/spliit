@@ -4,7 +4,6 @@
 
 - [x] 1.1 Add NextAuth models (User, Account, Session, VerificationToken) via Prisma adapter
 - [x] 1.2 Add `SyncProfile` model (links User to sync data, 1:1 with User)
-- [x] 1.3 Add `SyncPreferences` model (syncNewGroups only - syncExisting removed)
 - [x] 1.4 Add `SyncedGroup` model with:
   - Starred/archived flags (`isStarred`, `isArchived`)
   - Active participant (`activeParticipantId` FK to Participant, ON DELETE SET NULL)

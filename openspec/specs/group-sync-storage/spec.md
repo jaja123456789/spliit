@@ -139,7 +139,7 @@ The system SHALL store and retrieve per-user sync preferences.
 
 - **GIVEN** an authenticated user
 - **WHEN** they request preferences
-- **THEN** syncExisting and syncNewGroups flags are returned (default false)
+- **THEN** syncNewGroups flags are returned (default false)
 
 #### Scenario: Update preferences
 
@@ -151,7 +151,7 @@ The system SHALL store and retrieve per-user sync preferences.
 
 - **GIVEN** a new user with no preferences set
 - **WHEN** preferences are accessed
-- **THEN** syncExisting and syncNewGroups default to false (manual mode)
+- **THEN** syncNewGroups default to false (manual mode)
 
 ### Requirement: Omit List Query API
 

@@ -96,7 +96,6 @@ model SyncPreferences {
   id            String      @id @default(cuid())
   profileId     String      @unique
   profile       SyncProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  syncExisting  Boolean     @default(false)
   syncNewGroups Boolean     @default(false)
 }
 
@@ -230,7 +229,6 @@ Sign In Flow:
    - Groups on server but not local → add to local
    - Groups local but not on server → keep in local
    - Groups in both → server data wins (activeParticipant, starred, archived)
-8. If syncExisting enabled: sync ALL merged groups to server
 
 Sign Out Flow:
 1. User clicks logout
