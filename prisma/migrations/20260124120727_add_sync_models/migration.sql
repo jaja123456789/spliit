@@ -59,7 +59,6 @@ CREATE TABLE "SyncProfile" (
 CREATE TABLE "SyncPreferences" (
     "id" TEXT NOT NULL,
     "profileId" TEXT NOT NULL,
-    "syncExisting" BOOLEAN NOT NULL DEFAULT false,
     "syncNewGroups" BOOLEAN NOT NULL DEFAULT false,
 
     CONSTRAINT "SyncPreferences_pkey" PRIMARY KEY ("id")
