@@ -4,10 +4,27 @@ import { prisma } from '@/lib/prisma'
 import { PrismaAdapter } from '@next-auth/prisma-adapter'
 import type { NextAuthOptions } from 'next-auth'
 import NextAuth from 'next-auth'
+import type { Adapter, AdapterUser } from 'next-auth/adapters'
 import EmailProvider from 'next-auth/providers/email'
 
+// Extend PrismaAdapter to create SyncProfile when user is created
+const adapter = PrismaAdapter(prisma)
+const extendedAdapter: Adapter = {
+  ...adapter,
+  async createUser(user: Omit<AdapterUser, 'id'>) {
+    const createdUser = await adapter.createUser!(user)
+    // Create SyncProfile for the new user
+    await prisma.syncProfile.create({
+      data: {
+        userId: createdUser.id,
+      },
+    })
+    return createdUser
+  },
+}
+
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: extendedAdapter,
   session: {
     strategy: 'database',
   },
