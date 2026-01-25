@@ -50,6 +50,7 @@ node_modules/
 
 .agents
 .opencode
+openspec
 
 # Email
 /.mail/
