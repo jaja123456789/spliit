@@ -1,4 +1,5 @@
 'use client' // <-- to make sure we can mount the Provider from a server component
+import { Prisma } from '@prisma/client'
 import type { QueryClient } from '@tanstack/react-query'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { httpBatchLink } from '@trpc/client'
@@ -9,6 +10,15 @@ import { makeQueryClient } from './query-client'
 import type { AppRouter } from './routers/_app'
 import { addBasePath } from 'next/dist/client/add-base-path';
 
+
+superjson.registerCustom<Prisma.Decimal, string>(
+  {
+    isApplicable: (v): v is Prisma.Decimal => Prisma.Decimal.isDecimal(v),
+    serialize: (v) => v.toJSON(),
+    deserialize: (v) => new Prisma.Decimal(v),
+  },
+  'decimal.js',
+)
 
 export const trpc = createTRPCReact<AppRouter>()
 
