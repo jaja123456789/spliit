@@ -23,7 +23,7 @@ export function GroupLayoutClient({
         variant: 'destructive',
       })
     }
-  }, [data])
+  }, [data, toast, t])
 
   const props =
     isLoading || !data?.group
