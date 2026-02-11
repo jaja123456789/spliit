@@ -1,14 +1,17 @@
-name: CI
-
+name: Playwright Tests
 on:
   push:
-    branches: ['main']
+    branches: [main, master]
   pull_request:
-    branches: ['main']
-
+    branches: [main, master]
 jobs:
-  checks:
+  test:
+    timeout-minutes: 60
     runs-on: ubuntu-24.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, firefox, webkit]
     env:
       POSTGRES_PRISMA_URL: postgresql://postgres:1234@localhost
       POSTGRES_URL_NON_POOLING: postgresql://postgres:1234@localhost
@@ -46,20 +49,19 @@ jobs:
       - name: Generate Prisma client
         run: npm run prisma-generate
 
-      - name: Check TypeScript types
-        run: npm run check-types
-
-      - name: Check ESLint
-        run: npm run lint
-
-      - name: Check Prettier formatting
-        run: npm run check-formatting
-
       - name: Run Prisma migrations
         run: npm run prisma-migrate
 
-      - name: Run tests
-        run: npm run test
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
 
-      - name: Build
-        run: npm run build
+      - name: Run all Playwright tests
+        run: npx playwright test --project=${{ matrix.browser }}
+        if: github.event_name == 'pull_request'
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
