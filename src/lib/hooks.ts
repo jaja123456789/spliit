@@ -46,7 +46,7 @@ export function useMediaQuery(query: string): boolean {
 export function useBaseUrl() {
   const [baseUrl, setBaseUrl] = useState<string | null>(null)
   useEffect(() => {
-    setBaseUrl(window.location.origin)
+    setBaseUrl(window.location.origin + "/spliit")
   }, [])
   return baseUrl
 }
