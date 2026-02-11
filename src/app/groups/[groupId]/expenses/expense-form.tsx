@@ -67,6 +67,7 @@ import { extractCategoryFromTitle } from '../../../../components/expense-form-ac
 import { Textarea } from '../../../../components/ui/textarea'
 import { InputGroup, InputGroupAddon, InputGroupInput } from '@/components/ui/input-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { CalculatorInput } from '@/components/ui/calculator-input'
 
 const enforceCurrencyPattern = (value: string) =>
   value
@@ -678,46 +679,23 @@ export function ExpenseForm({
                   <div className="flex items-baseline gap-2">
                     <span>{group.currency}</span>
                     <FormControl>
-                      <InputGroup className="text-base max-w-[120px]">
-                        <InputGroupInput
-                          type="text"
-                          inputMode="decimal"
-                          placeholder="0.00"
-                          onChange={(event) => {
-                            const v = enforceCurrencyPattern(event.target.value)
-                            const income = Number(v) < 0
-                            setIsIncome(income)
-                            if (income) form.setValue('isReimbursement', false)
-                            onChange(v)
-                          }}
-                          onFocus={(e) => {
+                      <CalculatorInput
+                        className="base max-w-[120px]"
+                        placeholder="0.00"
+                        onValueChange={(newValue) => {
+                          const v = enforceCurrencyPattern(newValue)
+                          const income = Number(v) < 0
+                          setIsIncome(income)
+                          if (income) form.setValue('isReimbursement', false)
+                          onChange(v)
+                        }}
+                        onFocus={(e) => {
                             // we're adding a small delay to get around safaris issue with onMouseUp deselecting things again
                             const target = e.currentTarget
                             setTimeout(() => target.select(), 1)
                           }}
                           {...field}
-                        />
-                        <InputGroupAddon className='pr-0' align="inline-end">
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <Calculator/>
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent side='right' className="w-auto p-3">
-                              <AmountCalculator 
-                                initialValue={String(field.value || '')}
-                                onApply={(value) => {
-                                  const income = Number(value) < 0
-                                  setIsIncome(income)
-                                  if (income) form.setValue('isReimbursement', false)
-                                  onChange(value)
-                                }}
-                              />
-                            </PopoverContent>
-                          </Popover>
-                        </InputGroupAddon>
-                      </InputGroup>
+                      />
                     </FormControl>
                   </div>
                   <FormMessage />
@@ -1101,15 +1079,15 @@ export function ExpenseForm({
                                           {form.getValues().splitMode ===
                                             'BY_AMOUNT' && sharesLabel}
                                           <FormControl>
-                                            <Input
+                                            <CalculatorInput
+                                              inputClassName="text-base w-[80px] -my-2"
                                               key={String(
                                                 !field.value?.some(
                                                   ({ participant }) =>
                                                     participant === id,
                                                 ),
                                               )}
-                                              className="text-base w-[80px] -my-2"
-                                              type="text"
+                                              placeholder="0.00"
                                               disabled={
                                                 !field.value?.some(
                                                   ({ participant }) =>
@@ -1120,9 +1098,10 @@ export function ExpenseForm({
                                                 field.value?.find(
                                                   ({ participant }) =>
                                                     participant === id,
-                                                )?.shares
+                                                )?.shares || ""
                                               }
-                                              onChange={(event) => {
+                                              // Connect the data
+                                              onValueChange={(newValue) => {
                                                 field.onChange(
                                                   field.value.map((p) =>
                                                     p.participant === id
@@ -1130,8 +1109,7 @@ export function ExpenseForm({
                                                         participant: id,
                                                         shares:
                                                           enforceCurrencyPattern(
-                                                            event.target
-                                                              .value,
+                                                            newValue,
                                                           ),
                                                       }
                                                       : p,
@@ -1141,20 +1119,7 @@ export function ExpenseForm({
                                                   (prev) =>
                                                     new Set(prev).add(id),
                                                 )
-                                              }}
-                                              inputMode={
-                                                form.getValues().splitMode ===
-                                                  'BY_AMOUNT'
-                                                  ? 'decimal'
-                                                  : 'numeric'
-                                              }
-                                              step={
-                                                form.getValues().splitMode ===
-                                                  'BY_AMOUNT'
-                                                  ? 10 **
-                                                  -groupCurrency.decimal_digits
-                                                  : 1
-                                              }
+                                              }} 
                                             />
                                           </FormControl>
                                           {[

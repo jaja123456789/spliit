@@ -69,31 +69,35 @@ export function AmountCalculator({ onApply, initialValue }: AmountCalculatorProp
     })
   }, [hasResult])
 
-  const calculate = useCallback(() => {
+  const getMathResult = (text: string): string | null => {
     try {
-      // Replace display operators with JS operators
-      const expression = display
+      const expression = text
         .replace(/×/g, '*')
         .replace(/÷/g, '/')
-      
-      // Remove trailing operator if present
-      const cleanExpression = expression.replace(/[+\-*/]$/, '')
-      
-      if (!cleanExpression) return
-      
-      // Safe evaluation using Function constructor
-      const result = new Function(`return ${cleanExpression}`)()
+        .replace(/[+\-*/]$/, '') // Remove trailing operators
+
+      if (!expression || !/[+\-*/]/.test(expression)) return null
+
+      // Safe evaluation
+      const result = new Function(`return ${expression}`)()
       
       if (typeof result === 'number' && isFinite(result)) {
-        // Round to 2 decimal places for currency
-        const rounded = Math.round(result * 100) / 100
-        setDisplay(rounded.toString())
-        setHasResult(true)
+        return (Math.round(result * 100) / 100).toString()
       }
+      return null
     } catch {
-      // Invalid expression, do nothing
+      return null
+    }
+  }
+
+  const calculate = useCallback(() => {
+    const result = getMathResult(display)
+    if (result !== null) {
+      setDisplay(result)
+      setHasResult(true)
     }
   }, [display])
+
 
   const handleApply = useCallback(() => {
     // Calculate first if there's a pending operation
@@ -101,15 +105,22 @@ export function AmountCalculator({ onApply, initialValue }: AmountCalculatorProp
     if (isOperator(lastChar)) {
       return
     }
+
+    let finalValue = display
     
     // If not already calculated, calculate first
     if (!hasResult && /[+\-×÷]/.test(display)) {
-      calculate()
+      const calculated = getMathResult(display)
+      if (calculated !== null) {
+        finalValue = calculated
+        setDisplay(calculated)
+        setHasResult(true)
+      }
     }
     
-    const value = display.replace(/^0+(?=\d)/, '')
-    onApply(value || '0')
-  }, [display, hasResult, calculate, onApply])
+    const cleanValue = finalValue.replace(/^0+(?=\d)/, '')
+    onApply(cleanValue || '0')
+  }, [display, hasResult, onApply])
 
   // Keyboard support
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
