@@ -1,267 +1,384 @@
-import {
-  calculateShare,
-  getTotalActiveUserPaidFor,
-  getTotalActiveUserShare,
-  getTotalGroupSpending,
-} from './totals'
+import { SplitMode } from '@prisma/client'
+import { calculateShare, calculateShares } from './totals'
 
-type TotalsExpense = Parameters<typeof getTotalActiveUserPaidFor>[1][number]
+const p1 = { id: 'p1', name: 'Participant 1' }
+const p2 = { id: 'p2', name: 'Participant 2' }
+const p3 = { id: 'p3', name: 'Participant 3' }
 
-type ShareExpense = Parameters<typeof calculateShare>[1]
+const expenseBase = {
+  id: 'expense-1',
+  amount: 10000,
+  isReimbursement: false,
+  paidBy: p1,
+  expenseDate: new Date('2024-01-01T00:00:00.000Z'),
+}
 
-type PaidFor = ShareExpense['paidFor'][number]
-
-const makeExpense = (overrides: Partial<TotalsExpense>): TotalsExpense =>
-  ({
-    id: 'e1',
-    expenseDate: new Date('2025-01-01T00:00:00.000Z'),
-    title: 'Dinner',
-    amount: 0,
-    isReimbursement: false,
-    splitMode: 'EVENLY',
-    createdAt: new Date('2025-01-01T00:00:00.000Z'),
-    recurrenceRule: null,
-    category: null,
-    paidBy: { id: 'u1', name: 'User 1' },
-    paidFor: [
-      {
-        participant: { id: 'u1', name: 'User 1' },
-        shares: 1,
-      },
-    ],
-    _count: { documents: 0 },
-    ...overrides,
-  }) as TotalsExpense
-
-const makePaidFor = (participantId: string, shares: number): PaidFor =>
-  ({
-    participant: { id: participantId, name: participantId },
-    shares,
-  }) as PaidFor
-
-describe('getTotalGroupSpending', () => {
-  it('sums all non-reimbursement expenses', () => {
-    const expenses = [
-      makeExpense({ id: 'e1', amount: 100, isReimbursement: false }),
-      makeExpense({ id: 'e2', amount: 250, isReimbursement: false }),
-      makeExpense({ id: 'e3', amount: 50, isReimbursement: false }),
-    ]
-
-    expect(getTotalGroupSpending(expenses)).toBe(400)
+describe('calculateShares', () => {
+  it('should split evenly among all participants', () => {
+    const expense = {
+      ...expenseBase,
+      splitMode: SplitMode.EVENLY,
+      paidFor: [
+        { participant: p1, shares: 1 },
+        { participant: p2, shares: 1 },
+        { participant: p3, shares: 1 },
+      ],
+    }
+    const shares = calculateShares(expense)
+    expect(Object.values(shares).sort()).toEqual([3333, 3333, 3334])
+    expect(
+      Object.entries(shares).reduce((sum, [, value]) => sum + value, 0),
+    ).toBe(10000)
   })
 
-  it('excludes reimbursements from total spending', () => {
-    const expenses = [
-      makeExpense({ id: 'e1', amount: 100, isReimbursement: false }),
-      makeExpense({ id: 'e2', amount: 999, isReimbursement: true }),
-      makeExpense({ id: 'e3', amount: 250, isReimbursement: false }),
-    ]
-
-    expect(getTotalGroupSpending(expenses)).toBe(350)
+  it('should split by amount', () => {
+    const expense = {
+      ...expenseBase,
+      splitMode: SplitMode.BY_AMOUNT,
+      paidFor: [
+        { participant: p1, shares: 5000 },
+        { participant: p2, shares: 2500 },
+        { participant: p3, shares: 2500 },
+      ],
+    }
+    const shares = calculateShares(expense)
+    expect(shares['p1']).toBe(5000)
+    expect(shares['p2']).toBe(2500)
+    expect(shares['p3']).toBe(2500)
   })
 
-  it('handles empty array', () => {
-    const expenses: TotalsExpense[] = []
-
-    expect(getTotalGroupSpending(expenses)).toBe(0)
-  })
-})
-
-describe('getTotalActiveUserPaidFor', () => {
-  it('sums amounts paid by active user', () => {
-    const expenses: TotalsExpense[] = [
-      makeExpense({
-        id: 'e1',
-        amount: 1250,
-        paidBy: { id: 'u1', name: 'User 1' },
-      }),
-      makeExpense({
-        id: 'e2',
-        amount: 600,
-        paidBy: { id: 'u2', name: 'User 2' },
-      }),
-      makeExpense({
-        id: 'e3',
-        amount: 775,
-        paidBy: { id: 'u1', name: 'User 1' },
-      }),
-    ]
-
-    expect(getTotalActiveUserPaidFor('u1', expenses)).toBe(2025)
+  it('should split by shares', () => {
+    const expense = {
+      ...expenseBase,
+      splitMode: SplitMode.BY_SHARES,
+      paidFor: [
+        { participant: p1, shares: 2 },
+        { participant: p2, shares: 1 },
+        { participant: p3, shares: 1 },
+      ],
+    }
+    const shares = calculateShares(expense)
+    expect(shares['p1']).toBe(5000)
+    expect(shares['p2']).toBe(2500)
+    expect(shares['p3']).toBe(2500)
   })
 
-  it('excludes reimbursements even if paid by active user', () => {
-    const expenses: TotalsExpense[] = [
-      makeExpense({
-        id: 'e1',
-        amount: 1000,
-        isReimbursement: false,
-        paidBy: { id: 'u1', name: 'User 1' },
-      }),
-      makeExpense({
-        id: 'e2',
-        amount: 500,
-        isReimbursement: true,
-        paidBy: { id: 'u1', name: 'User 1' },
-      }),
-    ]
-
-    expect(getTotalActiveUserPaidFor('u1', expenses)).toBe(1000)
+  it('should split by percentage', () => {
+    const expense = {
+      ...expenseBase,
+      splitMode: SplitMode.BY_PERCENTAGE,
+      paidFor: [
+        { participant: p1, shares: 5000 }, // 50%
+        { participant: p2, shares: 2500 }, // 25%
+        { participant: p3, shares: 2500 }, // 25%
+      ],
+    }
+    const shares = calculateShares(expense)
+    expect(shares['p1']).toBe(5000)
+    expect(shares['p2']).toBe(2500)
+    expect(shares['p3']).toBe(2500)
   })
 
-  it('returns 0 when active user is null', () => {
-    const expenses: TotalsExpense[] = [makeExpense({ id: 'e1', amount: 1000 })]
-
-    expect(getTotalActiveUserPaidFor(null, expenses)).toBe(0)
+  it('should handle rounding differences by assigning the remainder to trailing participants', () => {
+    const expense = {
+      ...expenseBase,
+      amount: 100,
+      splitMode: SplitMode.EVENLY,
+      paidFor: [
+        { participant: p1, shares: 1 },
+        { participant: p2, shares: 1 },
+        { participant: p3, shares: 1 },
+      ],
+    }
+    const shares = calculateShares(expense)
+    expect(shares['p3']).toBe(34)
+    expect(shares['p1']).toBe(33)
+    expect(shares['p2']).toBe(33)
+    expect(
+      Object.entries(shares).reduce((sum, [, value]) => sum + value, 0),
+    ).toBe(100)
   })
-})
 
-describe('getTotalActiveUserShare', () => {
-  it('sums active user shares across expenses', () => {
-    const expenses: TotalsExpense[] = [
-      makeExpense({
-        id: 'e1',
-        amount: 100,
-        isReimbursement: false,
-        splitMode: 'EVENLY',
-        paidFor: [
-          makePaidFor('u1', 1),
-          makePaidFor('u2', 1),
-          makePaidFor('u3', 1),
-        ],
-      }),
-      makeExpense({
-        id: 'e2',
-        amount: 90,
-        isReimbursement: false,
-        splitMode: 'BY_AMOUNT',
-        paidFor: [makePaidFor('u1', 30), makePaidFor('u2', 60)],
-      }),
-      makeExpense({
-        id: 'e3',
-        amount: 50,
-        isReimbursement: false,
-        splitMode: 'EVENLY',
-        paidFor: [makePaidFor('u1', 1), makePaidFor('u2', 1)],
-      }),
-    ]
+  it('should apply the same split logic for reimbursements', () => {
+    const expense = {
+      ...expenseBase,
+      isReimbursement: true,
+      splitMode: SplitMode.EVENLY,
+      paidFor: [{ participant: p2, shares: 1 }],
+      paidBy: p1,
+    }
+    const shares = calculateShares(expense)
+    expect(shares['p2']).toBe(10000)
+    expect(shares['p1'] ?? 0).toBe(0)
+  })
 
-    expect(getTotalActiveUserShare('u1', expenses)).toBeCloseTo(
-      100 / 3 + 30 + 25,
-      2,
+  it('should include reimbursements when requesting a single participant share', () => {
+    const expense = {
+      ...expenseBase,
+      isReimbursement: true,
+      splitMode: SplitMode.EVENLY,
+      paidFor: [{ participant: p2, shares: 1 }],
+      paidBy: p1,
+    }
+    expect(calculateShare('p2', expense)).toBe(10000)
+    expect(calculateShare('p1', expense)).toBe(0)
+  })
+
+  it('should handle the payer not being in the paidFor list', () => {
+    const expense = {
+      ...expenseBase,
+      paidBy: p1,
+      splitMode: SplitMode.EVENLY,
+      paidFor: [
+        { participant: p2, shares: 1 },
+        { participant: p3, shares: 1 },
+      ],
+    }
+    const shares = calculateShares(expense)
+    expect(shares['p1'] ?? 0).toBe(0)
+    expect(shares['p2']).toBe(5000)
+    expect(shares['p3']).toBe(5000)
+  })
+
+  it('should distribute rounding differences deterministically even if payer changes', () => {
+    const expense = {
+      ...expenseBase,
+      amount: 100,
+      paidBy: p2,
+      splitMode: SplitMode.EVENLY,
+      paidFor: [
+        { participant: p1, shares: 1 },
+        { participant: p2, shares: 1 },
+        { participant: p3, shares: 1 },
+      ],
+    }
+    const shares = calculateShares(expense)
+    expect(Object.values(shares).sort()).toEqual([33, 33, 34])
+    expect(
+      Object.entries(shares).reduce((sum, [, value]) => sum + value, 0),
+    ).toBe(100)
+  })
+
+  it('should handle percentages not summing to 100%', () => {
+    const expense = {
+      ...expenseBase,
+      splitMode: SplitMode.BY_PERCENTAGE,
+      paidFor: [
+        { participant: p1, shares: 4000 }, // 40%
+        { participant: p2, shares: 4000 }, // 40%
+      ],
+    }
+    const shares = calculateShares(expense)
+    // 80% of 10000 is 8000. Remainder is 2000. Payer (p1) gets it.
+    expect(shares['p1'] + shares['p2']).toBe(10000)
+    expect(shares['p1']).toBeGreaterThanOrEqual(4000)
+    expect(shares['p2']).toBeGreaterThanOrEqual(4000)
+  })
+
+  it('should handle an empty paidFor list', () => {
+    const expense = {
+      ...expenseBase,
+      splitMode: SplitMode.EVENLY,
+      paidFor: [],
+    }
+    const shares = calculateShares(expense)
+    expect(shares['p1']).toBe(10000)
+  })
+
+  it('should handle 0 total shares in BY_SHARES mode', () => {
+    const expense = {
+      ...expenseBase,
+      splitMode: SplitMode.BY_SHARES,
+      paidFor: [
+        { participant: p1, shares: 0 },
+        { participant: p2, shares: 0 },
+      ],
+    }
+    const shares = calculateShares(expense)
+    expect(
+      Object.entries(shares).reduce((sum, [, value]) => sum + value, 0),
+    ).toBe(10000)
+    expect(Object.values(shares).every((value) => value >= 0)).toBe(true)
+  })
+
+  it('should handle a zero amount expense', () => {
+    const expense = {
+      ...expenseBase,
+      amount: 0,
+      splitMode: SplitMode.EVENLY,
+      paidFor: [
+        { participant: p1, shares: 1 },
+        { participant: p2, shares: 1 },
+      ],
+    }
+    const shares = calculateShares(expense)
+    expect(shares['p1'] + 0).toBe(0) // avoid -0 vs 0
+    expect(shares['p2']).toBe(0)
+  })
+
+  it('should give any leftover cents to the last participants first', () => {
+    const expense = {
+      ...expenseBase,
+      amount: 101,
+      splitMode: SplitMode.EVENLY,
+      paidFor: [
+        { participant: p1, shares: 1 },
+        { participant: p2, shares: 1 },
+        { participant: p3, shares: 1 },
+      ],
+    }
+    const shares = calculateShares(expense)
+    expect(shares['p1']).toBe(33)
+    expect(shares['p2']).toBe(34)
+    expect(shares['p3']).toBe(34)
+    expect(Object.values(shares).reduce((sum, value) => sum + value, 0)).toBe(
+      101,
     )
   })
 
-  it('rounds total share to 2 decimals', () => {
-    const expenses: TotalsExpense[] = [
-      makeExpense({
-        id: 'e1',
-        amount: 100,
-        splitMode: 'EVENLY',
-        paidFor: [
-          makePaidFor('u1', 1),
-          makePaidFor('u2', 1),
-          makePaidFor('u3', 1),
-        ],
-      }),
-      makeExpense({
-        id: 'e2',
-        amount: 1,
-        splitMode: 'EVENLY',
-        paidFor: [
-          makePaidFor('u1', 1),
-          makePaidFor('u2', 1),
-          makePaidFor('u3', 1),
-        ],
-      }),
-    ]
-
-    const total = getTotalActiveUserShare('u1', expenses)
-
-    expect(total).toBe(33.67)
-    expect(total.toFixed(2)).toBe('33.67')
-  })
-})
-
-describe('calculateShare', () => {
-  it('returns 0 for reimbursements', () => {
-    const expense: ShareExpense = {
-      amount: 100,
-      isReimbursement: true,
-      splitMode: 'EVENLY',
-      paidFor: [makePaidFor('u1', 1), makePaidFor('u2', 1)],
-    }
-
-    expect(calculateShare('u1', expense)).toBe(0)
-    expect(calculateShare('u2', expense)).toBe(0)
-  })
-
-  it('returns 0 if participant not in paidFor', () => {
-    const expense: ShareExpense = {
-      amount: 100,
-      isReimbursement: false,
-      splitMode: 'EVENLY',
-      paidFor: [makePaidFor('u1', 1), makePaidFor('u2', 1)],
-    }
-
-    expect(calculateShare('u3', expense)).toBe(0)
-  })
-
-  it('EVENLY divides expense amount by participants', () => {
-    const expense: ShareExpense = {
-      amount: 100,
-      isReimbursement: false,
-      splitMode: 'EVENLY',
+  it('should subtract leftover cents from the end for negative expenses', () => {
+    const expense = {
+      ...expenseBase,
+      amount: -101,
+      splitMode: SplitMode.EVENLY,
       paidFor: [
-        makePaidFor('u1', 1),
-        makePaidFor('u2', 1),
-        makePaidFor('u3', 1),
+        { participant: p1, shares: 1 },
+        { participant: p2, shares: 1 },
+        { participant: p3, shares: 1 },
       ],
     }
-
-    expect(calculateShare('u1', expense)).toBeCloseTo(100 / 3)
-    expect(calculateShare('u2', expense)).toBeCloseTo(100 / 3)
-    expect(calculateShare('u3', expense)).toBeCloseTo(100 / 3)
+    const shares = calculateShares(expense)
+    expect(shares['p1']).toBe(-33)
+    expect(shares['p2']).toBe(-34)
+    expect(shares['p3']).toBe(-34)
+    expect(Object.values(shares).reduce((sum, value) => sum + value, 0)).toBe(
+      -101,
+    )
   })
 
-  it('BY_AMOUNT returns exact share amount', () => {
-    const expense: ShareExpense = {
-      amount: 999,
-      isReimbursement: false,
-      splitMode: 'BY_AMOUNT',
-      paidFor: [makePaidFor('u1', 123), makePaidFor('u2', 456)],
-    }
-
-    expect(calculateShare('u1', expense)).toBe(123)
-    expect(calculateShare('u2', expense)).toBe(456)
-  })
-
-  it('BY_PERCENTAGE calculates share using shares/10000', () => {
-    const expense: ShareExpense = {
-      amount: 1000,
-      isReimbursement: false,
-      splitMode: 'BY_PERCENTAGE',
-      paidFor: [makePaidFor('u1', 2500), makePaidFor('u2', 7500)],
-    }
-
-    expect(calculateShare('u1', expense)).toBe(250)
-    expect(calculateShare('u2', expense)).toBe(750)
-  })
-
-  it('BY_SHARES weights shares by ratio', () => {
-    const expense: ShareExpense = {
-      amount: 600,
-      isReimbursement: false,
-      splitMode: 'BY_SHARES',
+  it('should distribute remainder in BY_AMOUNT mode if amounts do not sum up', () => {
+    const expense = {
+      ...expenseBase,
+      amount: 10000,
+      splitMode: SplitMode.BY_AMOUNT,
       paidFor: [
-        makePaidFor('u1', 1),
-        makePaidFor('u2', 2),
-        makePaidFor('u3', 3),
+        { participant: p1, shares: 4000 },
+        { participant: p2, shares: 4000 },
       ],
     }
+    const shares = calculateShares(expense)
+    const totalShares = Object.values(shares).reduce((sum, v) => sum + v, 0)
+    expect(totalShares).toBe(10000)
+    // p1 is the payer and should get the remainder
+    expect(shares['p1']).toBe(6000)
+    expect(shares['p2']).toBe(4000)
+  })
 
-    expect(calculateShare('u1', expense)).toBe(100)
-    expect(calculateShare('u2', expense)).toBe(200)
-    expect(calculateShare('u3', expense)).toBe(300)
+  it('should handle negative expense amounts (refunds)', () => {
+    const expense = {
+      ...expenseBase,
+      amount: -10000,
+      splitMode: SplitMode.EVENLY,
+      paidFor: [
+        { participant: p1, shares: 1 },
+        { participant: p2, shares: 1 },
+      ],
+    }
+    const shares = calculateShares(expense)
+    expect(shares['p1']).toBe(-5000)
+    expect(shares['p2']).toBe(-5000)
+    const totalShares = Object.values(shares).reduce((sum, v) => sum + v, 0)
+    expect(totalShares).toBe(-10000)
+  })
+
+  it('should handle an undefined payer by falling back to the first participant', () => {
+    const expense = {
+      ...expenseBase,
+      amount: 100,
+      paidBy: undefined as any,
+      splitMode: SplitMode.EVENLY,
+      paidFor: [
+        { participant: p2, shares: 1 },
+        { participant: p3, shares: 1 },
+      ],
+    }
+    const shares = calculateShares(expense)
+    const totalShares = Object.values(shares).reduce((sum, v) => sum + v, 0)
+    expect(totalShares).toBe(100)
+    expect(shares['p2']).toBe(50)
+    expect(shares['p3']).toBe(50)
+  })
+
+  it('should break ties by giving remainders to later participants (EVENLY, amount=2, 3 participants)', () => {
+    const expense = {
+      ...expenseBase,
+      amount: 2,
+      splitMode: SplitMode.EVENLY,
+      paidFor: [
+        { participant: p1, shares: 1 },
+        { participant: p2, shares: 1 },
+        { participant: p3, shares: 1 },
+      ],
+    }
+    const shares = calculateShares(expense)
+    // fractions are equal; remainder (2) should go to the last two participants
+    expect(shares['p1'] + 0).toBe(0)
+    expect(shares['p2']).toBe(1)
+    expect(shares['p3']).toBe(1)
+    expect(Object.values(shares).reduce((s, v) => s + v, 0)).toBe(2)
+  })
+
+  it('should break ties for negative amounts by subtracting from later participants first (EVENLY, amount=-2, 3 participants)', () => {
+    const expense = {
+      ...expenseBase,
+      amount: -2,
+      splitMode: SplitMode.EVENLY,
+      paidFor: [
+        { participant: p1, shares: 1 },
+        { participant: p2, shares: 1 },
+        { participant: p3, shares: 1 },
+      ],
+    }
+    const shares = calculateShares(expense)
+    expect(shares['p1'] + 0).toBe(0)
+    expect(shares['p2']).toBe(-1)
+    expect(shares['p3']).toBe(-1)
+    expect(Object.values(shares).reduce((s, v) => s + v, 0)).toBe(-2)
+  })
+
+  it('should break ties in BY_SHARES by giving remainders to later participants (amount=2, shares equal)', () => {
+    const expense = {
+      ...expenseBase,
+      amount: 2,
+      splitMode: SplitMode.BY_SHARES,
+      paidFor: [
+        { participant: p1, shares: 1 },
+        { participant: p2, shares: 1 },
+        { participant: p3, shares: 1 },
+      ],
+    }
+    const shares = calculateShares(expense)
+    expect(shares['p1']).toBe(0)
+    expect(shares['p2']).toBe(1)
+    expect(shares['p3']).toBe(1)
+    expect(Object.values(shares).reduce((s, v) => s + v, 0)).toBe(2)
+  })
+
+  it('should break ties in BY_PERCENTAGE by giving remainders to later participants (amount=2, equal percentages)', () => {
+    const expense = {
+      ...expenseBase,
+      amount: 2,
+      splitMode: SplitMode.BY_PERCENTAGE,
+      paidFor: [
+        { participant: p1, shares: 3333 },
+        { participant: p2, shares: 3333 },
+        { participant: p3, shares: 3333 },
+      ],
+    }
+    const shares = calculateShares(expense)
+    expect(shares['p1']).toBe(0)
+    expect(shares['p2']).toBe(1)
+    expect(shares['p3']).toBe(1)
+    expect(Object.values(shares).reduce((s, v) => s + v, 0)).toBe(2)
   })
 })
