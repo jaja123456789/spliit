@@ -23,6 +23,17 @@ function Participants({
 }) {
   const t = useTranslations('ExpenseCard')
   const key = expense.amount > 0 ? 'paidBy' : 'receivedBy'
+  
+  // Handle multiple payers display
+  let payerName = '';
+  if (expense.paidBy.length === 1) {
+    payerName = expense.paidBy[0].participant.name;
+  } else if (expense.paidBy.length > 1) {
+    payerName = `${expense.paidBy[0].participant.name} & ${expense.paidBy.length - 1} more`;
+  } else {
+    payerName = 'Unknown';
+  }
+
   const paidFor =
     expense.paidFor.length == participantCount && participantCount >= 4 ? (
       <strong>{t('everyone')}</strong>
@@ -34,10 +45,9 @@ function Participants({
         </Fragment>
       ))
     )
-
   const participants = t.rich(key, {
     strong: (chunks) => <strong>{chunks}</strong>,
-    paidBy: expense.paidBy.name,
+    paidBy: payerName,
     paidFor: () => paidFor,
     forCount: expense.paidFor.length,
   })
@@ -59,7 +69,6 @@ export function ExpenseCard({
 }: Props) {
   const router = useRouter()
   const locale = useLocale()
-
   return (
     <div
       key={expense.id}

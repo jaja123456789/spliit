@@ -287,7 +287,9 @@
     "save": "Save",
     "saving": "Saving…",
     "cancel": "Cancel",
-    "reimbursement": "Reimbursement"
+    "reimbursement": "Reimbursement",
+    "addPayer": "Add Payer",
+    "total": "Total"
   },
   "ExpenseDocumentsInput": {
     "TooBigToast": {

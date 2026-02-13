@@ -29,7 +29,7 @@ model Participant {
   name                     String
   group                    Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
   groupId                  String
-  expensesPaidBy           Expense[]
+  expensesPaidBy           ExpensePaidBy[]
   expensesPaidFor          ExpensePaidFor[]
   activeSyncedGroupsForUser SyncedGroup[]
 }
@@ -52,8 +52,7 @@ model Expense {
   originalAmount   Int?
   originalCurrency String?
   conversionRate   Decimal?
-  paidBy           Participant       @relation(fields: [paidById], references: [id], onDelete: Cascade)
-  paidById         String
+  paidBy           ExpensePaidBy[]
   paidFor          ExpensePaidFor[]
   groupId          String
   isReimbursement  Boolean           @default(false)
@@ -65,6 +64,16 @@ model Expense {
   recurrenceRule         RecurrenceRule?       @default(NONE)
   recurringExpenseLink   RecurringExpenseLink?
   recurringExpenseLinkId String?
+}
+
+model ExpensePaidBy {
+  expense       Expense     @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  participant   Participant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  expenseId     String
+  participantId String
+  amount        Int         @default(0)
+
+  @@id([expenseId, participantId])
 }
 
 model ExpenseDocument {

@@ -1,6 +1,5 @@
 import { RecurrenceRule, SplitMode } from '@prisma/client'
 import Decimal from 'decimal.js'
-
 import * as z from 'zod'
 
 export const groupFormSchema = z
@@ -52,24 +51,9 @@ export const expenseFormSchema = z
     expenseDate: z.coerce.date(),
     title: z.string({ required_error: 'titleRequired' }).min(2, 'min2'),
     category: z.coerce.number().default(0),
-    amount: z
-      .union(
-        [
-          z.number(),
-          z.string().transform((value, ctx) => {
-            const valueAsNumber = Number(value)
-            if (Number.isNaN(valueAsNumber))
-              ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: 'invalidNumber',
-              })
-            return valueAsNumber
-          }),
-        ],
-        { required_error: 'amountRequired' },
-      )
-      .refine((amount) => amount != 0, 'amountNotZero')
-      .refine((amount) => amount <= 10_000_000_00, 'amountTenMillion'),
+    // amount is purely optional/derived. We ignore input.
+    amount: z.number().optional(), 
+    
     originalAmount: z
       .union([
         z.literal('').transform(() => undefined),
@@ -85,12 +69,47 @@ export const expenseFormSchema = z
         inputCoercedToNumber.refine((amount) => amount > 0, 'ratePositive'),
       ])
       .optional(),
-    paidBy: z.string({ required_error: 'paidByRequired' }),
+    
+    paidBy: z.array(
+      z.object({
+        participant: z.string(),
+        // The inner transform handles string->number conversion immediately
+        // so 'amount' is a number by the time we reach superRefine
+        amount: z.union([
+          z.number(),
+          z.string().transform((value, ctx) => {
+            const normalizedValue = value.replace(/,/g, '.')
+            const valueAsNumber = Number(normalizedValue)
+            if (Number.isNaN(valueAsNumber))
+              ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'invalidNumber',
+              })
+            return valueAsNumber
+          }),
+        ]),
+        originalAmount: z.string().optional(),
+      })
+    ).min(1, 'paidByMin1')
+    .superRefine((items, ctx) => {
+       const participants = new Set();
+       items.forEach((item, index) => {
+         if (participants.has(item.participant)) {
+           ctx.addIssue({
+             code: z.ZodIssueCode.custom,
+             message: "duplicateParticipant",
+             path: [index, "participant"]
+           })
+         }
+         participants.add(item.participant);
+       });
+    }),
+
     paidFor: z
       .array(
         z.object({
           participant: z.string(),
-          originalAmount: z.string().optional(), // For converting shares by amounts in original currency, not saved.
+          originalAmount: z.string().optional(),
           shares: z.union([
             z.number(),
             z.string().transform((value, ctx) => {
@@ -142,22 +161,32 @@ export const expenseFormSchema = z
       )
       .default('NONE'),
   })
+  // 1. Validation Logic: Run this on the object state *before* transforming the shape
   .superRefine((expense, ctx) => {
+    // Calculate total locally for validation
+    // Note: p.amount is already a number here due to the inner Zod schema on paidBy
+    const totalAmount = expense.paidBy.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+
+    if (totalAmount === 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'amountNotZero',
+        path: ['paidBy'] // This attaches the error to the paidBy field
+      })
+    }
+
     switch (expense.splitMode) {
       case 'EVENLY':
-        break // noop
+        break 
       case 'BY_SHARES':
-        break // noop
+        break 
       case 'BY_AMOUNT': {
         const sum = expense.paidFor.reduce(
-          (sum, { shares }) => new Decimal(shares).add(sum),
+          (sum, { shares }) => new Decimal(shares || 0).add(sum),
           new Decimal(0),
         )
-        if (!sum.equals(new Decimal(expense.amount))) {
-          // const detail =
-          //   sum < expense.amount
-          //     ? `${((expense.amount - sum) / 100).toFixed(2)} missing`
-          //     : `${((sum - expense.amount) / 100).toFixed(2)} surplus`
+        // Compare calculated sum against calculated total
+        if (!sum.equals(new Decimal(totalAmount))) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: 'amountSum',
@@ -176,10 +205,6 @@ export const expenseFormSchema = z
           0,
         )
         if (sum !== 10000) {
-          const detail =
-            sum < 10000
-              ? `${((10000 - sum) / 100).toFixed(0)}% missing`
-              : `${((sum - 10000) / 100).toFixed(0)}% surplus`
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: 'percentageSum',
@@ -190,25 +215,35 @@ export const expenseFormSchema = z
       }
     }
   })
+  // 2. Output Transformation: Prepare final data structure for API/DB
   .transform((expense) => {
-    // Format the share split as a number (if from form submission)
-    return {
-      ...expense,
-      paidFor: expense.paidFor.map((paidFor) => {
+    // Recalculate total for the output object
+    const totalAmount = expense.paidBy.reduce((sum, p) => sum + Number(p.amount), 0)
+    
+    const paidFor = expense.paidFor.map((paidFor) => {
         const shares = paidFor.shares
         if (typeof shares === 'string' && expense.splitMode !== 'BY_AMOUNT') {
-          // For splitting not by amount, preserve the previous behaviour of multiplying the share by 100
           return {
             ...paidFor,
             shares: Math.round(Number(shares) * 100),
           }
         }
-        // Otherwise, no need as the number will have been formatted according to currency.
         return {
           ...paidFor,
           shares: Number(shares),
         }
-      }),
+      })
+
+    const paidBy = expense.paidBy.map(pb => ({
+      ...pb,
+      amount: Number(pb.amount)
+    }))
+
+    return {
+      ...expense,
+      amount: totalAmount,
+      paidBy,
+      paidFor,
     }
   })
 
