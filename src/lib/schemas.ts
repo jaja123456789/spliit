@@ -46,6 +46,19 @@ const inputCoercedToNumber = z.union([
   }),
 ])
 
+const expenseItemSchema = z.object({
+  id: z.string().optional(), // Optional for new items
+  name: z.string().min(1, 'Item name required'),
+  price: z.union([
+    z.number(),
+    z.string().transform((val) => {
+      const num = Number(val.replace(/,/g, '.'))
+      return isNaN(num) ? 0 : num
+    })
+  ]),
+  participantIds: z.array(z.string()).min(1, 'Select at least one person'),
+})
+
 export const expenseFormSchema = z
   .object({
     expenseDate: z.coerce.date(),
@@ -137,6 +150,7 @@ export const expenseFormSchema = z
           }
         }
       }),
+    items: z.array(expenseItemSchema).default([]),
     splitMode: z
       .enum<SplitMode, [SplitMode, ...SplitMode[]]>(
         Object.values(SplitMode) as any,
@@ -165,28 +179,44 @@ export const expenseFormSchema = z
   .superRefine((expense, ctx) => {
     // Calculate total locally for validation
     // Note: p.amount is already a number here due to the inner Zod schema on paidBy
-    const totalAmount = expense.paidBy.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+    const totalAmount = expense.paidBy.reduce(
+      (sum, p) => sum.add(new Decimal(p.amount || 0)),
+      new Decimal(0)
+    )
 
-    if (totalAmount === 0) {
+    if (expense.items && expense.items.length > 0) {
+      const itemsTotal = expense.items.reduce(
+        (sum, item) => sum.add(new Decimal(item.price || 0)), 
+        new Decimal(0)
+      )
+      if (!itemsTotal.minus(totalAmount).abs().lt(0.01)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'itemTotalMismatch',
+          path: ['items'],
+        })
+      }
+      // If we have items, we skip the manual paidFor sum check because 
+      // the transform will overwrite paidFor anyway.
+      return; 
+    }
+
+    if (totalAmount.isZero()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'amountNotZero',
-        path: ['paidBy'] // This attaches the error to the paidBy field
+        path: ['paidBy']
       })
     }
 
     switch (expense.splitMode) {
-      case 'EVENLY':
-        break 
-      case 'BY_SHARES':
-        break 
       case 'BY_AMOUNT': {
         const sum = expense.paidFor.reduce(
           (sum, { shares }) => new Decimal(shares || 0).add(sum),
           new Decimal(0),
         )
-        // Compare calculated sum against calculated total
-        if (!sum.equals(new Decimal(totalAmount))) {
+        // BETTER FIX: Use epsilon comparison (1 cent) instead of string toFixed
+        if (!sum.minus(totalAmount).abs().lt(0.01)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: 'amountSum',
@@ -218,21 +248,49 @@ export const expenseFormSchema = z
   // 2. Output Transformation: Prepare final data structure for API/DB
   .transform((expense) => {
     // Recalculate total for the output object
-    const totalAmount = expense.paidBy.reduce((sum, p) => sum + Number(p.amount), 0)
+    const totalAmount = expense.paidBy.reduce(
+      (sum, p) => sum.add(new Decimal(p.amount || 0)),
+      new Decimal(0)
+    ).toNumber()    
+    let paidFor = expense.paidFor
     
-    const paidFor = expense.paidFor.map((paidFor) => {
-        const shares = paidFor.shares
-        if (typeof shares === 'string' && expense.splitMode !== 'BY_AMOUNT') {
-          return {
-            ...paidFor,
-            shares: Math.round(Number(shares) * 100),
-          }
-        }
-        return {
-          ...paidFor,
-          shares: Number(shares),
-        }
+    // NEW: If items exist, recalculate `paidFor` (Shares) based on items
+    // This allows the backend to remain mostly agnostic about items for balance calculations
+    if (expense.items && expense.items.length > 0) {
+      const distribution: Record<string, number> = {}
+      
+      expense.items.forEach(item => {
+        const itemPrice = Number(item.price)
+        const partCount = item.participantIds.length
+        if (partCount === 0) return
+        
+        // Simple division, create cents
+        // We use Math.floor/ceil logic to ensure total matches exactly or handle cents distribution
+        // For simplicity here, we do standard division
+        const share = itemPrice / partCount
+        
+        item.participantIds.forEach(pid => {
+          distribution[pid] = (distribution[pid] || 0) + share
+        })
       })
+
+      // Convert distribution map to paidFor array
+      // We force splitMode to BY_AMOUNT effectively
+      paidFor = Object.entries(distribution).map(([participantId, amount]) => ({
+        participant: participantId,
+        shares: amount, // Logic below handles rounding if needed
+        originalAmount: undefined
+      }))
+      
+      // Override splitMode to BY_AMOUNT so the DB stores the calculated debts correctly
+      expense.splitMode = 'BY_AMOUNT'
+    } else {
+       // ... existing paidFor map logic ...
+       paidFor = expense.paidFor.map((paidFor) => {
+        // ... existing logic ...
+        return { ...paidFor, shares: Number(paidFor.shares) }
+       })
+    }
 
     const paidBy = expense.paidBy.map(pb => ({
       ...pb,
@@ -244,6 +302,7 @@ export const expenseFormSchema = z
       amount: totalAmount,
       paidBy,
       paidFor,
+      items: expense.items.map(i => ({...i, price: Number(i.price)}))
     }
   })
 

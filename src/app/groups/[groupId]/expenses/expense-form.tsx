@@ -37,6 +37,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Switch } from '@/components/ui/switch'
+import { Label } from '@/components/ui/label' // <--- Add this line
 import { Locale } from '@/i18n/request'
 import { randomId } from '@/lib/api'
 import { defaultCurrencyList, getCurrency } from '@/lib/currency'
@@ -67,6 +69,11 @@ import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { match } from 'ts-pattern'
 import { DeletePopup } from '../../../../components/delete-popup'
 import { extractCategoryFromTitle } from '../../../../components/expense-form-actions'
+import { ItemizationBuilder } from './itemization-builder' // Import new component
+import { Crown } from 'lucide-react' // Add a subtle icon
+import { Badge } from '@/components/ui/badge'
+
+
 
 // --- Helpers ---
 
@@ -223,6 +230,12 @@ export function ExpenseForm({
           documents: expense.documents,
           notes: expense.notes ?? '',
           recurrenceRule: expense.recurrenceRule ?? undefined,
+          items: expense?.items.map(i => ({
+            id: i.id,
+            name: i.name,
+            price: amountAsDecimal(i.price, groupCurrency),
+            participantIds: i.participantIds
+          })) ?? [],
         }
       : searchParams.get('reimbursement')
         ? {
@@ -291,6 +304,7 @@ export function ExpenseForm({
             recurrenceRule: RecurrenceRule.NONE,
           },
   })
+  const { trigger, setValue, getValues, watch } = form; // Destructure for convenience
 
   // Dynamic fields for multiple payers
   const { fields: payerFields, append: appendPayer, remove: removePayer } = useFieldArray({
@@ -315,6 +329,7 @@ export function ExpenseForm({
   const isIncome = totalAmount < 0
   const isMultiPayer = payerFields.length > 1
   const sExpense = isIncome ? 'Income' : 'Expense'
+  const maxAmount = Math.max(...paidByValues.map((p) => Number(p.amount) || 0))
 
   const originalCurrency = getCurrency(originalCurrencyVal, locale, 'Custom')
   const exchangeRate = useCurrencyRate(
@@ -342,6 +357,8 @@ export function ExpenseForm({
     }
     return new Set()
   })
+
+  const [isItemized, setIsItemized] = useState(form.getValues('items').length > 0)
 
   const getIsParticipantPaying = (participantId: string, currentIndex: number) => {
     return paidByValues.some((field, index) => 
@@ -424,6 +441,30 @@ export function ExpenseForm({
     return newPaidFor
   }, [groupCurrency.decimal_digits])
 
+  const handlePayerAmountChange = (index: number, newValue: string) => {
+    const numericValue = Number(newValue) || 0;
+    
+    setValue(`paidBy.${index}.amount`, numericValue, { 
+      shouldDirty: true, 
+      shouldTouch: true 
+    });
+
+    if (isItemized) {
+      // CORRECT: Use 'trigger' from the form object
+      trigger('items');
+    } else if (splitMode === 'BY_AMOUNT') {
+      const currentPaidFor = getValues('paidFor');
+      const currentPayers = getValues('paidBy');
+      const newTotal = currentPayers.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      
+      const redistributed = recalculateByAmount(newTotal, currentPaidFor, manuallyEditedParticipants);
+      setValue('paidFor', redistributed, { shouldValidate: true });
+    }
+    
+    // Always trigger paidBy validation to ensure cross-field rules re-run
+    trigger('paidBy');
+  };
+
   // --- Effects ---
 
   useEffect(() => {
@@ -489,6 +530,24 @@ export function ExpenseForm({
     recalculateByAmount
   ])
 
+  useEffect(() => {
+    if (isItemized) {
+      // When switching TO itemized, we don't necessarily change splitMode immediately
+      // but the Schema transform will force it to BY_AMOUNT on submit.
+    } else {
+      // Clear items when switching off
+      form.setValue('items', [])
+    }
+  }, [isItemized, form])
+
+  useEffect(() => {
+    if (isItemized) {
+      // Force splitMode to BY_AMOUNT internally when itemizing
+      // This makes sure the validation rules for BY_AMOUNT are active
+      form.setValue('splitMode', 'BY_AMOUNT', { shouldValidate: true });
+    }
+  }, [isItemized, form]);
+
   // Trigger validation on PaidFor when splitMode changes to clear stale errors
   const handleSplitModeChange = (newMode: string) => {
     // 1. Reset manual edits so we get a fresh distribution (optional, but usually desired on mode switch)
@@ -513,6 +572,10 @@ export function ExpenseForm({
   }
 
   const submit = async (values: ExpenseFormValues) => {
+    if (isItemized && values.items.length > 0) {
+        values.splitMode = 'BY_AMOUNT';
+    }
+
     await persistDefaultSplittingOptions(group.id, values)
 
     const validPayers = values.paidBy.filter((pb) => Number(pb.amount) > 0)
@@ -522,18 +585,6 @@ export function ExpenseForm({
     } else {
         values.paidBy = validPayers
     }
-
-    values.paidBy = values.paidBy.map((pb) => ({
-      ...pb,
-      amount: amountAsMinorUnits(Number(pb.amount), groupCurrency),
-    }))
-    values.paidFor = values.paidFor.map(({ participant, shares }) => ({
-      participant,
-      shares:
-        values.splitMode === 'BY_AMOUNT'
-          ? amountAsMinorUnits(shares, groupCurrency)
-          : shares,
-    }))
 
     if (!conversionRequired) {
       delete values.originalAmount
@@ -630,71 +681,108 @@ export function ExpenseForm({
 
             {/* Paid By Section */}
             <div className="sm:order-5 col-span-2">
-                <FormLabel>{t(`${sExpense}.paidByField.label`)}</FormLabel>
+                <FormLabel className="flex items-center gap-2">
+                  {t(`${sExpense}.paidByField.label`)}
+                  {isMultiPayer && (
+                    <Badge variant="secondary" className="text-[10px] h-4 px-1 uppercase tracking-tighter">
+                      Multi-Payer Mode
+                    </Badge>
+                  )}
+                </FormLabel>
+                
                 <div className="flex flex-col gap-2 mt-2">
-                    {payerFields.map((field, index) => (
-                        <div key={field.id} className="flex gap-2 items-start">
-                            <FormField
-                                control={form.control}
-                                name={`paidBy.${index}.participant`}
-                                render={({ field }) => (
-                                    <FormItem className="flex-1 space-y-0">
-                                        <Select
-                                            onValueChange={field.onChange}
-                                            defaultValue={field.value}
-                                        >
-                                            <SelectTrigger>
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {group.participants.map(({ id, name }) => (
-                                                    <SelectItem key={id} value={id}
-                                                      disabled={getIsParticipantPaying(id, index)}
-                                                    >
-                                                        {name}
-                                                    </SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            <FormField
-                                control={form.control}
-                                name={`paidBy.${index}.amount`}
-                                render={({ field }) => (
-                                    <FormItem className="w-32 space-y-0">
-                                        <div className="flex items-center">
-                                            <span className="mr-2 text-sm text-muted-foreground">{group.currency}</span>
-                                            <FormControl>
-                                                <CalculatorInput
-                                                    className="text-base"
-                                                    placeholder="0.00"
-                                                    {...field}
-                                                    onValueChange={(val) => {
-                                                        field.onChange(val)
-                                                    }}
-                                                />
-                                            </FormControl>
-                                        </div>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            {payerFields.length > 1 && (
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    onClick={() => removePayer(index)}
-                                    className="shrink-0"
-                                >
-                                    <Trash2 className="w-4 h-4 text-destructive" />
-                                </Button>
-                            )}
-                        </div>
-                    ))}
+                  {payerFields.map((field, index) => {
+                    // Determine if this specific row is the highest payer
+                    const currentAmount = Number(paidByValues[index]?.amount) || 0
+                    const isHighest = isMultiPayer && currentAmount > 0 && currentAmount === maxAmount
+
+                    return (
+                      <div 
+                        key={field.id} 
+                        className={cn(
+                          "flex gap-2 items-start p-2 rounded-lg transition-all border border-transparent",
+                          // If they are the highest, give them a subtle background and border
+                          isHighest ? "bg-primary/5 border-primary/20 shadow-sm" : "bg-transparent"
+                        )}
+                      >
+                        <FormField
+                          control={form.control}
+                          name={`paidBy.${index}.participant`}
+                          render={({ field }) => (
+                            <FormItem className="flex-1 space-y-0">
+                              <Select
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                              >
+                                <FormControl>
+                                  <SelectTrigger className={cn(isHighest && "border-primary/30")}>
+                                    <div className="flex items-center gap-2">
+                                      {/* Optional: Add a subtle icon for the lead payer */}
+                                      {isHighest && <Crown className="w-3 h-3 text-primary" />}
+                                      <SelectValue />
+                                    </div>
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {group.participants.map(({ id, name }) => (
+                                    <SelectItem 
+                                      key={id} 
+                                      value={id}
+                                      disabled={getIsParticipantPaying(id, index)}
+                                    >
+                                      {name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name={`paidBy.${index}.amount`}
+                          render={({ field }) => (
+                            <FormItem className="w-32 space-y-0">
+                              <div className="flex items-center">
+                                <span className={cn(
+                                  "mr-2 text-sm transition-colors",
+                                  isHighest ? "text-primary font-bold" : "text-muted-foreground"
+                                )}>
+                                  {group.currency}
+                                </span>
+                                <FormControl>
+                                  <CalculatorInput
+                                    className={cn("text-base", isHighest && "border-primary/30 font-medium")}
+                                    placeholder="0.00"
+                                    {...field}
+                                    onValueChange={(val) => {
+                                      // Use the synchronized handler we discussed in the previous step
+                                      handlePayerAmountChange(index, val);
+                                    }}
+                                  />
+                                </FormControl>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {payerFields.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removePayer(index)}
+                            className="shrink-0 hover:bg-destructive/10"
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
                 
                 <div className="flex justify-between items-center mt-2">
@@ -718,6 +806,16 @@ export function ExpenseForm({
                 )}
                 </div>
             </div>
+
+            <div className="flex items-center justify-end space-x-2 my-4">
+              <Label htmlFor="itemize-mode" className="text-sm text-muted-foreground">Itemize Mode</Label>
+              <Switch
+                id="itemize-mode"
+                checked={isItemized}
+                onCheckedChange={setIsItemized}
+              />
+            </div>
+
 
             {!isMultiPayer && (
               <>
@@ -946,147 +1044,164 @@ export function ExpenseForm({
             />
           </CardContent>
         </Card>
-        <Card className="mt-4">
-          <CardHeader>
-            <CardTitle className="flex justify-between">
-              <span>{t(`${sExpense}.paidFor.title`)}</span>
-              <Button
-                variant="link"
-                type="button"
-                className="-my-2 -mx-4"
-                onClick={() => {
-                  const currentPaidFor = form.getValues('paidFor')
-                  const allSelected =
-                    currentPaidFor.length === group.participants.length
-                  const newPaidFor = allSelected
-                    ? []
-                    : group.participants.map((p) => {
-                        const existing = currentPaidFor.find(
-                          (pf) => pf.participant === p.id,
-                        )
-                        return {
-                          participant: p.id,
-                          shares: existing?.shares ?? '1',
-                        }
-                      })
-                  form.setValue('paidFor', newPaidFor as any, {
-                    shouldDirty: true,
-                    shouldTouch: true,
-                    shouldValidate: true,
-                  })
-                  if (!allSelected) {
-                    setManuallyEditedParticipants(new Set())
-                  }
-                }}
-              >
-                {form.watch('paidFor').length === group.participants.length ? (
-                  <>{t('selectNone')}</>
-                ) : (
-                  <>{t('selectAll')}</>
-                )}
-              </Button>
-            </CardTitle>
-            <CardDescription>
-              {t(`${sExpense}.paidFor.description`)}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {/* 
-               We bind the FormField to "paidFor" (the array root).
-            */}
-            <FormField
-              control={form.control}
-              name="paidFor"
-              render={({ fieldState }) => {
-                return (
-                  <FormItem className="sm:order-4 row-span-2 space-y-0">
-                      <PaidForList
-                          form={form}
-                          group={group}
-                          groupCurrency={groupCurrency}
-                          totalAmount={totalAmount}
-                          splitMode={splitMode}
-                          manuallyEditedParticipants={manuallyEditedParticipants}
-                          setManuallyEditedParticipants={setManuallyEditedParticipants}
-                          recalculateByAmount={recalculateByAmount}
-                      />
-                      <FormMessage />
-                  </FormItem>
-                )
-              }}
-            />
-
-            <Collapsible
-              className="mt-5"
-              defaultOpen={splitMode !== 'EVENLY'}
-            >
-              <CollapsibleTrigger asChild>
-                <Button variant="link" type="button" className="-mx-4">
-                  {t('advancedOptions')}
+        {isItemized ? (
+          <Card className="mt-4 border-dashed border-2">
+            <CardHeader>
+              <CardTitle>Itemization</CardTitle>
+              <CardDescription>Break down the receipt. Totals will be auto-calculated.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ItemizationBuilder 
+                group={group} 
+                currency={groupCurrency}
+                totalAmount={totalAmount}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          // Standard "Paid For" Card
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="flex justify-between">
+                <span>{t(`${sExpense}.paidFor.title`)}</span>
+                <Button
+                  variant="link"
+                  type="button"
+                  className="-my-2 -mx-4"
+                  onClick={() => {
+                    const currentPaidFor = form.getValues('paidFor')
+                    const allSelected =
+                      currentPaidFor.length === group.participants.length
+                    const newPaidFor = allSelected
+                      ? []
+                      : group.participants.map((p) => {
+                          const existing = currentPaidFor.find(
+                            (pf) => pf.participant === p.id,
+                          )
+                          return {
+                            participant: p.id,
+                            shares: existing?.shares ?? '1',
+                          }
+                        })
+                    form.setValue('paidFor', newPaidFor as any, {
+                      shouldDirty: true,
+                      shouldTouch: true,
+                      shouldValidate: true,
+                    })
+                    if (!allSelected) {
+                      setManuallyEditedParticipants(new Set())
+                    }
+                  }}
+                >
+                  {form.watch('paidFor').length === group.participants.length ? (
+                    <>{t('selectNone')}</>
+                  ) : (
+                    <>{t('selectAll')}</>
+                  )}
                 </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="grid sm:grid-cols-2 gap-6 pt-3">
-                  <FormField
-                    control={form.control}
-                    name="splitMode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('SplitModeField.label')}</FormLabel>
-                        <FormControl>
-                          <Select
-                            onValueChange={handleSplitModeChange}
-                            defaultValue={field.value}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="EVENLY">
-                                {t('SplitModeField.evenly')}
-                              </SelectItem>
-                              <SelectItem value="BY_SHARES">
-                                {t('SplitModeField.byShares')}
-                              </SelectItem>
-                              <SelectItem value="BY_PERCENTAGE">
-                                {t('SplitModeField.byPercentage')}
-                              </SelectItem>
-                              <SelectItem value="BY_AMOUNT">
-                                {t('SplitModeField.byAmount')}
-                              </SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </FormControl>
-                        <FormDescription>
-                          {t(`${sExpense}.splitModeDescription`)}
-                        </FormDescription>
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="saveDefaultSplittingOptions"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row gap-2 items-center space-y-0 pt-2">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                        <div>
-                          <FormLabel>
-                            {t('SplitModeField.saveAsDefault')}
-                          </FormLabel>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </CardContent>
-        </Card>
+              </CardTitle>
+              <CardDescription>
+                {t(`${sExpense}.paidFor.description`)}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* 
+                We bind the FormField to "paidFor" (the array root).
+              */}
+              <FormField
+                control={form.control}
+                name="paidFor"
+                render={({ fieldState }) => {
+                  return (
+                    <FormItem className="sm:order-4 row-span-2 space-y-0">
+                        <PaidForList
+                            form={form}
+                            group={group}
+                            groupCurrency={groupCurrency}
+                            totalAmount={totalAmount}
+                            splitMode={splitMode}
+                            manuallyEditedParticipants={manuallyEditedParticipants}
+                            setManuallyEditedParticipants={setManuallyEditedParticipants}
+                            recalculateByAmount={recalculateByAmount}
+                        />
+                        <FormMessage />
+                    </FormItem>
+                  )
+                }}
+              />
+
+              <Collapsible
+                className="mt-5"
+                defaultOpen={splitMode !== 'EVENLY'}
+              >
+                <CollapsibleTrigger asChild>
+                  <Button variant="link" type="button" className="-mx-4">
+                    {t('advancedOptions')}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="grid sm:grid-cols-2 gap-6 pt-3">
+                    <FormField
+                      control={form.control}
+                      name="splitMode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>{t('SplitModeField.label')}</FormLabel>
+                          <FormControl>
+                            <Select
+                              onValueChange={handleSplitModeChange}
+                              defaultValue={field.value}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="EVENLY">
+                                  {t('SplitModeField.evenly')}
+                                </SelectItem>
+                                <SelectItem value="BY_SHARES">
+                                  {t('SplitModeField.byShares')}
+                                </SelectItem>
+                                <SelectItem value="BY_PERCENTAGE">
+                                  {t('SplitModeField.byPercentage')}
+                                </SelectItem>
+                                <SelectItem value="BY_AMOUNT">
+                                  {t('SplitModeField.byAmount')}
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </FormControl>
+                          <FormDescription>
+                            {t(`${sExpense}.splitModeDescription`)}
+                          </FormDescription>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="saveDefaultSplittingOptions"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row gap-2 items-center space-y-0 pt-2">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                          <div>
+                            <FormLabel>
+                              {t('SplitModeField.saveAsDefault')}
+                            </FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            </CardContent>
+          </Card>
+        )}
         {runtimeFeatureFlags.enableExpenseDocuments && (
           <Card className="mt-4">
             <CardHeader>
@@ -1201,19 +1316,21 @@ function PaidForList({
 
     // 2. Temporarily update the specific row to the new value
     let currentPaidFor = form.getValues('paidFor').map((p: any) => 
-        p.participant === participantId 
-        ? { ...p, shares: enforceCurrencyPattern(newValue) }
+      p.participant === participantId 
+        ? { ...p, shares: newValue } // Keep as string for the input
         : p
-    )
+    );
 
     // 3. If in BY_AMOUNT mode, trigger the redistribution logic synchronously
     //    so the user sees the numbers balance out as they type.
     if (splitMode === 'BY_AMOUNT') {
-        currentPaidFor = recalculateByAmount(totalAmount, currentPaidFor, newEditedSet)
+      currentPaidFor = recalculateByAmount(totalAmount, currentPaidFor, newEditedSet);
     }
-    
+
     // 4. Update form
     form.setValue('paidFor', currentPaidFor, { shouldValidate: true, shouldDirty: true })
+
+    form.trigger('paidBy');
   }
 
   return (

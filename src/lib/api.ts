@@ -8,6 +8,7 @@ import {
 } from '@prisma/client'
 import { nanoid } from 'nanoid'
 import { calculateNextDate } from './recurring-expenses'
+import { amountAsMinorUnits, getCurrencyFromGroup } from './utils'
 
 export function randomId(size?: number) {
   return nanoid(size)
@@ -42,6 +43,8 @@ export async function createExpense(
   const group = await getGroup(groupId)
   if (!group) throw new Error(`Invalid group ID: ${groupId}`)
 
+  const groupCurrency = getCurrencyFromGroup(group)
+
   // Validate participants
   const allParticipantIds = new Set([
     ...expenseFormValues.paidBy.map(p => p.participant),
@@ -52,6 +55,13 @@ export async function createExpense(
     if (!group.participants.some((p) => p.id === participant))
       throw new Error(`Invalid participant ID: ${participant}`)
   }
+
+  const itemData = expenseFormValues.items?.map(item => ({
+    id: randomId(),
+    name: item.name,
+    price: amountAsMinorUnits(Number(item.price), groupCurrency),
+    participantIds: item.participantIds
+  })) || []
 
   const expenseId = randomId()
   await logActivity(groupId, ActivityType.CREATE_EXPENSE, {
@@ -74,7 +84,7 @@ export async function createExpense(
       groupId,
       expenseDate: expenseFormValues.expenseDate,
       categoryId: expenseFormValues.category,
-      amount: expenseFormValues.amount, // This is calculated in Zod transform
+      amount: amountAsMinorUnits(Number(expenseFormValues.amount), groupCurrency),
       originalAmount: expenseFormValues.originalAmount,
       originalCurrency: expenseFormValues.originalCurrency,
       conversionRate: expenseFormValues.conversionRate,
@@ -92,19 +102,27 @@ export async function createExpense(
         createMany: {
           data: expenseFormValues.paidBy.map(pb => ({
             participantId: pb.participant,
-            amount: pb.amount
+            amount: amountAsMinorUnits(Number(pb.amount), groupCurrency)
           }))
         }
       },
       paidFor: {
         createMany: {
-          data: expenseFormValues.paidFor.map((paidFor) => ({
-            participantId: paidFor.participant,
-            shares: paidFor.shares,
+          data: expenseFormValues.paidFor.map((pf) => ({
+            participantId: pf.participant,
+            // Shares are stored as integers (cents if splitMode is BY_AMOUNT)
+            shares: expenseFormValues.splitMode === 'BY_AMOUNT' 
+              ? amountAsMinorUnits(Number(pf.shares), groupCurrency)
+              : Math.round(Number(pf.shares) * 100),
           })),
         },
       },
       isReimbursement: expenseFormValues.isReimbursement,
+      items: {
+        createMany: {
+          data: itemData
+        }
+      },
       documents: {
         createMany: {
           data: expenseFormValues.documents.map((doc) => ({
@@ -169,6 +187,8 @@ export async function updateExpense(
 ) {
   const group = await getGroup(groupId)
   if (!group) throw new Error(`Invalid group ID: ${groupId}`)
+
+  const groupCurrency = getCurrencyFromGroup(group)
   
   const existingExpense = await getExpense(groupId, expenseId)
   if (!existingExpense) throw new Error(`Invalid expense ID: ${expenseId}`)
@@ -215,11 +235,19 @@ export async function updateExpense(
     existingExpense.expenseDate,
   )
 
+  const itemData = expenseFormValues.items?.map(item => ({
+    id: item.id || randomId(),
+    name: item.name,
+    price: amountAsMinorUnits(Number(item.price), groupCurrency),
+    participantIds: item.participantIds,
+    expenseId // needed for createMany
+  })) || []
+
   return prisma.expense.update({
     where: { id: expenseId },
     data: {
       expenseDate: expenseFormValues.expenseDate,
-      amount: expenseFormValues.amount,
+      amount: amountAsMinorUnits(Number(expenseFormValues.amount), groupCurrency),
       originalAmount: expenseFormValues.originalAmount,
       originalCurrency: expenseFormValues.originalCurrency,
       conversionRate: expenseFormValues.conversionRate,
@@ -228,14 +256,12 @@ export async function updateExpense(
       splitMode: expenseFormValues.splitMode,
       recurrenceRule: expenseFormValues.recurrenceRule,
       paidBy: {
-        deleteMany: {
-            expenseId: expenseId
-        },
+        deleteMany: { expenseId },
         createMany: {
-            data: expenseFormValues.paidBy.map(pb => ({
-                participantId: pb.participant,
-                amount: pb.amount
-            }))
+          data: expenseFormValues.paidBy.map(pb => ({
+            participantId: pb.participant,
+            amount: amountAsMinorUnits(Number(pb.amount), groupCurrency)
+          }))
         }
       },
       paidFor: {
@@ -248,7 +274,9 @@ export async function updateExpense(
           )
           .map((paidFor) => ({
             participantId: paidFor.participant,
-            shares: paidFor.shares,
+            shares: expenseFormValues.splitMode === 'BY_AMOUNT' 
+              ? amountAsMinorUnits(Number(paidFor.shares), groupCurrency)
+              : Math.round(Number(paidFor.shares) * 100),
           })),
         update: expenseFormValues.paidFor.map((paidFor) => ({
           where: {
@@ -258,7 +286,9 @@ export async function updateExpense(
             },
           },
           data: {
-            shares: paidFor.shares,
+            shares: expenseFormValues.splitMode === 'BY_AMOUNT' 
+              ? amountAsMinorUnits(Number(paidFor.shares), groupCurrency)
+              : Math.round(Number(paidFor.shares) * 100),
           },
         })),
         deleteMany: existingExpense.paidFor.filter(
@@ -284,6 +314,14 @@ export async function updateExpense(
         delete: isDeleteRecurrenceExpenseLink,
       },
       isReimbursement: expenseFormValues.isReimbursement,
+      items: {
+        deleteMany: {}, // Clear old items
+        createMany: {
+          data: itemData.map(({ id, name, price, participantIds }) => ({
+            id, name, price, participantIds
+          }))
+        }
+      },
       documents: {
         connectOrCreate: expenseFormValues.documents.map((doc) => ({
           create: doc,
@@ -406,6 +444,7 @@ export async function getExpense(groupId: string, expenseId: string) {
       category: true,
       documents: true,
       recurringExpenseLink: true,
+      items: true,
     },
   })
 }

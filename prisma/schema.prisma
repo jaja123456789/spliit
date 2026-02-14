@@ -64,6 +64,17 @@ model Expense {
   recurrenceRule         RecurrenceRule?       @default(NONE)
   recurringExpenseLink   RecurringExpenseLink?
   recurringExpenseLinkId String?
+
+  items                  ExpenseItem[]
+}
+
+model ExpenseItem {
+  id             String   @id
+  name           String
+  price          Int      // Amount in minor units (cents)
+  expenseId      String
+  expense        Expense  @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  participantIds String[] // IDs of participants splitting this item
 }
 
 model ExpensePaidBy {
