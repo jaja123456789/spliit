@@ -1,5 +1,4 @@
 'use client'
-
 import { CategoryIcon } from '@/app/groups/[groupId]/expenses/category-icon'
 import {
   ReceiptExtractedInfo,
@@ -41,12 +40,11 @@ import { useRouter } from 'next/navigation'
 import { PropsWithChildren, ReactNode, useState } from 'react'
 import { useCurrentGroup } from '../current-group-context'
 
-const MAX_FILE_SIZE = 5 * 1024 ** 2
+const MAX_FILE_SIZE = 10 * 1024 ** 2
 
 export function CreateFromReceiptButton() {
   const t = useTranslations('CreateFromReceipt')
   const isDesktop = useMediaQuery('(min-width: 640px)')
-
   const DialogOrDrawer = isDesktop
     ? CreateFromReceiptDialog
     : CreateFromReceiptDrawer
@@ -81,7 +79,6 @@ function ReceiptDialogContent() {
   const { group } = useCurrentGroup()
   const { data: categoriesData } = trpc.categories.list.useQuery()
   const categories = categoriesData?.categories
-
   const locale = useLocale()
   const t = useTranslations('CreateFromReceipt')
   const [pending, setPending] = useState(false)
@@ -90,8 +87,66 @@ function ReceiptDialogContent() {
   const router = useRouter()
   const [receiptInfo, setReceiptInfo] = useState<
     | null
-    | (ReceiptExtractedInfo & { url: string; width?: number; height?: number })
+    | (ReceiptExtractedInfo & { url?: string; width?: number; height?: number; blobUrl: string })
   >(null)
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = () => {
+        const result = reader.result as string
+        const base64 = result.split(',')[1]
+        resolve(base64)
+      }
+      reader.onerror = reject
+    })
+  }
+
+  const compressImage = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.readAsDataURL(file)
+      reader.onload = (event) => {
+        const img = document.createElement('img')
+        img.src = event.target?.result as string
+        img.onload = () => {
+          const canvas = document.createElement('canvas')
+          // Resize large images to max 1024px dimension for faster AI processing
+          const MAX_DIMENSION = 1024
+          let width = img.width
+          let height = img.height
+
+          if (width > height) {
+            if (width > MAX_DIMENSION) {
+              height *= MAX_DIMENSION / width
+              width = MAX_DIMENSION
+            }
+          } else {
+            if (height > MAX_DIMENSION) {
+              width *= MAX_DIMENSION / height
+              height = MAX_DIMENSION
+            }
+          }
+
+          canvas.width = width
+          canvas.height = height
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            reject(new Error('Could not get canvas context'))
+            return
+          }
+          
+          ctx.drawImage(img, 0, 0, width, height)
+          // Compress to JPEG with 0.7 quality
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
+          resolve(dataUrl.split(',')[1]) // Return base64 without prefix
+        }
+        img.onerror = (error) => reject(error)
+      }
+      reader.onerror = (error) => reject(error)
+    })
+  }
 
   const handleFileChange = async (file: File) => {
     if (file.size > MAX_FILE_SIZE) {
@@ -106,16 +161,31 @@ function ReceiptDialogContent() {
       return
     }
 
-    const upload = async () => {
+    const process = async () => {
       try {
         setPending(true)
-        console.log('Uploading image…')
-        let { url } = await uploadToS3(file)
-        console.log('Extracting information from receipt…')
-        const { amount, categoryId, date, title } =
-          await extractExpenseInformationFromImage(url)
+        const blobUrl = URL.createObjectURL(file)
         const { width, height } = await getImageData(file)
-        setReceiptInfo({ amount, categoryId, date, title, url, width, height })
+        
+        // Parallelize upload and analysis
+        const compressedBase64 = await compressImage(file)
+        const analysisPromise = extractExpenseInformationFromImage(compressedBase64, "image/jpeg")
+        
+        // Attempt upload but don't crash if it fails (feature should arguably work even without S3)
+        const uploadPromise = uploadToS3(file).catch(err => {
+          console.warn("S3 Upload failed:", err)
+          return null
+        })
+
+        const [info, uploadResult] = await Promise.all([analysisPromise, uploadPromise])
+        
+        setReceiptInfo({ 
+          ...info, 
+          url: uploadResult?.url, 
+          width, 
+          height, 
+          blobUrl 
+        })
       } catch (err) {
         console.error(err)
         toast({
@@ -125,7 +195,7 @@ function ReceiptDialogContent() {
           action: (
             <ToastAction
               altText={t('ErrorToast.retry')}
-              onClick={() => upload()}
+              onClick={() => process()}
             >
               {t('ErrorToast.retry')}
             </ToastAction>
@@ -135,23 +205,24 @@ function ReceiptDialogContent() {
         setPending(false)
       }
     }
-    upload()
+    process()
   }
 
   const receiptInfoCategory =
     (receiptInfo?.categoryId &&
-      categories?.find((c) => String(c.id) === receiptInfo.categoryId)) ||
+      categories?.find((c) => String(c.id) === String(receiptInfo.categoryId))) ||
     null
 
   return (
     <div className="prose prose-sm dark:prose-invert">
       <p>{t('Dialog.body')}</p>
       <div>
-        <FileInput onChange={handleFileChange} accept="image/jpeg,image/png" />
+        {/* @ts-ignore */}
+        <FileInput onChange={handleFileChange} accept="image/*" capture="environment" />
         <div className="grid gap-x-4 gap-y-2 grid-cols-3">
           <Button
             variant="secondary"
-            className="row-span-3 w-full h-full relative"
+            className="row-span-4 w-full h-full relative"
             title="Create expense from receipt"
             onClick={openFileDialog}
             disabled={pending}
@@ -161,7 +232,7 @@ function ReceiptDialogContent() {
             ) : receiptInfo ? (
               <div className="absolute top-2 left-2 bottom-2 right-2">
                 <Image
-                  src={receiptInfo.url}
+                  src={receiptInfo.blobUrl}
                   width={receiptInfo.width}
                   height={receiptInfo.height}
                   className="w-full h-full m-0 object-contain drop-shadow-lg"
@@ -169,14 +240,14 @@ function ReceiptDialogContent() {
                 />
               </div>
             ) : (
-              <span className="text-xs sm:text-sm text-muted-foreground">
+              <span className="text-xs sm:text-sm text-muted-foreground text-center">
                 {t('Dialog.selectImage')}
               </span>
             )}
           </Button>
           <div className="col-span-2">
             <strong>{t('Dialog.titleLabel')}</strong>
-            <div>{receiptInfo ? receiptInfo.title ?? <Unknown /> : '…'}</div>
+            <div className="truncate">{receiptInfo ? receiptInfo.title ?? <Unknown /> : '…'}</div>
           </div>
           <div className="col-span-2">
             <strong>{t('Dialog.categoryLabel')}</strong>
@@ -188,9 +259,9 @@ function ReceiptDialogContent() {
                       category={receiptInfoCategory}
                       className="inline w-4 h-4 mr-2"
                     />
-                    <span className="mr-1">{receiptInfoCategory.grouping}</span>
+                    <span className="mr-1 truncate">{receiptInfoCategory.grouping}</span>
                     <ChevronRight className="inline w-3 h-3 mr-1" />
-                    <span>{receiptInfoCategory.name}</span>
+                    <span className="truncate">{receiptInfoCategory.name}</span>
                   </div>
                 ) : (
                   <Unknown />
@@ -239,6 +310,16 @@ function ReceiptDialogContent() {
               )}
             </div>
           </div>
+          <div className="col-span-2">
+            <strong>Items found</strong>
+            <div>
+              {receiptInfo?.items?.length ? (
+                <Badge variant="outline">{receiptInfo.items.length} items</Badge>
+              ) : (
+                receiptInfo ? <span className="text-muted-foreground italic">None</span> : '…'
+              )}
+            </div>
+          </div>
         </div>
       </div>
       <p>{t('Dialog.editNext')}</p>
@@ -247,17 +328,21 @@ function ReceiptDialogContent() {
           disabled={pending || !receiptInfo}
           onClick={() => {
             if (!receiptInfo || !group) return
-            router.push(
-              `/groups/${group.id}/expenses/create?amount=${
-                receiptInfo.amount
-              }&categoryId=${receiptInfo.categoryId}&date=${
-                receiptInfo.date
-              }&title=${encodeURIComponent(
-                receiptInfo.title ?? '',
-              )}&imageUrl=${encodeURIComponent(receiptInfo.url)}&imageWidth=${
-                receiptInfo.width
-              }&imageHeight=${receiptInfo.height}`,
-            )
+            
+            // Only attach documents if upload succeeded
+            const documents = receiptInfo.url ? [{
+              id: crypto.randomUUID(),
+              url: receiptInfo.url,
+              width: receiptInfo.width,
+              height: receiptInfo.height
+            }] : []
+
+            const receiptData = {
+              ...receiptInfo,
+              documents
+            }
+            sessionStorage.setItem('pendingReceiptData', JSON.stringify(receiptData))
+            router.push(`/groups/${group.id}/expenses/create?fromReceipt=true`)
           }}
         >
           {t('Dialog.continue')}

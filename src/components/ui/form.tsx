@@ -149,10 +149,14 @@ const FormMessage = React.forwardRef<
   const { error, formMessageId } = useFormField()
   let body
   if (error) {
-    body = String(error?.message)
-    const translation = (messages.SchemaErrors as any)[body]
-    if (translation) {
-      body = translation
+    if(Array.isArray(error)){
+      body = String("Please check all inputs")
+    }else{
+      body = String(error?.message)
+      const translation = (messages.SchemaErrors as any)[body]
+      if (translation) {
+        body = translation
+      }
     }
   } else {
     body = children

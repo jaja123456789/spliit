@@ -466,7 +466,8 @@
     "paidForMin1": "The expense must be paid for at least one participant.",
     "noZeroShares": "All shares must be higher than 0.",
     "amountSum": "Sum of amounts must equal the expense amount.",
-    "percentageSum": "Sum of percentages must equal 100."
+    "percentageSum": "Sum of percentages must equal 100.",
+    "itemTotalMismatch": "Sum of item prices must match expense total."
   },
   "Categories": {
     "search": "Search category...",

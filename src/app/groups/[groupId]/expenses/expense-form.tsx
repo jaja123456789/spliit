@@ -40,7 +40,6 @@ import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label' // <--- Add this line
 import { Locale } from '@/i18n/request'
-import { randomId } from '@/lib/api'
 import { defaultCurrencyList, getCurrency } from '@/lib/currency'
 import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { useActiveUser, useCurrencyRate } from '@/lib/hooks'
@@ -63,7 +62,7 @@ import { RecurrenceRule } from '@prisma/client'
 import { Plus, Save, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { match } from 'ts-pattern'
@@ -312,6 +311,11 @@ export function ExpenseForm({
     name: 'paidBy',
   })
 
+  const { fields: itemFields, append: itemAppend, remove: itemRemove, replace: itemReplace } = useFieldArray({
+    control: form.control,
+    name: 'items',
+  })
+
   // Watches
   const paidByValues = useWatch({ control: form.control, name: 'paidBy' })
   const splitMode = useWatch({ control: form.control, name: 'splitMode' })
@@ -358,7 +362,7 @@ export function ExpenseForm({
     return new Set()
   })
 
-  const [isItemized, setIsItemized] = useState(form.getValues('items').length > 0)
+  const [isItemized, setIsItemized] = useState(form.getValues('items')?.length > 0)
 
   const getIsParticipantPaying = (participantId: string, currentIndex: number) => {
     return paidByValues.some((field, index) => 
@@ -413,22 +417,24 @@ export function ExpenseForm({
       // Remainder units to distribute
       let remainderUnits = remainingUnits - (baseShareUnits * count)
 
+      let seed = Math.abs(Math.round(currentTotal * 100))
+
       newPaidFor = newPaidFor.map((participant, idx) => {
         if (!editedSet.has(participant.participant)) {
           let currentUnits = baseShareUnits
-
-          // Distribute remainder 1 unit at a time
-          let shouldDistribute = idx > (newPaidFor.length - 1 - remainderUnits) || Math.random() < 0.5
-          if (shouldDistribute && Math.abs(remainderUnits) > 0) {
+          
+          // Distribute remainder pseudo-randomly but deterministically based on input
+          // This prevents the "cursor jumping" or values changing while typing
+          // but satisfies the "random participant" requirement visually.
+          const isTarget = (seed + idx) % count < Math.abs(remainderUnits)
+          
+          if (isTarget) {
             if (remainderUnits > 0) {
               currentUnits += 1
-              remainderUnits -= 1
             } else {
               currentUnits -= 1
-              remainderUnits += 1
             }
           }
-          
           return {
             ...participant,
             shares: (currentUnits / precision).toFixed(groupCurrency.decimal_digits) as any
@@ -442,9 +448,7 @@ export function ExpenseForm({
   }, [groupCurrency.decimal_digits])
 
   const handlePayerAmountChange = (index: number, newValue: string) => {
-    const numericValue = Number(newValue) || 0;
-    
-    setValue(`paidBy.${index}.amount`, numericValue, { 
+    setValue(`paidBy.${index}.amount`, newValue as any, { 
       shouldDirty: true, 
       shouldTouch: true 
     });
@@ -455,8 +459,8 @@ export function ExpenseForm({
     } else if (splitMode === 'BY_AMOUNT') {
       const currentPaidFor = getValues('paidFor');
       const currentPayers = getValues('paidBy');
+      // Recalculate total. Note: we need to handle string inputs safely here for calculation
       const newTotal = currentPayers.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-      
       const redistributed = recalculateByAmount(newTotal, currentPaidFor, manuallyEditedParticipants);
       setValue('paidFor', redistributed, { shouldValidate: true });
     }
@@ -466,6 +470,46 @@ export function ExpenseForm({
   };
 
   // --- Effects ---
+
+  useEffect(() => {
+    if (isCreate && searchParams.get('fromReceipt') === 'true') {
+      try {
+        const storedData = sessionStorage.getItem('pendingReceiptData')
+        if (storedData) {
+          const data = JSON.parse(storedData)
+          sessionStorage.removeItem('pendingReceiptData');
+
+          const formItems = (data.items || []).map((item: any) => ({
+            name: item.name || 'Unknown Item',
+            price: Number(item.price) || 0,
+            participantIds: [] 
+          }))
+
+          const currentValues = form.getValues()
+
+          // Reset the WHOLE form at once
+          form.reset({
+            ...currentValues, // Keep current values
+            title: data.title || '',
+            expenseDate: data.date ? new Date(data.date) : new Date(),
+            category: data.categoryId ? Number(data.categoryId) : undefined,
+            documents: data.documents || [],
+            items: formItems, // This replaces useFieldArray automatically
+            paidBy: [
+              {
+                ...currentValues.paidBy?.[0], // Keep the userId or other props
+                amount: Number(data.amount) || 0
+              }
+            ]
+          })
+
+          setIsItemized(formItems.length > 0)
+        }
+      } catch (e) {
+        console.error("Failed to load receipt data", e)
+      }
+    }
+  }, [isCreate, searchParams, itemReplace])
 
   useEffect(() => {
     if (totalAmount < 0) form.setValue('isReimbursement', false)
@@ -790,7 +834,16 @@ export function ExpenseForm({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={handleAddPayer}
+                        //onClick={handleAddPayer}
+                        onClick={ () => {
+                          itemAppend({ 
+                              name: 'Adjustment', 
+                              price: Number("1.0"),
+                              participantIds: group.participants.map(p => p.id) 
+                          })
+                          trigger('items')
+                          }
+                        }
                         className="text-primary"
                     >
                         <Plus className="w-4 h-4 mr-2" />
@@ -1055,6 +1108,9 @@ export function ExpenseForm({
                 group={group} 
                 currency={groupCurrency}
                 totalAmount={totalAmount}
+                fields={itemFields}
+                append={itemAppend}
+                remove={itemRemove}
               />
             </CardContent>
           </Card>

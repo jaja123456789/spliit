@@ -1,15 +1,21 @@
 'use client'
+
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CalculatorInput } from '@/components/ui/calculator-input'
-import { FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form'
+import { 
+  FormControl, 
+  FormField, 
+  FormItem, 
+  FormMessage 
+} from '@/components/ui/form' // Ensure this points to your custom file
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn, formatCurrency } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { Check, Plus, Trash2, Users } from 'lucide-react'
 import { useLocale } from 'next-intl'
-import { useFieldArray, useFormContext } from 'react-hook-form'
+import { useFormContext } from 'react-hook-form'
 
 type Group = NonNullable<AppRouterOutput['groups']['get']['group']>
 
@@ -17,25 +23,33 @@ interface Props {
   group: Group
   currency: any
   totalAmount: number
+  // Lifted state props
+  fields: any[]
+  append: (value: any) => void
+  remove: (index: number) => void
 }
 
-export function ItemizationBuilder({ group, currency, totalAmount }: Props) {
+export function ItemizationBuilder({ 
+  group, 
+  currency, 
+  totalAmount, 
+  fields, 
+  append, 
+  remove 
+}: Props) {
   const { control, watch, setValue, trigger } = useFormContext()
   const locale = useLocale()
   
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: 'items',
-  })
-
-  const items = watch('items') || []
-  const currentTotal = items.reduce((sum: number, item: any) => sum + (Number(item.price) || 0), 0)
+  // We use the 'items' from watch for calculating totals dynamically, 
+  // but we iterate over 'fields' for the inputs to maintain focus/state
+  const watchedItems = watch('items') || []
+  
+  const currentTotal = watchedItems.reduce((sum: number, item: any) => sum + (Number(item.price) || 0), 0)
   const remaining = totalAmount - currentTotal
   const isBalanced = Math.abs(remaining) < 0.01
 
-  // Helper to build the personalized string
   const getPayerSummary = (selectedIds: string[]) => {
-    if (selectedIds.length === 0) return 'No one'
+    if (!selectedIds || selectedIds.length === 0) return 'No one'
     if (selectedIds.length === group.participants.length && group.participants.length > 1) return 'Everyone'
 
     const names = selectedIds
@@ -50,6 +64,7 @@ export function ItemizationBuilder({ group, currency, totalAmount }: Props) {
   return (
     <div className="sticky top-0 z-10 bg-card/95 backdrop-blur py-2 justify-between items-center mb-2 border-b">
         <div className="space-y-4">
+        {/* Header Section */}
         <div className="flex justify-between items-center mb-2">
             <div className="text-sm font-medium flex items-center gap-2">
             Receipt Items
@@ -71,129 +86,154 @@ export function ItemizationBuilder({ group, currency, totalAmount }: Props) {
             </div>
         </div>
 
+        {/* Fields Loop */}
         <div className="space-y-3">
             {fields.map((field, index) => {
-            const itemPrice = Number(items[index]?.price) || 0
-            const participantIds = items[index]?.participantIds || []
+            // Safe access to watched values for summary calculations
+            const currentItem = watchedItems[index] || {}
+            const itemPrice = Number(currentItem.price) || 0
+            const participantIds = currentItem.participantIds || []
             const perPersonAmount = participantIds.length > 0 ? itemPrice / participantIds.length : 0
             const summaryText = getPayerSummary(participantIds)
 
             return (
                 <div key={field.id} className="group relative flex flex-col gap-2 p-3 rounded-lg bg-muted/20 border hover:border-primary/40 transition-all shadow-sm">
                 <div className="flex gap-2 items-start">
+                    
+                    {/* Item Name */}
                     <div className="flex-1">
                     <FormField
                         control={control}
                         name={`items.${index}.name`}
                         render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="space-y-1">
                             <FormControl>
-                            <Input {...field} placeholder="Item name..." className="h-9 text-sm bg-background border-none shadow-none focus-visible:ring-1" />
+                            <Input 
+                                {...field} 
+                                placeholder="Item name..." 
+                                className="h-9 text-sm bg-background border-none shadow-none focus-visible:ring-1" 
+                            />
                             </FormControl>
+                            {/* Translated Error Message */}
+                            <FormMessage className="text-[10px] pl-1" />
                         </FormItem>
                         )}
                     />
                     </div>
+
+                    {/* Price Input */}
                     <div className="w-[110px]">
                     <FormField
                         control={control}
                         name={`items.${index}.price`}
                         render={({ field }) => (
-                        <FormItem className='space-y-0 flex items-center'>
-                            <span className="mr-2 text-sm text-muted-foreground">{group.currency}</span>
-                            <FormControl>
-                            <CalculatorInput 
-                                {...field} 
-                                placeholder="0.00" 
-                                inputClassName="h-9 text-sm text-right bg-background"
-                                onValueChange={(val) => {
-                                    // Update the specific field
-                                    field.onChange(val);
-                                    // Manually trigger validation on the parent 'items' array
-                                    // This forces superRefine to re-run the total check
-                                    trigger('items');
-                                    // Also trigger paidBy to clear any "Amount cannot be 0" errors
-                                    trigger('paidBy');
-                                }}
-                            />
-                            </FormControl>
+                        <FormItem className='space-y-0'>
+                            <div className="flex items-center">
+                                <span className="mr-2 text-sm text-muted-foreground">{group.currency}</span>
+                                <FormControl>
+                                <CalculatorInput 
+                                    {...field} 
+                                    placeholder="0.00" 
+                                    inputClassName="h-9 text-sm text-right bg-background"
+                                    onValueChange={(val) => {
+                                        field.onChange(val);
+                                        trigger('items');
+                                        trigger('paidBy');
+                                    }}
+                                />
+                                </FormControl>
+                            </div>
+                            {/* Translated Error Message */}
+                            <FormMessage className="text-[10px] text-right pr-1" />
                         </FormItem>
                         )}
                     />
                     </div>
                     
-                    <Popover>
-                    <PopoverTrigger asChild>
-                        <Button 
-                        variant={participantIds.length === 0 ? "outline" : "secondary"} 
-                        size="icon" 
-                        className="h-9 w-9 shrink-0 relative" 
-                        type="button"
-                        >
-                        <Users className="h-4 w-4" />
-                        {participantIds.length > 0 && participantIds.length < group.participants.length && (
-                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold border-2 border-background">
-                            {participantIds.length}
-                            </span>
-                        )}
-                        </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-56 p-2" align="end">
-                        <div className="space-y-1">
-                        <div className="flex justify-between items-center px-2 pb-2 border-b mb-1">
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Split among</span>
-                            <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-auto p-1 text-[10px] text-primary hover:bg-primary/10"
-                            onClick={() => {
-                                const allIds = group.participants.map(p => p.id);
-                                const isAllSelected = participantIds.length === group.participants.length;
-                                setValue(`items.${index}.participantIds`, isAllSelected ? [] : allIds);
-                            }}
-                            >
-                            {participantIds.length === group.participants.length ? 'Clear' : 'Select All'}
-                            </Button>
-                        </div>
-                        <FormField
-                            control={control}
-                            name={`items.${index}.participantIds`}
-                            render={({ field }) => (
-                            <div className="max-h-[200px] overflow-y-auto grid grid-cols-1 gap-0.5">
-                                {group.participants.map(participant => {
-                                const isSelected = field.value?.includes(participant.id)
-                                return (
-                                    <div 
-                                    key={participant.id}
+                    {/* Participant Popover */}
+                    <FormField
+                        control={control}
+                        name={`items.${index}.participantIds`}
+                        render={({ field }) => (
+                        <FormItem className="space-y-0">
+                            <Popover>
+                            <PopoverTrigger asChild>
+                                <FormControl>
+                                <Button 
+                                    variant={participantIds.length === 0 ? "outline" : "secondary"} 
+                                    size="icon" 
                                     className={cn(
-                                        "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-accent text-sm transition-colors",
-                                        isSelected && "bg-primary/5 font-medium text-primary"
+                                        "h-9 w-9 shrink-0 relative transition-colors",
+                                        // Conditional Red Styling
+                                        participantIds.length === 0 && "border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
+                                    )} 
+                                    type="button"
+                                >
+                                    <Users className="h-4 w-4" />
+                                    {participantIds.length > 0 && participantIds.length < group.participants.length && (
+                                    <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold border-2 border-background">
+                                        {participantIds.length}
+                                    </span>
                                     )}
+                                </Button>
+                                </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-56 p-2" align="end">
+                                <div className="space-y-1">
+                                <div className="flex justify-between items-center px-2 pb-2 border-b mb-1">
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Split among</span>
+                                    <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-auto p-1 text-[10px] text-primary hover:bg-primary/10"
                                     onClick={() => {
-                                        const current = field.value || []
-                                        const next = isSelected 
-                                        ? current.filter((id: string) => id !== participant.id)
-                                        : [...current, participant.id]
-                                        field.onChange(next)
+                                        const allIds = group.participants.map(p => p.id);
+                                        const isAllSelected = participantIds.length === group.participants.length;
+                                        setValue(`items.${index}.participantIds`, isAllSelected ? [] : allIds, { shouldValidate: true });
                                     }}
                                     >
-                                    <div className={cn(
-                                        "w-4 h-4 rounded border flex items-center justify-center transition-colors",
-                                        isSelected ? "bg-primary border-primary" : "border-muted-foreground/30 bg-background"
-                                    )}>
-                                        {isSelected && <Check className="w-3 h-3 text-primary-foreground stroke-[3]" />}
-                                    </div>
-                                    <span className="truncate">{participant.name}</span>
-                                    </div>
-                                )
-                                })}
-                            </div>
-                            )}
-                        />
-                        </div>
-                    </PopoverContent>
-                    </Popover>
+                                    {participantIds.length === group.participants.length ? 'Clear' : 'Select All'}
+                                    </Button>
+                                </div>
+                                <div className="max-h-[200px] overflow-y-auto grid grid-cols-1 gap-0.5">
+                                    {group.participants.map(participant => {
+                                    const isSelected = field.value?.includes(participant.id)
+                                    return (
+                                        <div 
+                                        key={participant.id}
+                                        className={cn(
+                                            "flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-accent text-sm transition-colors",
+                                            isSelected && "bg-primary/5 font-medium text-primary"
+                                        )}
+                                        onClick={() => {
+                                            const current = field.value || []
+                                            const next = isSelected 
+                                            ? current.filter((id: string) => id !== participant.id)
+                                            : [...current, participant.id]
+                                            field.onChange(next)
+                                        }}
+                                        >
+                                        <div className={cn(
+                                            "w-4 h-4 rounded border flex items-center justify-center transition-colors",
+                                            isSelected ? "bg-primary border-primary" : "border-muted-foreground/30 bg-background"
+                                        )}>
+                                            {isSelected && <Check className="w-3 h-3 text-primary-foreground stroke-[3]" />}
+                                        </div>
+                                        <span className="truncate">{participant.name}</span>
+                                        </div>
+                                    )
+                                    })}
+                                </div>
+                                {/* Translated Error Message inside popover */}
+                                <FormMessage className="px-2 pt-2 border-t mt-2" />
+                                </div>
+                            </PopoverContent>
+                            </Popover>
+                        </FormItem>
+                        )}
+                    />
 
+                    {/* Delete Button */}
                     <Button
                     variant="ghost"
                     size="icon"
@@ -222,6 +262,7 @@ export function ItemizationBuilder({ group, currency, totalAmount }: Props) {
             })}
         </div>
 
+        {/* Adjustment Button */}
         {!isBalanced && Math.abs(remaining) > 0.01 && (
             <div className="flex justify-center">
             <Button 
@@ -235,7 +276,6 @@ export function ItemizationBuilder({ group, currency, totalAmount }: Props) {
                     price: Number(remaining.toFixed(2)),
                     participantIds: group.participants.map(p => p.id) 
                 });
-                // Trigger validation after the state update
                 setTimeout(() => trigger(['items', 'paidBy']), 0);
                 }}
             >
@@ -244,31 +284,29 @@ export function ItemizationBuilder({ group, currency, totalAmount }: Props) {
             </div>
         )}
 
+        {/* Add Item Button */}
         <Button
             type="button"
             variant="outline"
             className="w-full border-dashed py-8 bg-background hover:bg-muted/50 transition-all flex flex-col gap-1"
             onClick={() => {
-                // If there is a remaining balance, default the new item to that price
                 const nextAmount = remaining > 0 ? Number(remaining.toFixed(2)) : 0
                 append({ 
-                    name: '', // Leave name empty so user focuses there
+                    name: '', 
                     price: nextAmount,
                     participantIds: group.participants.map(p => p.id) 
                 })
-                
-                // IMPROVEMENT: After appending, we can focus the new input 
-                // (requires a small ref tweak, but even without it, this is better)
             }}
         >
             <Plus className="w-5 h-5" />
             <span className="text-xs uppercase font-bold tracking-widest text-muted-foreground">Add Item</span>
         </Button>
 
+        {/* Global Items Array Error (e.g. "Items must sum to total") */}
         <FormField
             control={control}
             name="items"
-            render={() => <FormMessage />}
+            render={() => <FormMessage className="mt-2" />}
         />
         </div>
     </div>

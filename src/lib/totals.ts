@@ -97,50 +97,38 @@ export function calculateShares(
     return result
   }
 
-  const fractions: Array<{ id: string; frac: Decimal }> = []
-  expense.paidFor.forEach((pf) => {
-    const shares = new Decimal(pf.shares ?? 0)
-    let part = new Decimal(0)
-    switch (expense.splitMode) {
-      case 'EVENLY':
-        if (expense.paidFor.length > 0)
-          part = amount.div(expense.paidFor.length)
-        break
-      case 'BY_AMOUNT':
-        part = shares
-        break
-      case 'BY_PERCENTAGE':
-        part = amount.mul(shares).div(10000)
-        break
-      case 'BY_SHARES':
-        if (totalShares.gt(0)) part = amount.mul(shares).div(totalShares)
-        break
-      default:
-        part = new Decimal(0)
-    }
-    const rounded = part.gte(0) ? part.floor() : part.ceil()
-    const frac = part.minus(rounded).abs()
-    fractions.push({ id: pf.participant.id, frac })
-  })
-
   if (!diff.isZero() && participantOrder.length > 0) {
     const direction = diff.gt(0) ? 1 : -1
     let remaining = diff.abs().toNumber()
-    const orderIndex = new Map<string, number>(
-      participantOrder.map((id, idx) => [id, idx]),
-    )
-    fractions.sort((a, b) => {
-      const cmp = b.frac.comparedTo(a.frac)
-      if (cmp !== 0) return cmp
-      return (orderIndex.get(b.id) ?? 0) - (orderIndex.get(a.id) ?? 0)
-    })
-    for (let i = 0; i < remaining; i++) {
-      const target = fractions[i % fractions.length]?.id
-      if (!target) break
-      result[target] = (result[target] ?? 0) + direction
+    
+    // Simple string hash function
+    const getHash = (str: string) => {
+      let hash = 0;
+      for (let i = 0; i < str.length; i++) {
+        hash = ((hash << 5) - hash) + str.charCodeAt(i);
+        hash |= 0;
+      }
+      return Math.abs(hash);
     }
-    diff = new Decimal(0)
+
+    // Seed based on amount + participant list. 
+    // This ensures if the expense doesn't change, the "random" person stays the same.
+    const seed = amount.toString() + participantOrder.join('') + (expense.expenseDate?.toISOString() || '');
+    let hash = getHash(seed);
+
+    while (remaining > 0) {
+      // Pick a participant based on the hash
+      const targetIndex = hash % participantOrder.length
+      const targetId = participantOrder[targetIndex]
+      
+      result[targetId] = (result[targetId] ?? 0) + direction
+      remaining--
+      
+      // Mutate hash for next iteration (in case remaining > 1)
+      hash = getHash(hash.toString())
+    }
   }
+
   return result
 }
 

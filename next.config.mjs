@@ -31,6 +31,7 @@ const nextConfig = {
   experimental: {
     serverActions: {
         allowedOrigins: ['localhost:3000'],
+        bodySizeLimit: '10mb',
     },
   },
   basePath: '/spliit'
