@@ -834,16 +834,7 @@ export function ExpenseForm({
                         type="button"
                         variant="ghost"
                         size="sm"
-                        //onClick={handleAddPayer}
-                        onClick={ () => {
-                          itemAppend({ 
-                              name: 'Adjustment', 
-                              price: Number("1.0"),
-                              participantIds: group.participants.map(p => p.id) 
-                          })
-                          trigger('items')
-                          }
-                        }
+                        onClick={handleAddPayer}
                         className="text-primary"
                     >
                         <Plus className="w-4 h-4 mr-2" />
@@ -1457,7 +1448,7 @@ function PaidForList({
                   <div className="space-y-0">
                     <div className="flex gap-1 items-center">
                       {splitMode === 'BY_AMOUNT' && (
-                        <span className={cn('text-sm text-muted')}>
+                        <span className={cn('text-sm text-muted-foreground')}>
                           {group.currency}
                         </span>
                       )}
@@ -1474,7 +1465,7 @@ function PaidForList({
                         'BY_SHARES',
                         'BY_PERCENTAGE',
                       ].includes(splitMode) && (
-                        <span className={cn('text-sm text-muted')}>
+                        <span className={cn('text-sm text-muted-foreground')}>
                           {match(splitMode)
                             .with('BY_SHARES', () => <>{t('shares')}</>)
                             .with('BY_PERCENTAGE', () => <>%</>)

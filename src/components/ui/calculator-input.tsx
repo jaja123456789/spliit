@@ -1,4 +1,5 @@
 "use client"
+
 import * as React from "react"
 import { Calculator } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -8,12 +9,20 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import {
+  Drawer,
+  DrawerContent,
+  DrawerTrigger,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerHeader
+} from "@/components/ui/drawer"
+import {
   InputGroup,
   InputGroupInput,
   InputGroupAddon,
 } from "@/components/ui/input-group"
-// Import your existing calculator
 import { AmountCalculator } from "@/app/groups/[groupId]/expenses/amount-calculator"
+import { useMediaQuery } from '@/lib/hooks'
 
 interface CalculatorInputProps 
   extends Omit<React.ComponentProps<typeof InputGroupInput>, "onChange" | "value"> {
@@ -35,40 +44,43 @@ export function CalculatorInput({
   onBlur,
   ...props
 }: CalculatorInputProps) {
-  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false)
+  const [open, setOpen] = React.useState(false)
+  const isDesktop = useMediaQuery("(min-width: 768px)")
 
-  // 1. Handle "Apply" from the Popover Calculator
   const handleCalculatorApply = (newValue: string) => {
     onValueChange(newValue)
-    setIsPopoverOpen(false)
+    setOpen(false)
   }
 
-  // 2. Handle standard typing
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value
-    // Allow empty string to pass through so the user can clear and retype
     onValueChange(val)
   }
 
-  // 3. Handle Blur (Focus Loss)
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    // If enabled, reset to "0" if the field is left empty
     if (disallowEmpty) {
       const val = e.target.value.trim()
       if (val === "") {
         onValueChange("0")
       }
     }
-    // Forward the original onBlur event if provided
     onBlur?.(e)
   }
 
-  // 4. Safari/Mobile selection hack
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
     const target = e.currentTarget
     setTimeout(() => target.select(), 1)
     props.onFocus?.(e)
   }
+
+  // Common Calculator Component to reuse in Drawer and Popover
+  const CalculatorComponent = (
+    <AmountCalculator
+      initialValue={String(value || "")}
+      onApply={handleCalculatorApply}
+      className={isDesktop ? "border-none shadow-none" : "w-full max-w-none shadow-none border-none"}
+    />
+  )
 
   return (
     <InputGroup className={className}>
@@ -85,22 +97,41 @@ export function CalculatorInput({
         onFocus={handleFocus}
       />
       <InputGroupAddon className="pr-0" align="inline-end">
-        <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
-          <PopoverTrigger asChild>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-            >
-              <Calculator/>
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent side="right" className="w-auto p-3">
-            <AmountCalculator
-              initialValue={String(value || "")}
-              onApply={handleCalculatorApply}
-            />
-          </PopoverContent>
-        </Popover>
+        {isDesktop ? (
+          /* DESKTOP: POPOVER */
+          <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9">
+                <Calculator className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </PopoverTrigger>
+            {/* align="end" keeps it aligned to the right edge of input, avoiding off-screen to the right */}
+            <PopoverContent align="end" className="w-auto p-0">
+               {CalculatorComponent}
+            </PopoverContent>
+          </Popover>
+        ) : (
+          /* MOBILE: DRAWER */
+          <Drawer open={open} onOpenChange={setOpen}>
+            <DrawerTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-9 w-9">
+                <Calculator className="h-4 w-4 text-muted-foreground" />
+              </Button>
+            </DrawerTrigger>
+            <DrawerContent>
+                <div className="mx-auto w-full max-w-sm">
+                  {/* Visually hidden header for accessibility/screen readers */}
+                  <DrawerHeader className="sr-only">
+                    <DrawerTitle>Calculator</DrawerTitle>
+                    <DrawerDescription>Calculate amount</DrawerDescription>
+                  </DrawerHeader>
+                  <div className="p-4 pb-8 flex justify-center">
+                    {CalculatorComponent}
+                  </div>
+                </div>
+            </DrawerContent>
+          </Drawer>
+        )}
       </InputGroupAddon>
     </InputGroup>
   )

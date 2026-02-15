@@ -1,13 +1,15 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import { Delete } from 'lucide-react'
+import { Delete, Check, Equal } from 'lucide-react'
 import { useState, useCallback, useEffect, useRef } from 'react'
 
 interface AmountCalculatorProps {
   onApply: (value: string) => void
   initialValue?: string
+  className?: string
 }
 
 type Operator = '+' | '-' | '×' | '÷'
@@ -15,74 +17,36 @@ type Operator = '+' | '-' | '×' | '÷'
 const isOperator = (char: string): char is Operator => 
   ['+', '-', '×', '÷'].includes(char)
 
-export function AmountCalculator({ onApply, initialValue }: AmountCalculatorProps) {
+export function AmountCalculator({ onApply, initialValue, className }: AmountCalculatorProps) {
   const [display, setDisplay] = useState(initialValue || '0')
+  const [formula, setFormula] = useState('')
   const [hasResult, setHasResult] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const getLastChar = () => display.slice(-1)
-
-  const appendToDisplay = useCallback((value: string) => {
-    setDisplay(prev => {
-      if (hasResult && !isOperator(value)) {
-        setHasResult(false)
-        return value === '.' ? '0.' : value
-      }
-      
-      if (prev === '0' && value !== '.' && !isOperator(value)) {
-        return value
-      }
-      
-      const lastChar = prev.slice(-1)
-      
-      // Prevent multiple operators in a row
-      if (isOperator(value) && isOperator(lastChar)) {
-        return prev.slice(0, -1) + value
-      }
-      
-      // Prevent multiple decimals in current number
-      if (value === '.') {
-        const parts = prev.split(/[+\-×÷]/)
-        const currentNumber = parts[parts.length - 1]
-        if (currentNumber.includes('.')) {
-          return prev
-        }
-      }
-      
-      setHasResult(false)
-      return prev + value
-    })
-  }, [hasResult])
-
-  const clear = useCallback(() => {
-    setDisplay('0')
-    setHasResult(false)
-  }, [])
-
-  const backspace = useCallback(() => {
-    setDisplay(prev => {
-      if (prev.length === 1 || hasResult) {
-        setHasResult(false)
-        return '0'
-      }
-      return prev.slice(0, -1)
-    })
-  }, [hasResult])
+  // Haptic feedback for mobile
+  const vibrate = () => {
+    if (typeof window !== 'undefined' && window.navigator.vibrate) {
+      window.navigator.vibrate(10)
+    }
+  }
 
   const getMathResult = (text: string): string | null => {
     try {
+      // Clean display text for evaluation
       const expression = text
         .replace(/×/g, '*')
         .replace(/÷/g, '/')
-        .replace(/[+\-*/]$/, '') // Remove trailing operators
+        .replace(/[+\-*/]$/, '')
 
-      if (!expression || !/[+\-*/]/.test(expression)) return null
+      if (!expression) return null
 
-      // Safe evaluation
-      const result = new Function(`return ${expression}`)()
+      // Using Function is risky but limited here. 
+      // For production financial apps, consider a library like 'mathjs' or 'big.js'
+      const result = new Function(`return Number(${expression})`)()
       
       if (typeof result === 'number' && isFinite(result)) {
-        return (Math.round(result * 100) / 100).toString()
+        // Round to 2 decimal places and remove trailing zeros
+        return parseFloat(result.toFixed(2)).toString()
       }
       return null
     } catch {
@@ -90,193 +54,124 @@ export function AmountCalculator({ onApply, initialValue }: AmountCalculatorProp
     }
   }
 
+  const appendToDisplay = useCallback((value: string) => {
+    vibrate()
+    setDisplay(prev => {
+      if (hasResult && !isOperator(value)) {
+        setHasResult(false)
+        return value === '.' ? '0.' : value
+      }
+      
+      const lastChar = prev.slice(-1)
+      
+      if (isOperator(value) && isOperator(lastChar)) {
+        return prev.slice(0, -1) + value
+      }
+      
+      if (prev === '0' && value !== '.' && !isOperator(value)) return value
+      
+      if (value === '.') {
+        const parts = prev.split(/[+\-×÷]/)
+        if (parts[parts.length - 1].includes('.')) return prev
+      }
+      
+      setHasResult(false)
+      return prev + value
+    })
+  }, [hasResult])
+
   const calculate = useCallback(() => {
+    vibrate()
     const result = getMathResult(display)
     if (result !== null) {
+      setFormula(display + ' =')
       setDisplay(result)
       setHasResult(true)
     }
   }, [display])
 
-
   const handleApply = useCallback(() => {
-    // Calculate first if there's a pending operation
-    const lastChar = getLastChar()
-    if (isOperator(lastChar)) {
-      return
-    }
-
+    vibrate()
     let finalValue = display
-    
-    // If not already calculated, calculate first
     if (!hasResult && /[+\-×÷]/.test(display)) {
       const calculated = getMathResult(display)
-      if (calculated !== null) {
-        finalValue = calculated
-        setDisplay(calculated)
-        setHasResult(true)
-      }
+      if (calculated !== null) finalValue = calculated
     }
-    
-    const cleanValue = finalValue.replace(/^0+(?=\d)/, '')
-    onApply(cleanValue || '0')
+    onApply(finalValue)
   }, [display, hasResult, onApply])
 
-  // Keyboard support
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    const key = e.key
-    
-    // Prevent default for calculator keys to avoid form submission etc.
-    if (/^[0-9+\-*/.=]$/.test(key) || ['Enter', 'Backspace', 'Escape', 'Delete'].includes(key)) {
-      e.preventDefault()
-    }
+  const backspace = useCallback(() => {
+    vibrate()
+    setDisplay(prev => (prev.length <= 1 || hasResult ? '0' : prev.slice(0, -1)))
+    setHasResult(false)
+  }, [hasResult])
 
-    // Numbers
-    if (/^[0-9]$/.test(key)) {
-      appendToDisplay(key)
-      return
-    }
-
-    // Operators
-    switch (key) {
-      case '+':
-        appendToDisplay('+')
-        break
-      case '-':
-        appendToDisplay('-')
-        break
-      case '*':
-        appendToDisplay('×')
-        break
-      case '/':
-        appendToDisplay('÷')
-        break
-      case '.':
-      case ',':
-        appendToDisplay('.')
-        break
-      case 'Enter':
-        // If already calculated, apply the result; otherwise calculate
-        if (hasResult) {
-          handleApply()
-        } else {
-          calculate()
-        }
-        break
-      case '=':
-        calculate()
-        break
-      case 'Backspace':
-        backspace()
-        break
-      case 'Escape':
-      case 'Delete':
-        clear()
-        break
-      case 'c':
-      case 'C':
-        clear()
-        break
-    }
-  }, [appendToDisplay, calculate, backspace, clear, hasResult, handleApply])
-
-  // Auto-focus container and attach keyboard listener
+  // Keybindings
   useEffect(() => {
-    const container = containerRef.current
-    if (container) {
-      container.focus()
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Enter') {
+        e.preventDefault()
+        hasResult ? handleApply() : calculate()
+      } else if (e.key === 'Backspace') backspace()
+      else if (e.key === 'Escape') setDisplay('0')
+      else if (/[0-9]/.test(e.key)) appendToDisplay(e.key)
+      else if (['+', '-', '*', '/'].includes(e.key)) {
+        const map: Record<string, string> = { '*': '×', '/': '÷', '+': '+', '-': '-' }
+        appendToDisplay(map[e.key])
+      } else if (e.key === '.' || e.key === ',') appendToDisplay('.')
     }
-
-    document.addEventListener('keydown', handleKeyDown)
-    return () => document.removeEventListener('keydown', handleKeyDown)
-  }, [handleKeyDown])
-
-  const buttons: (string | { label: React.ReactNode; value: string; className?: string })[] = [
-    { label: 'C', value: 'clear', className: 'text-destructive font-semibold' },
-    { label: <Delete className="h-4 w-4" />, value: 'backspace' },
-    '÷',
-    '×',
-    '7', '8', '9', '-',
-    '4', '5', '6', '+',
-    '1', '2', '3',
-    { label: '=', value: 'equals', className: 'bg-primary text-primary-foreground hover:bg-primary/90 row-span-2' },
-    { label: '0', value: '0', className: 'col-span-2' },
-    '.',
-  ]
-
-  const handleButtonClick = (btn: typeof buttons[number]) => {
-    const value = typeof btn === 'string' ? btn : btn.value
-    
-    switch (value) {
-      case 'clear':
-        clear()
-        break
-      case 'backspace':
-        backspace()
-        break
-      case 'equals':
-        calculate()
-        break
-      default:
-        appendToDisplay(value)
-    }
-  }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [appendToDisplay, calculate, handleApply, backspace, hasResult])
 
   return (
-    <div 
-      ref={containerRef}
-      tabIndex={-1}
-      className="flex flex-col gap-3 w-56 outline-none"
-    >
-      {/* Display */}
-      <div className="bg-muted rounded-md p-3 text-right">
-        <div className="text-2xl font-mono font-semibold truncate">
+    <Card className={cn("p-4 w-full max-w-[320px] shadow-xl select-none touch-none", className)}>
+      {/* Display Area */}
+      <div className="bg-muted/50 rounded-lg p-4 mb-4 flex flex-col items-end justify-center min-h-[80px] overflow-hidden">
+        <div className="text-xs text-muted-foreground font-mono h-4 uppercase tracking-wider">
+          {formula}
+        </div>
+        <div className="text-3xl font-bold font-mono truncate w-full text-right leading-none">
           {display}
         </div>
       </div>
 
-      {/* Button Grid */}
-      <div className="grid grid-cols-4 gap-1.5">
-        {buttons.map((btn, index) => {
-          const isString = typeof btn === 'string'
-          const label = isString ? btn : btn.label
-          const value = isString ? btn : btn.value
-          const className = isString ? '' : btn.className
-          
-          const isOperatorBtn = typeof label === 'string' && isOperator(label)
-          
-          return (
-            <Button
-              key={`${value}-${index}`}
-              type="button"
-              variant={isOperatorBtn ? 'secondary' : 'outline'}
-              className={cn(
-                'h-10 text-base font-medium',
-                isOperatorBtn && 'text-primary font-semibold',
-                className
-              )}
-              onClick={() => handleButtonClick(btn)}
+      {/* Calculator Grid */}
+      <div className="grid grid-cols-4 gap-2">
+        <Button variant="ghost" className="text-destructive hover:bg-destructive/10 font-bold" onClick={() => { setDisplay('0'); setFormula(''); }}>C</Button>
+        <Button variant="ghost" onClick={backspace} aria-label="backspace"><Delete className="h-5 w-5" /></Button>
+        <Button variant="secondary" className="text-primary font-bold text-lg" onClick={() => appendToDisplay('÷')}>÷</Button>
+        <Button variant="secondary" className="text-primary font-bold text-lg" onClick={() => appendToDisplay('×')}>×</Button>
+
+        {['7', '8', '9'].map(n => <Button key={n} variant="outline" className="text-lg h-12" onClick={() => appendToDisplay(n)}>{n}</Button>)}
+        <Button variant="secondary" className="text-primary font-bold text-lg" onClick={() => appendToDisplay('-')}>-</Button>
+
+        {['4', '5', '6'].map(n => <Button key={n} variant="outline" className="text-lg h-12" onClick={() => appendToDisplay(n)}>{n}</Button>)}
+        <Button variant="secondary" className="text-primary font-bold text-lg" onClick={() => appendToDisplay('+')}>+</Button>
+
+        <div className="grid grid-cols-3 col-span-3 gap-2">
+          {['1', '2', '3', '0', '.'].map((n) => (
+            <Button 
+              key={n} 
+              variant="outline" 
+              className={cn("text-lg h-12", n === '0' && "col-span-1")} 
+              onClick={() => appendToDisplay(n)}
             >
-              {label}
+              {n}
             </Button>
-          )
-        })}
+          ))}
+          <Button variant="default" className="bg-primary" onClick={calculate} aria-label="calculate">
+            <Equal className="h-5 w-5" />
+          </Button>
+        </div>
+
+        <Button 
+          className="h-auto row-span-2 bg-green-600 hover:bg-green-700 text-white" 
+          onClick={handleApply}
+        >
+          <Check className="h-6 w-6" />
+        </Button>
       </div>
-
-      {/* Apply Button */}
-      <Button 
-        type="button" 
-        className="w-full mt-1"
-        onClick={handleApply}
-      >
-        Apply
-      </Button>
-
-      {/* Keyboard hint */}
-      <p className="text-xs text-muted-foreground text-center">
-        Use keyboard • Enter to {hasResult ? 'apply' : 'calculate'}
-      </p>
-    </div>
+    </Card>
   )
 }
-
