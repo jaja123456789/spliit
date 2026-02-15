@@ -24,7 +24,6 @@ export function getBalances(
         if (!balances[pid]) balances[pid] = { paid: 0, paidFor: 0, total: 0 }
         balances[pid].paid += payer.amount
     }
-
     const shares = calculateShares(expense)
     for (const participantId in shares) {
       if (!balances[participantId])
@@ -42,7 +41,6 @@ export function getBalances(
   return balances
 }
 
-// ... rest of the file (getPublicBalances, getSuggestedReimbursements) remains unchanged
 export function getPublicBalances(reimbursements: Reimbursement[]): Balances {
   const balances: Balances = {}
   reimbursements.forEach((reimbursement) => {
@@ -72,30 +70,86 @@ export function getSuggestedReimbursements(
 ): Reimbursement[] {
   const balancesArray = Object.entries(balances)
     .map(([participantId, { total }]) => ({ participantId, total }))
-    .filter((b) => b.total !== 0)
-  balancesArray.sort(compareBalancesForReimbursements)
+    .filter((b) => Math.abs(b.total) > 0.01) // Filter out zero or near-zero balances
+
   const reimbursements: Reimbursement[] = []
-  while (balancesArray.length > 1) {
-    const first = balancesArray[0]
-    const last = balancesArray[balancesArray.length - 1]
+
+  // Optimization Step 1: Find Exact Matches
+  // Detect if A owes 100 and B is owed 100. Settle them directly.
+  // This prevents the greedy algorithm from splitting A's debt to C(50) and D(50) if B also needed 100.
+  const settledIndices = new Set<number>()
+  
+  for (let i = 0; i < balancesArray.length; i++) {
+    if (settledIndices.has(i)) continue;
+    
+    // Look for a perfect opposite
+    for (let j = i + 1; j < balancesArray.length; j++) {
+        if (settledIndices.has(j)) continue;
+        
+        // Check if totals sum to 0 (within epsilon)
+        if (Math.abs(balancesArray[i].total + balancesArray[j].total) < 0.01) {
+            const p1 = balancesArray[i];
+            const p2 = balancesArray[j];
+            
+            if (p1.total > 0) {
+                // p1 is creditor, p2 is debtor
+                reimbursements.push({ from: p2.participantId, to: p1.participantId, amount: p1.total });
+            } else {
+                // p2 is creditor, p1 is debtor
+                reimbursements.push({ from: p1.participantId, to: p2.participantId, amount: p2.total });
+            }
+            settledIndices.add(i);
+            settledIndices.add(j);
+            break;
+        }
+    }
+  }
+
+  // Filter out the settled participants for the greedy pass
+  let remainingBalances = balancesArray.filter((_, idx) => !settledIndices.has(idx));
+
+  // Sort remaining balances for greedy approach
+  remainingBalances.sort(compareBalancesForReimbursements);
+
+  // Standard Greedy Matching for remaining
+  while (remainingBalances.length > 1) {
+    const first = remainingBalances[0] // Max creditor
+    const last = remainingBalances[remainingBalances.length - 1] // Max debtor
+    
+    // Safety check for convergence
+    if (Math.abs(first.total) < 0.01) {
+        remainingBalances.shift();
+        continue;
+    }
+    if (Math.abs(last.total) < 0.01) {
+        remainingBalances.pop();
+        continue;
+    }
+
     const amount = first.total + last.total
+
     if (first.total > -last.total) {
+      // Creditor needs more than Debtor owes
+      // Debtor pays all they owe to Creditor
       reimbursements.push({
         from: last.participantId,
         to: first.participantId,
         amount: -last.total,
       })
       first.total = amount
-      balancesArray.pop()
+      remainingBalances.pop() // Last is settled
     } else {
+      // Creditor needs less (or equal) than Debtor owes
+      // Debtor pays Creditor what Creditor needs
       reimbursements.push({
         from: last.participantId,
         to: first.participantId,
         amount: first.total,
       })
       last.total = amount
-      balancesArray.shift()
+      remainingBalances.shift() // First is settled
     }
   }
+
   return reimbursements.filter(({ amount }) => Math.round(amount) + 0 !== 0)
 }
