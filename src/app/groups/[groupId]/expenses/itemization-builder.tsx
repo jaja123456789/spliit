@@ -27,6 +27,7 @@ interface Props {
   fields: any[]
   append: (value: any) => void
   remove: (index: number) => void
+  activeUserId?: string | null
 }
 
 export function ItemizationBuilder({ 
@@ -35,7 +36,8 @@ export function ItemizationBuilder({
   totalAmount, 
   fields, 
   append, 
-  remove 
+  remove,
+  activeUserId 
 }: Props) {
   const { control, watch, setValue, trigger } = useFormContext()
   const locale = useLocale()
@@ -52,9 +54,16 @@ export function ItemizationBuilder({
     if (!selectedIds || selectedIds.length === 0) return 'No one'
     if (selectedIds.length === group.participants.length && group.participants.length > 1) return 'Everyone'
 
-    const names = selectedIds
-      .map((id) => group.participants.find((p) => p.id === id)?.name)
-      .filter(Boolean)
+    let names = selectedIds
+      .map((id) => {
+        if (activeUserId && id === activeUserId && activeUserId !== 'None') return 'You'
+        return group.participants.find((p) => p.id === id)?.name
+      })
+      .filter(Boolean) as string[]
+
+    if (names.includes('You')) {
+      names = ['You', ...names.filter(n => n !== 'You')]
+    }
 
     if (names.length === 1) return names[0]
     if (names.length === 2) return `${names[0]} & ${names[1]}`
@@ -95,6 +104,8 @@ export function ItemizationBuilder({
             const participantIds = currentItem.participantIds || []
             const perPersonAmount = participantIds.length > 0 ? itemPrice / participantIds.length : 0
             const summaryText = getPayerSummary(participantIds)
+
+            const isMeInvolved = activeUserId && activeUserId !== 'None' && participantIds.includes(activeUserId)
 
             return (
                 <div key={field.id} className="group relative flex flex-col gap-2 p-3 rounded-lg bg-muted/20 border hover:border-primary/40 transition-all shadow-sm">
@@ -164,8 +175,9 @@ export function ItemizationBuilder({
                                     size="icon" 
                                     className={cn(
                                         "h-9 w-9 shrink-0 relative transition-colors",
-                                        // Conditional Red Styling
-                                        participantIds.length === 0 && "border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-destructive"
+                                        participantIds.length === 0 && "border-destructive text-destructive hover:bg-destructive/10 hover:text-destructive hover:border-destructive",
+                                        // Highlight the user icon if I am involved
+                                        isMeInvolved && "bg-primary/20 text-primary border-primary/50"
                                     )} 
                                     type="button"
                                 >
@@ -198,6 +210,9 @@ export function ItemizationBuilder({
                                 <div className="max-h-[200px] overflow-y-auto grid grid-cols-1 gap-0.5">
                                     {group.participants.map(participant => {
                                     const isSelected = field.value?.includes(participant.id)
+                                    // Identify current user in the list
+                                    const isMe = activeUserId && participant.id === activeUserId && activeUserId !== 'None'
+                                    
                                     return (
                                         <div 
                                         key={participant.id}
@@ -219,12 +234,14 @@ export function ItemizationBuilder({
                                         )}>
                                             {isSelected && <Check className="w-3 h-3 text-primary-foreground stroke-[3]" />}
                                         </div>
-                                        <span className="truncate">{participant.name}</span>
+                                        <span className="truncate">
+                                            {participant.name}
+                                            {isMe && <span className="ml-1 text-xs text-muted-foreground">(You)</span>}
+                                        </span>
                                         </div>
                                     )
                                     })}
                                 </div>
-                                {/* Translated Error Message inside popover */}
                                 <FormMessage className="px-2 pt-2 border-t mt-2" />
                                 </div>
                             </PopoverContent>
@@ -248,11 +265,20 @@ export function ItemizationBuilder({
                 {/* Personalized Summary Row */}
                 <div className="flex items-center justify-between px-1 text-[11px] leading-tight">
                     <div className="text-muted-foreground truncate max-w-[70%]">
-                    <span className="font-medium text-foreground/80">{summaryText}</span>
+                    <span className={cn(
+                        "font-medium", 
+                        isMeInvolved ? "text-primary font-bold" : "text-foreground/80"
+                    )}>
+                        {summaryText}
+                    </span>
                     {participantIds.length > 1 ? ' will each pay' : ' will pay'}
                     </div>
+                    
                     {participantIds.length > 0 && itemPrice > 0 && (
-                    <div className="font-bold text-primary whitespace-nowrap">
+                    <div className={cn(
+                        "whitespace-nowrap transition-colors",
+                        isMeInvolved ? "font-bold text-primary" : "text-muted-foreground"
+                    )}>
                         {formatCurrency(currency, perPersonAmount, locale, true)}
                     </div>
                     )}

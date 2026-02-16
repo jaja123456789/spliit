@@ -1102,6 +1102,7 @@ export function ExpenseForm({
                 fields={itemFields}
                 append={itemAppend}
                 remove={itemRemove}
+                activeUserId={activeUserId} 
               />
             </CardContent>
           </Card>
