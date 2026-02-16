@@ -69,6 +69,16 @@ export function RecentGroupListCard({
   const groupIsArchived = isArchived(group.id)
   const canSync = !!session
 
+  const handleClick = () => {
+    const pendingReceipt = sessionStorage.getItem('pending-share-receipt')
+    if (pendingReceipt) {
+      // Redirect to create expense with a special query param
+      router.push(`/groups/${group.id}/expenses/create?fromShare=true`)
+    } else {
+      router.push(`/groups/${group.id}`)
+    }
+  }
+
   const handleRemoveRecent = (event: React.MouseEvent) => {
     event.stopPropagation()
 
@@ -114,6 +124,7 @@ export function RecentGroupListCard({
         variant="secondary"
         className="h-fit w-full py-3 rounded-lg border bg-card shadow-sm"
         asChild
+        onClick={handleClick}
       >
         <div
           className="text-base cursor-pointer"

@@ -15,6 +15,8 @@ import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { PropsWithChildren } from 'react'
 import { RecentGroupListCard } from './recent-group-list-card'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 export type RecentGroupsState =
   | { status: 'pending' }
@@ -61,6 +63,7 @@ function sortGroups({
 }
 
 export function RecentGroupList() {
+  const router = useRouter()
   const {
     recentGroups,
     starredGroupIds,
@@ -70,6 +73,21 @@ export function RecentGroupList() {
   } = useGroups()
 
   if (isPending && recentGroups.length === 0) return null
+
+  useEffect(() => {
+    // Check for pending shared receipt
+    const pendingReceipt = sessionStorage.getItem('pending-share-receipt')
+    if (pendingReceipt) {
+      // We found a receipt! We wait for the user to select a group.
+      // Alternatively, we could automatically use the most recent group:
+      /* 
+      const recentGroups = getRecentGroups()
+      if (recentGroups.length > 0) {
+         router.push(`/groups/${recentGroups[0].id}/expenses/create?fromShare=true`)
+      }
+      */
+    }
+  }, [])
 
   return (
     <RecentGroupList_

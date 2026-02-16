@@ -3,6 +3,8 @@ import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { trpc } from '@/trpc/client'
 import { useRouter } from 'next/navigation'
 import { ExpenseForm } from './expense-form'
+import { useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 export function CreateExpenseForm({
   groupId,
@@ -17,6 +19,8 @@ export function CreateExpenseForm({
 
   const { data: categoriesData } = trpc.categories.list.useQuery()
   const categories = categoriesData?.categories
+
+  const searchParams = useSearchParams()
 
   const { mutateAsync: createExpenseMutateAsync } =
     trpc.groups.expenses.create.useMutation()

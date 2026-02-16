@@ -54,5 +54,30 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: 'maskable',
       },
     ],
+    share_target: {
+      action: '/spliit/api/share-target',
+      method: 'POST',
+      enctype: 'multipart/form-data',
+      params: {
+        files: [
+          {
+            name: 'file',
+            accept: [
+              'image/png',
+              'image/jpeg',
+              'image/gif',
+              'image/webp',
+              'image/bmp',
+              '.png',
+              '.jpg',
+              '.jpeg',
+              '.gif',
+              '.webp',
+              '.bmp',
+            ],
+          },
+        ],
+      },
+    },
   }
 }

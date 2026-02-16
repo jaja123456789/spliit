@@ -472,6 +472,29 @@ export function ExpenseForm({
   // --- Effects ---
 
   useEffect(() => {
+    const fromShare = searchParams.get('fromShare')
+    if (isCreate && fromShare) {
+      const stored = sessionStorage.getItem('pending-share-receipt')
+      if (stored) {
+        try {
+          const data = JSON.parse(stored)
+          // Convert Data URL back to Blob for the AI processor if needed, 
+          // OR pass the dataUrl directly if your receipt component supports it.
+          
+          // Trigger the receipt scanning logic here.
+          // This might require exposing the ReceiptDialog logic or 
+          // creating a new "Initialize from DataURL" prop in your form.
+          
+          // Clear it so it doesn't trigger again
+          sessionStorage.removeItem('pending-share-receipt')
+        } catch (e) {
+          console.error(e)
+        }
+      }
+    }
+  }, [isCreate, searchParams])
+
+  useEffect(() => {
     if (isCreate && searchParams.get('fromReceipt') === 'true') {
       try {
         const storedData = sessionStorage.getItem('pendingReceiptData')
