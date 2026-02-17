@@ -2,6 +2,13 @@ import { RecurrenceRule, SplitMode } from '@prisma/client'
 import Decimal from 'decimal.js'
 import * as z from 'zod'
 
+const paymentProfileSchema = z.object({
+  venmo: z.string().optional().or(z.literal('')),
+  paypal: z.string().optional().or(z.literal('')),
+  cashapp: z.string().optional().or(z.literal('')),
+  revolut: z.string().optional().or(z.literal('')),
+}).optional().nullable()
+
 export const groupFormSchema = z
   .object({
     name: z.string().min(2, 'min2').max(50, 'max50'),
@@ -13,6 +20,7 @@ export const groupFormSchema = z
         z.object({
           id: z.string().optional(),
           name: z.string().min(2, 'min2').max(50, 'max50'),
+          paymentProfile: paymentProfileSchema
         }),
       )
       .min(1),

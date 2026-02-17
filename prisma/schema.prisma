@@ -32,6 +32,7 @@ model Participant {
   expensesPaidBy           ExpensePaidBy[]
   expensesPaidFor          ExpensePaidFor[]
   activeSyncedGroupsForUser SyncedGroup[]
+  paymentProfile           Json?            @db.JsonB // Structure: { venmo: string, paypal: string, cashapp: string, revolut: string }
 }
 
 model Category {

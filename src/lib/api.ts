@@ -3,6 +3,7 @@ import { ExpenseFormValues, GroupFormValues } from '@/lib/schemas'
 import {
   ActivityType,
   Expense,
+  Prisma,
   RecurrenceRule,
   RecurringExpenseLink,
 } from '@prisma/client'
@@ -24,9 +25,10 @@ export async function createGroup(groupFormValues: GroupFormValues) {
       currencyCode: groupFormValues.currencyCode,
       participants: {
         createMany: {
-          data: groupFormValues.participants.map(({ name }) => ({
+          data: groupFormValues.participants.map(({ name, paymentProfile }) => ({
             id: randomId(),
             name,
+            paymentProfile: paymentProfile ?? undefined, // Pass the JSON
           })),
         },
       },
@@ -368,6 +370,7 @@ export async function updateGroup(
             where: { id: participant.id },
             data: {
               name: participant.name,
+              paymentProfile: participant.paymentProfile ?? Prisma.DbNull, // Handle update
             },
           })),
         createMany: {
@@ -376,6 +379,7 @@ export async function updateGroup(
             .map((participant) => ({
               id: randomId(),
               name: participant.name,
+              paymentProfile: participant.paymentProfile ?? undefined,
             })),
         },
       },

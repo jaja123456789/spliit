@@ -35,13 +35,15 @@ import { getGroup } from '@/lib/api'
 import { defaultCurrencyList, getCurrency } from '@/lib/currency'
 import { GroupFormValues, groupFormSchema } from '@/lib/schemas'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Save, Trash2 } from 'lucide-react'
+import { Save, Trash2, CreditCard } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { CurrencySelector } from './currency-selector'
 import { Textarea } from './ui/textarea'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Label } from '@radix-ui/react-label'
 
 export type Props = {
   group?: NonNullable<Awaited<ReturnType<typeof getGroup>>>
@@ -289,6 +291,36 @@ export function GroupForm({
                                 <Trash2 className="w-4 h-4" />
                               </Button>
                             )}
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Button variant="ghost" size="icon" title="Payment Methods">
+                                  <CreditCard className="w-4 h-4 text-muted-foreground" />
+                                </Button>
+                              </PopoverTrigger>
+                              <PopoverContent className="w-80">
+                                <div className="grid gap-4">
+                                  <div className="space-y-2">
+                                    <h4 className="font-medium leading-none">Payment Methods</h4>
+                                    <p className="text-sm text-muted-foreground">
+                                      Enter handles to enable direct payment links.
+                                    </p>
+                                  </div>
+                                  <div className="grid gap-2">
+                                    {['venmo', 'paypal', 'cashapp', 'revolut'].map((provider) => (
+                                      <div key={provider} className="grid grid-cols-3 items-center gap-4">
+                                        <Label htmlFor={provider}>{provider}</Label>
+                                        <Input
+                                          id={provider}
+                                          className="col-span-2 h-8"
+                                          placeholder="username"
+                                          {...form.register(`participants.${index}.paymentProfile.${provider}` as any)}
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                           </div>
                         </FormControl>
                         <FormMessage />
