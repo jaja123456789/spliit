@@ -344,6 +344,15 @@
   },
   "Stats": {
     "title": "Stats",
+    "Charts": {
+      "categoryTitle": "Spending by Category",
+      "categoryDesc": "Where the money went",
+      "participantTitle": "Spending by Member",
+      "participantDesc": "Value consumed per person",
+      "timeTitle": "Spending over Time",
+      "timeDesc": "Daily totals",
+      "noData": "Not enough data to display charts"
+    },
     "Totals": {
       "title": "Totals",
       "description": "Spending summary of the entire group.",

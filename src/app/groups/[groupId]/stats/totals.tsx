@@ -7,6 +7,8 @@ import { useActiveUser } from '@/lib/hooks'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { useCurrentGroup } from '../current-group-context'
+import { Charts } from './charts' // Import the new component
+
 
 export function Totals() {
   const { groupId, group } = useCurrentGroup()
@@ -32,28 +34,40 @@ export function Totals() {
     totalGroupSpendings,
     totalParticipantShare,
     totalParticipantSpendings,
+    categorySpending, 
+    dailySpending,
+    participantSpending
   } = data
 
   const currency = getCurrencyFromGroup(group)
 
   return (
-    <>
-      <TotalsGroupSpending
-        totalGroupSpendings={totalGroupSpendings}
-        currency={currency}
+    <div className="space-y-8">
+      {/* Existing Text Totals */}
+      <div className="grid gap-4">
+        <TotalsGroupSpending
+          totalGroupSpendings={totalGroupSpendings}
+          currency={currency}
+        />
+        {participantId && (
+          <>
+            <TotalsYourSpendings
+              totalParticipantSpendings={totalParticipantSpendings}
+              currency={currency}
+            />
+            <TotalsYourShare
+              totalParticipantShare={totalParticipantShare}
+              currency={currency}
+            />
+          </>
+        )}
+      </div>
+
+      {/* New Charts Section */}
+      <Charts 
+        data={data} 
+        currency={currency} 
       />
-      {participantId && (
-        <>
-          <TotalsYourSpendings
-            totalParticipantSpendings={totalParticipantSpendings}
-            currency={currency}
-          />
-          <TotalsYourShare
-            totalParticipantShare={totalParticipantShare}
-            currency={currency}
-          />
-        </>
-      )}
-    </>
+    </div>
   )
 }
