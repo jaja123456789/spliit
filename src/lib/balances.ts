@@ -13,6 +13,90 @@ export type Reimbursement = {
   amount: number
 }
 
+/**
+ * Calculates reimbursements based on pairwise relationships.
+ * If A pays for B, B owes A specifically.
+ * Debts are aggregated between pairs (A->B $10, B->A $5 becomes A->B $5).
+ */
+export function getDirectReimbursements(
+  expenses: NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>>,
+): Reimbursement[] {
+  // Matrix: debts[debtorId][creditorId] = amount
+  const debts: Record<string, Record<string, number>> = {}
+
+  for (const expense of expenses) {
+    // 1. Calculate balances for THIS expense only
+    const shares = calculateShares(expense)
+    const expenseBalances: Record<string, number> = {}
+    
+    // Initialize
+    const participantIds = new Set([
+        ...expense.paidBy.map(p => p.participantId),
+        ...Object.keys(shares)
+    ])
+    
+    participantIds.forEach(id => {
+        const paid = expense.paidBy.find(p => p.participantId === id)?.amount ?? 0
+        const share = shares[id] ?? 0
+        expenseBalances[id] = paid - share
+    })
+
+    // 2. Settle this expense internally (Debtors pay Creditors)
+    // We use the same greedy approach but LOCALLY to this expense
+    const debtors = Object.entries(expenseBalances)
+        .filter(([, bal]) => bal < -0.01)
+        .sort(([, a], [, b]) => a - b) // Ascending (largest debt first)
+    
+    const creditors = Object.entries(expenseBalances)
+        .filter(([, bal]) => bal > 0.01)
+        .sort(([, a], [, b]) => b - a) // Descending (largest credit first)
+
+    let i = 0; // debtor index
+    let j = 0; // creditor index
+
+    while (i < debtors.length && j < creditors.length) {
+        const [debtorId, debtorBal] = debtors[i]
+        const [creditorId, creditorBal] = creditors[j]
+        
+        const amount = Math.min(Math.abs(debtorBal), creditorBal)
+        
+        // Accumulate into global matrix
+        if (!debts[debtorId]) debts[debtorId] = {}
+        debts[debtorId][creditorId] = (debts[debtorId][creditorId] ?? 0) + amount
+
+        // Update local balances for next iteration
+        debtors[i][1] += amount
+        creditors[j][1] -= amount
+
+        if (Math.abs(debtors[i][1]) < 0.01) i++
+        if (creditors[j][1] < 0.01) j++
+    }
+  }
+
+  // 3. Simplify Mutual Debts (A->B and B->A)
+  const reimbursements: Reimbursement[] = []
+  const pairsProcessed = new Set<string>()
+
+  Object.keys(debts).forEach(debtorId => {
+    Object.keys(debts[debtorId]).forEach(creditorId => {
+        const pairKey = [debtorId, creditorId].sort().join(':')
+        if (pairsProcessed.has(pairKey)) return
+        pairsProcessed.add(pairKey)
+
+        const aToB = debts[debtorId]?.[creditorId] ?? 0
+        const bToA = debts[creditorId]?.[debtorId] ?? 0
+
+        if (aToB > bToA) {
+            reimbursements.push({ from: debtorId, to: creditorId, amount: aToB - bToA })
+        } else if (bToA > aToB) {
+            reimbursements.push({ from: creditorId, to: debtorId, amount: bToA - aToB })
+        }
+    })
+  })
+
+  return reimbursements.filter(r => r.amount > 0.5) // Filter tiny amounts
+}
+
 export function getBalances(
   expenses: NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>>,
 ): Balances {

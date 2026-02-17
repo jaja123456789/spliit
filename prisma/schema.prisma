@@ -17,6 +17,7 @@ model Group {
   information  String?       @db.Text
   currency     String        @default("$")
   currencyCode String?
+  simplifyDebts Boolean      @default(true) 
   participants Participant[]
   expenses     Expense[]
   activities   Activity[]

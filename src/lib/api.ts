@@ -23,6 +23,7 @@ export async function createGroup(groupFormValues: GroupFormValues) {
       information: groupFormValues.information,
       currency: groupFormValues.currency,
       currencyCode: groupFormValues.currencyCode,
+      simplifyDebts: groupFormValues.simplifyDebts,
       participants: {
         createMany: {
           data: groupFormValues.participants.map(({ name, paymentProfile }) => ({
@@ -360,6 +361,7 @@ export async function updateGroup(
       information: groupFormValues.information,
       currency: groupFormValues.currency,
       currencyCode: groupFormValues.currencyCode,
+      simplifyDebts: groupFormValues.simplifyDebts,
       participants: {
         deleteMany: existingGroup.participants.filter(
           (p) => !groupFormValues.participants.some((p2) => p2.id === p.id),

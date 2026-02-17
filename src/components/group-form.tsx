@@ -44,6 +44,7 @@ import { CurrencySelector } from './currency-selector'
 import { Textarea } from './ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@radix-ui/react-label'
+import { Switch } from './ui/switch'
 
 export type Props = {
   group?: NonNullable<Awaited<ReturnType<typeof getGroup>>>
@@ -70,6 +71,7 @@ export function GroupForm({
           currency: group.currency ?? '',
           currencyCode: group.currencyCode ?? '',
           participants: group.participants,
+          simplifyDebts: group.simplifyDebts ?? true, 
         }
       : {
           name: '',
@@ -81,6 +83,7 @@ export function GroupForm({
             { name: t('Participants.Jane') },
             { name: t('Participants.Jack') },
           ],
+          simplifyDebts: true, 
         },
   })
   const { fields, append, remove } = useFieldArray({
@@ -228,6 +231,31 @@ export function GroupForm({
                       />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="col-span-2 sm:col-span-1">
+              <FormField
+                control={form.control}
+                name="simplifyDebts"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4 col-span-2">
+                    <div className="space-y-0.5">
+                      <FormLabel className="text-base">
+                        {t('Settings.SimplifyDebts.label')}
+                      </FormLabel>
+                      <FormDescription>
+                        {t('Settings.SimplifyDebts.description')}
+                      </FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        // FIX: The ?? true ensures the component is always 'controlled'
+                        checked={field.value ?? true} 
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />

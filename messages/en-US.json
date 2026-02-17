@@ -155,6 +155,10 @@
         "none": "None",
         "description": "User used as default for paying expenses."
       },
+      "SimplifyDebts": {
+        "label": "Simplify Debts",
+        "description": "Automatically reduce the number of transactions by shuffling who owes whom."
+      },
       "save": "Save",
       "saving": "Saving…",
       "create": "Create",
