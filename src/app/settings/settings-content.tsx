@@ -17,6 +17,8 @@ import {
   SyncPreferences,
   SyncedGroupsList,
 } from './components'
+import { PushNotificationToggle } from '@/components/push-notification-toggle'
+
 
 export function SettingsContent() {
   const { data: session, status } = useSession()
@@ -78,6 +80,10 @@ export function SettingsContent() {
                   {t('sections.syncedGroups')}
                 </h3>
                 <SyncedGroupsList />
+              </div>
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-medium mb-3">Notifications</h3>
+                <PushNotificationToggle />
               </div>
             </div>
           )}
