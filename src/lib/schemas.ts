@@ -3,11 +3,12 @@ import Decimal from 'decimal.js'
 import * as z from 'zod'
 
 const paymentProfileSchema = z.object({
-  venmo: z.string().optional().or(z.literal('')),
-  paypal: z.string().optional().or(z.literal('')),
-  cashapp: z.string().optional().or(z.literal('')),
-  revolut: z.string().optional().or(z.literal('')),
-}).optional().nullable()
+  venmo: z.string().nullish(),
+  paypal: z.string().nullish(),
+  cashapp: z.string().nullish(),
+  revolut: z.string().nullish(),
+  phone: z.string().nullish(),
+}).nullish()
 
 export const groupFormSchema = z
   .object({

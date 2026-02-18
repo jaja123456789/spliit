@@ -103,10 +103,11 @@ export function useCurrencyRate(
   if (data) {
     let exchangeRate = undefined
     let sentError = error
-    if (!error && data.date !== dateString) {
-      // this happens if for example, the requested date is in the future.
-      sentError = new RangeError(data.date)
-    }
+    // Commented as when checking during weekends, the dates won't match
+    // if (!error && data.date !== dateString) { 
+    //   // this happens if for example, the requested date is in the future.
+    //   sentError = new RangeError(data.date)
+    // }
     if (data.rates[targetCurrency]) {
       exchangeRate = data.rates[targetCurrency]
     }

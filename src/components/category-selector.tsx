@@ -9,7 +9,7 @@ import {
   CommandInput,
   CommandItem,
 } from '@/components/ui/command'
-import { Drawer, DrawerContent, DrawerTrigger } from '@/components/ui/drawer'
+import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
 import {
   Popover,
   PopoverContent,
@@ -80,7 +80,8 @@ export function CategorySelector({
           isLoading={isLoading}
         />
       </DrawerTrigger>
-      <DrawerContent className="p-0">
+      <DrawerContent className="p-0 max-h-[85vh]">
+        <DrawerTitle className="sr-only">Select Category</DrawerTitle>
         <CategoryCommand
           categories={categories}
           onValueChange={(id) => {
@@ -88,6 +89,7 @@ export function CategorySelector({
             onValueChange(id)
             setOpen(false)
           }}
+          className="border-none"
         />
       </DrawerContent>
     </Drawer>
@@ -97,9 +99,11 @@ export function CategorySelector({
 function CategoryCommand({
   categories,
   onValueChange,
+  className
 }: {
   categories: Category[]
   onValueChange: (categoryId: Category['id']) => void
+  className?: string
 }) {
   const t = useTranslations('Categories')
   const categoriesByGroup = categories.reduce<Record<string, Category[]>>(
@@ -111,10 +115,10 @@ function CategoryCommand({
   )
 
   return (
-    <Command>
-      <CommandInput placeholder={t('search')} className="text-base" />
+    <Command className={className}>
+      <CommandInput placeholder={t('search')} className="text-base h-12" />
       <CommandEmpty>{t('noCategory')}</CommandEmpty>
-      <div className="w-full max-h-[300px] overflow-y-auto">
+      <div className="w-full overflow-y-auto max-h-[60vh] sm:max-h-[300px]">
         {Object.entries(categoriesByGroup).map(
           ([group, groupCategories], index) => (
             <CommandGroup key={index} heading={t(`${group}.heading`)}>
@@ -128,6 +132,7 @@ function CategoryCommand({
                     const id = Number(currentValue.split(' ')[0])
                     onValueChange(id)
                   }}
+                  className="py-3 px-4 text-base" 
                 >
                   <CategoryLabel category={category} />
                 </CommandItem>
@@ -156,7 +161,7 @@ const CategoryButton = forwardRef<HTMLButtonElement, CategoryButtonProps>(
         variant="outline"
         role="combobox"
         aria-expanded={open}
-        className="flex w-full justify-between"
+        className="flex w-full justify-between px-3 h-11"
         ref={ref}
         {...props}
       >
@@ -176,8 +181,8 @@ function CategoryLabel({ category }: { category: Category }) {
   const t = useTranslations('Categories')
   return (
     <div className="flex items-center gap-3">
-      <CategoryIcon category={category} className="w-4 h-4" />
-      {t(`${category.grouping}.${category.name}`)}
+      <CategoryIcon category={category} className="w-5 h-5 text-muted-foreground" />
+      <span>{t(`${category.grouping}.${category.name}`)}</span>
     </div>
   )
 }

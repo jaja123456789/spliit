@@ -5,25 +5,28 @@ export type PaymentProfile = {
   paypal?: string
   cashapp?: string
   revolut?: string
+  phone?: string
 }
 
-export type PaymentLink = {
-  provider: string
-  url: string
+export type PaymentOption = {
+  type: 'link' | 'copy'
+  label: string
+  value: string // URL or copy text
   color: string
   bgColor: string
   textColor: string
+  icon?: 'external-link' | 'copy' | 'phone' | 'landmark'
 }
 
-export function getPaymentLinks(
+export function getPaymentOptions(
   profile: PaymentProfile | null, 
   amount: number, 
   currency: Currency,
   note: string = "Spliit Expense"
-): PaymentLink[] {
+): PaymentOption[] {
   if (!profile) return []
 
-  const links: PaymentLink[] = []
+  const options: PaymentOption[] = []
   
   // Format amount: 1050 (cents) -> 10.50
   // We use .toFixed(2) to ensure standard currency format
@@ -34,12 +37,14 @@ export function getPaymentLinks(
   // Format: https://paypal.me/user/10.50USD
   if (profile.paypal) {
     const cleanHandle = profile.paypal.replace(/^@/, '')
-    links.push({
-      provider: 'PayPal',
-      url: `https://paypal.me/${cleanHandle}/${fmtAmount}${currency.code}`,
+     options.push({
+      type: 'link',
+      label: 'PayPal',
+      value: `https://paypal.me/${cleanHandle}/${fmtAmount}${currency.code}`,
       color: '#003087',
       bgColor: 'bg-[#003087]',
-      textColor: 'text-white'
+      textColor: 'text-white',
+      icon: 'external-link'
     })
   }
 
@@ -53,12 +58,26 @@ export function getPaymentLinks(
       amount: fmtAmount,
       note: note
     })
-    links.push({
-      provider: 'Venmo',
-      url: `https://venmo.com/?${params.toString()}`,
+    options.push({
+      type: 'link',
+      label: 'Venmo',
+      value: `https://venmo.com/?${params.toString()}`,
       color: '#008CFF',
       bgColor: 'bg-[#008CFF]',
-      textColor: 'text-white'
+      textColor: 'text-white',
+      icon: 'external-link'
+    })
+  }
+
+  if (profile.phone) {
+    options.push({
+      type: 'copy',
+      label: 'Phone',
+      value: profile.phone,
+      color: '#71717a', // Zinc-500
+      bgColor: 'bg-zinc-100 dark:bg-zinc-800',
+      textColor: 'text-zinc-900 dark:text-zinc-100',
+      icon: 'phone'
     })
   }
 
@@ -70,12 +89,14 @@ export function getPaymentLinks(
     let handle = profile.cashapp
     if (!handle.startsWith('$')) handle = `$${handle}`
     
-    links.push({
-      provider: 'Cash App',
-      url: `https://cash.app/${handle}/${fmtAmount}`,
+    options.push({
+      type: 'link',
+      label: 'Cash App',
+      value: `https://cash.app/${handle}/${fmtAmount}`,
       color: '#00D632',
       bgColor: 'bg-[#00D632]',
-      textColor: 'text-white'
+      textColor: 'text-white',
+      icon: 'external-link'
     })
   }
 
@@ -83,14 +104,16 @@ export function getPaymentLinks(
   // Format: https://revolut.me/user?currency=usd&amount=1000
   if (profile.revolut) {
     const cleanHandle = profile.revolut.replace(/^@/, '')
-    links.push({
-      provider: 'Revolut',
-      url: `https://revolut.me/${cleanHandle}?currency=${currency.code.toLowerCase()}&amount=${amount}`, 
+    options.push({
+      type: 'link',
+      label: 'Revolut',
+      value: `https://revolut.me/${cleanHandle}?currency=${currency.code.toLowerCase()}&amount=${amount}`, 
       color: '#0075EB',
       bgColor: 'bg-[#0075EB]',
-      textColor: 'text-white'
+      textColor: 'text-white',
+      icon: 'external-link'
     })
   }
 
-  return links
+  return options
 }

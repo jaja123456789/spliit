@@ -35,7 +35,7 @@ import { getGroup } from '@/lib/api'
 import { defaultCurrencyList, getCurrency } from '@/lib/currency'
 import { GroupFormValues, groupFormSchema } from '@/lib/schemas'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Save, Trash2, CreditCard } from 'lucide-react'
+import { Save, Trash2, CreditCard, Landmark, Smartphone } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -43,7 +43,6 @@ import { useFieldArray, useForm } from 'react-hook-form'
 import { CurrencySelector } from './currency-selector'
 import { Textarea } from './ui/textarea'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Label } from '@radix-ui/react-label'
 import { Switch } from './ui/switch'
 
 export type Props = {
@@ -62,6 +61,7 @@ export function GroupForm({
 }: Props) {
   const locale = useLocale()
   const t = useTranslations('GroupForm')
+  const defaultCurrencyCode = process.env.NEXT_PUBLIC_DEFAULT_CURRENCY_CODE || 'USD' 
   const form = useForm<GroupFormValues>({
     resolver: zodResolver(groupFormSchema),
     defaultValues: group
@@ -70,14 +70,18 @@ export function GroupForm({
           information: group.information ?? '',
           currency: group.currency ?? '',
           currencyCode: group.currencyCode ?? '',
-          participants: group.participants,
+          participants: group.participants.map(p => ({
+            id: p.id,
+            name: p.name,
+            paymentProfile: (p.paymentProfile as any) ?? {} 
+          })),
           simplifyDebts: group.simplifyDebts ?? true, 
         }
       : {
           name: '',
           information: '',
-          currency: '',
-          currencyCode: process.env.NEXT_PUBLIC_DEFAULT_CURRENCY_CODE || 'USD', // TODO: If NEXT_PUBLIC_DEFAULT_CURRENCY_CODE, is not set, determine the default currency code based on locale
+          currency: getCurrency(defaultCurrencyCode, locale as Locale).symbol,
+          currencyCode: defaultCurrencyCode,
           participants: [
             { name: t('Participants.John') },
             { name: t('Participants.Jane') },
@@ -235,7 +239,7 @@ export function GroupForm({
                 )}
               />
             </div>
-            <div className="col-span-2 sm:col-span-1">
+            <div className="col-span-2">
               <FormField
                 control={form.control}
                 name="simplifyDebts"
@@ -251,7 +255,6 @@ export function GroupForm({
                     </div>
                     <FormControl>
                       <Switch
-                        // FIX: The ?? true ensures the component is always 'controlled'
                         checked={field.value ?? true} 
                         onCheckedChange={field.onChange}
                       />
@@ -321,30 +324,80 @@ export function GroupForm({
                             )}
                             <Popover>
                               <PopoverTrigger asChild>
-                                <Button variant="ghost" size="icon" title="Payment Methods">
-                                  <CreditCard className="w-4 h-4 text-muted-foreground" />
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  title="Payment Methods"
+                                  className={form.watch(`participants.${index}.paymentProfile`) ? "text-primary bg-primary/10" : "text-muted-foreground"}
+                                >
+                                  <CreditCard className="w-4 h-4" />
                                 </Button>
                               </PopoverTrigger>
-                              <PopoverContent className="w-80">
+                              <PopoverContent className="w-80" align="end">
                                 <div className="grid gap-4">
-                                  <div className="space-y-2">
+                                  <div className="space-y-1">
                                     <h4 className="font-medium leading-none">Payment Methods</h4>
-                                    <p className="text-sm text-muted-foreground">
-                                      Enter handles to enable direct payment links.
+                                    <p className="text-xs text-muted-foreground">
+                                      Add details to enable direct repayment links.
                                     </p>
                                   </div>
-                                  <div className="grid gap-2">
-                                    {['venmo', 'paypal', 'cashapp', 'revolut'].map((provider) => (
-                                      <div key={provider} className="grid grid-cols-3 items-center gap-4">
-                                        <Label htmlFor={provider}>{provider}</Label>
-                                        <Input
-                                          id={provider}
-                                          className="col-span-2 h-8"
-                                          placeholder="username"
-                                          {...form.register(`participants.${index}.paymentProfile.${provider}` as any)}
+                                  
+                                  <div className="grid gap-4">
+                                    {/* Payment Apps Section */}
+                                    <div className="space-y-2">
+                                      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Payment Apps</h5>
+                                      {['venmo', 'paypal', 'cashapp', 'revolut'].map((provider) => (
+                                        <FormField
+                                          key={provider}
+                                          control={form.control}
+                                          name={`participants.${index}.paymentProfile.${provider}` as any}
+                                          render={({ field }) => (
+                                            <FormItem className="grid grid-cols-3 items-center gap-3 space-y-0">
+                                              <FormLabel className="capitalize text-xs cursor-pointer">
+                                                {provider}
+                                              </FormLabel>
+                                              <div className="col-span-2">
+                                                <FormControl>
+                                                  <Input
+                                                    className="h-8 text-sm"
+                                                    placeholder="username"
+                                                    {...field}
+                                                    value={(field.value as string) ?? ''}
+                                                  />
+                                                </FormControl>
+                                              </div>
+                                            </FormItem>
+                                          )}
                                         />
-                                      </div>
-                                    ))}
+                                      ))}
+                                    </div>
+
+                                    {/* Manual Section */}
+                                    <div className="space-y-2 pt-2 border-t">
+                                      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Manual Details</h5>
+                                      
+                                      <FormField
+                                        control={form.control}
+                                        name={`participants.${index}.paymentProfile.phone` as any}
+                                        render={({ field }) => (
+                                          <FormItem className="grid grid-cols-3 items-center gap-3 space-y-0">
+                                            <FormLabel className="text-xs cursor-pointer flex items-center gap-1">
+                                              <Smartphone className="w-3 h-3" /> Phone
+                                            </FormLabel>
+                                            <div className="col-span-2">
+                                              <FormControl>
+                                                <Input
+                                                  className="h-8 text-sm"
+                                                  placeholder="+1 234..."
+                                                  {...field}
+                                                  value={(field.value as string) ?? ''}
+                                                />
+                                              </FormControl>
+                                            </div>
+                                          </FormItem>
+                                        )}
+                                      />
+                                    </div>
                                   </div>
                                 </div>
                               </PopoverContent>

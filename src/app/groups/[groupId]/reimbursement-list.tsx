@@ -1,13 +1,15 @@
+'use client'
+
 import { Button } from '@/components/ui/button'
 import { Reimbursement } from '@/lib/balances'
 import { Currency } from '@/lib/currency'
-import { getPaymentLinks } from '@/lib/payment-links'
+import { getPaymentOptions, PaymentOption } from '@/lib/payment-links'
 import { formatCurrency } from '@/lib/utils'
 import { Participant } from '@prisma/client'
+import { Check, Copy, ExternalLink, Smartphone, Landmark } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { ExternalLink } from 'lucide-react'
-
+import { useState } from 'react'
 
 type Props = {
   reimbursements: Reimbursement[]
@@ -38,16 +40,16 @@ export function ReimbursementList({
       {reimbursements.map((reimbursement) => {
         const fromParticipant = getParticipant(reimbursement.from)
         const toParticipant = getParticipant(reimbursement.to)
-        
+
         const fromName = fromParticipant?.name ?? ''
         const toName = toParticipant?.name ?? ''
 
         // Ensure we cast paymentProfile to any or PaymentProfile type depending on your Prisma types generation
-        const paymentLinks = getPaymentLinks(
-          (toParticipant?.paymentProfile as any), 
+        const paymentOptions = getPaymentOptions(
+          toParticipant?.paymentProfile as any,
           reimbursement.amount,
           currency,
-          `Reimbursement from ${fromName}`
+          `Reimbursement from ${fromName}`,
         )
 
         return (
@@ -56,44 +58,46 @@ export function ReimbursementList({
             key={`${reimbursement.from}-${reimbursement.to}`}
           >
             <div className="flex justify-between items-center">
-              <div className="flex flex-col gap-1 items-start sm:flex-row sm:items-baseline sm:gap-4">
+              <div className="flex flex-col gap-1 items-start sm:flex-row sm:items-center sm:gap-4 w-full">
                 <div>
                   {t.rich('owes', {
                     from: fromName,
                     to: toName,
-                    strong: (chunks) => <strong>{chunks}</strong>,
+                    strong: (chunks) => (
+                      <strong className="font-semibold text-foreground">
+                        {chunks}
+                      </strong>
+                    ),
                   })}
                 </div>
                 {/* Mark as paid button */}
-                <Button variant="link" asChild className="-mx-4 -my-3 h-auto p-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="h-7 text-xs gap-1 sm:ml-auto"
+                >
                   <Link
                     href={`/groups/${groupId}/expenses/create?reimbursement=yes&from=${reimbursement.from}&to=${reimbursement.to}&amount=${reimbursement.amount}`}
                   >
+                    <Check className="w-3 h-3" />
                     {t('markAsPaid')}
                   </Link>
                 </Button>
               </div>
-              <div className="font-semibold">
+              <div className="font-semibold ml-4">
                 {formatCurrency(currency, reimbursement.amount, locale)}
               </div>
             </div>
 
             {/* NEW: Payment Links Row */}
-            {paymentLinks.length > 0 && (
+            {paymentOptions.length > 0 && (
               <div className="flex gap-2 flex-wrap mt-1">
-                <span className="text-xs text-muted-foreground self-center">Pay with:</span>
-                {paymentLinks.map((link) => (
-                  <Button
-                    key={link.provider}
-                    size="sm"
-                    className={`h-7 text-xs px-3 ${link.bgColor} ${link.textColor} hover:opacity-90 border-none`}
-                    asChild
-                  >
-                    <a href={link.url} target="_blank" rel="noopener noreferrer">
-                      {link.provider}
-                      <ExternalLink className="w-3 h-3 ml-1.5 opacity-70" />
-                    </a>
-                  </Button>
+                <span className="text-xs text-muted-foreground self-center">
+                  Pay with:
+                </span>
+                {paymentOptions.map((opt, idx) => (
+                  <PaymentOptionButton key={idx} option={opt} />
                 ))}
               </div>
             )}
@@ -102,4 +106,45 @@ export function ReimbursementList({
       })}
     </div>
   )
+}
+
+// Sub-component to handle copy state locally
+function PaymentOptionButton({ option }: { option: PaymentOption }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(option.value)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  const Icon = option.type === 'copy'
+    ? (copied ? Check : (getIcon(option.icon) || Copy))
+    : ExternalLink
+
+  const classes = `h-7 text-xs px-3 ${option.bgColor} ${option.textColor} hover:opacity-90 border-none transition-all`
+
+  if (option.type === 'link') {
+    return (
+      <Button size="sm" className={classes} asChild>
+        <a href={option.value} target="_blank" rel="noopener noreferrer">
+          {option.label}
+          <Icon className="w-3 h-3 ml-1.5 opacity-70" />
+        </a>
+      </Button>
+    )
+  }
+
+  return (
+    <Button size="sm" className={classes} onClick={handleCopy}>
+      {option.label}
+      <Icon className="w-3 h-3 ml-1.5 opacity-70" />
+    </Button>
+  )
+}
+
+function getIcon(name?: string) {
+  if (name === 'phone') return Smartphone
+  if (name === 'landmark') return Landmark
+  return null
 }

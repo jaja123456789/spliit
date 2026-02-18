@@ -31,6 +31,7 @@ interface CalculatorInputProps
   className?: string      
   inputClassName?: string
   disallowEmpty?: boolean
+  decimalPlaces?: number
 }
 
 export function CalculatorInput({
@@ -41,6 +42,7 @@ export function CalculatorInput({
   placeholder = "0.00",
   disabled,
   disallowEmpty = false,
+  decimalPlaces = 2,
   onBlur,
   ...props
 }: CalculatorInputProps) {
@@ -79,6 +81,7 @@ export function CalculatorInput({
       initialValue={String(value || "")}
       onApply={handleCalculatorApply}
       className={isDesktop ? "border-none shadow-none" : "w-full max-w-none shadow-none border-none"}
+      decimalPlaces={decimalPlaces}
     />
   )
 

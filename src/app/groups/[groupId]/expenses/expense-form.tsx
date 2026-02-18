@@ -64,7 +64,7 @@ import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
-import { useFieldArray, useForm, useWatch } from 'react-hook-form'
+import { useFieldArray, useForm, UseFormReturn, useWatch } from 'react-hook-form'
 import { match } from 'ts-pattern'
 import { DeletePopup } from '../../../../components/delete-popup'
 import { extractCategoryFromTitle } from '../../../../components/expense-form-actions'
@@ -502,10 +502,12 @@ export function ExpenseForm({
           const data = JSON.parse(storedData)
           sessionStorage.removeItem('pendingReceiptData');
 
+          const allParticipantIds = group.participants.map(p => p.id)
+
           const formItems = (data.items || []).map((item: any) => ({
             name: item.name || 'Unknown Item',
             price: Number(item.price) || 0,
-            participantIds: [] 
+            participantIds: allParticipantIds 
           }))
 
           const currentValues = form.getValues()
@@ -532,7 +534,7 @@ export function ExpenseForm({
         console.error("Failed to load receipt data", e)
       }
     }
-  }, [isCreate, searchParams, itemReplace])
+  }, [isCreate, searchParams, itemReplace, group.participants, form])
 
   useEffect(() => {
     if (totalAmount < 0) form.setValue('isReimbursement', false)
@@ -874,14 +876,16 @@ export function ExpenseForm({
                 </div>
             </div>
 
-            <div className="flex items-center justify-end space-x-2 my-4">
-              <Label htmlFor="itemize-mode" className="text-sm text-muted-foreground">Itemize Mode</Label>
-              <Switch
-                id="itemize-mode"
-                checked={isItemized}
-                onCheckedChange={setIsItemized}
-              />
-            </div>
+            {!form.watch('isReimbursement') && (
+              <div className="flex items-center justify-end space-x-2 my-4">
+                <Label htmlFor="itemize-mode" className="text-sm text-muted-foreground">Itemize Mode</Label>
+                <Switch
+                  id="itemize-mode"
+                  checked={isItemized}
+                  onCheckedChange={setIsItemized}
+                />
+              </div>
+            )}
 
 
             {!isMultiPayer && (
@@ -907,6 +911,7 @@ export function ExpenseForm({
                             className="text-base"
                             disabled
                             {...field}
+                            value={field.value ?? ''}
                             placeholder={group.currency}
                           />
                         )}
@@ -939,6 +944,7 @@ export function ExpenseForm({
                               inputMode="decimal"
                               placeholder="0.00"
                               {...field}
+                              value={field.value ?? ''}
                               onChange={(e) =>
                                 field.onChange(
                                   enforceCurrencyPattern(e.target.value),
@@ -1201,75 +1207,77 @@ export function ExpenseForm({
                 }}
               />
 
-              <Collapsible
-                className="mt-5"
-                defaultOpen={splitMode !== 'EVENLY'}
-              >
-                <CollapsibleTrigger asChild>
-                  <Button variant="link" type="button" className="-mx-4">
-                    {t('advancedOptions')}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <div className="grid sm:grid-cols-2 gap-6 pt-3">
-                    <FormField
-                      control={form.control}
-                      name="splitMode"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('SplitModeField.label')}</FormLabel>
-                          <FormControl>
-                            <Select
-                              onValueChange={handleSplitModeChange}
-                              defaultValue={field.value}
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="EVENLY">
-                                  {t('SplitModeField.evenly')}
-                                </SelectItem>
-                                <SelectItem value="BY_SHARES">
-                                  {t('SplitModeField.byShares')}
-                                </SelectItem>
-                                <SelectItem value="BY_PERCENTAGE">
-                                  {t('SplitModeField.byPercentage')}
-                                </SelectItem>
-                                <SelectItem value="BY_AMOUNT">
-                                  {t('SplitModeField.byAmount')}
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
-                          <FormDescription>
-                            {t(`${sExpense}.splitModeDescription`)}
-                          </FormDescription>
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="saveDefaultSplittingOptions"
-                      render={({ field }) => (
-                        <FormItem className="flex flex-row gap-2 items-center space-y-0 pt-2">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                          <div>
-                            <FormLabel>
-                              {t('SplitModeField.saveAsDefault')}
-                            </FormLabel>
-                          </div>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+              {!isItemized && (
+                <Collapsible
+                  className="mt-5"
+                  defaultOpen={splitMode !== 'EVENLY'}
+                >
+                  <CollapsibleTrigger asChild>
+                    <Button variant="link" type="button" className="-mx-4">
+                      {t('advancedOptions')}
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="grid sm:grid-cols-2 gap-6 pt-3">
+                      <FormField
+                        control={form.control}
+                        name="splitMode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>{t('SplitModeField.label')}</FormLabel>
+                            <FormControl>
+                              <Select
+                                onValueChange={handleSplitModeChange}
+                                defaultValue={field.value}
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="EVENLY">
+                                    {t('SplitModeField.evenly')}
+                                  </SelectItem>
+                                  <SelectItem value="BY_SHARES">
+                                    {t('SplitModeField.byShares')}
+                                  </SelectItem>
+                                  <SelectItem value="BY_PERCENTAGE">
+                                    {t('SplitModeField.byPercentage')}
+                                  </SelectItem>
+                                  <SelectItem value="BY_AMOUNT">
+                                    {t('SplitModeField.byAmount')}
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </FormControl>
+                            <FormDescription>
+                              {t(`${sExpense}.splitModeDescription`)}
+                            </FormDescription>
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="saveDefaultSplittingOptions"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row gap-2 items-center space-y-0 pt-2">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div>
+                              <FormLabel>
+                                {t('SplitModeField.saveAsDefault')}
+                              </FormLabel>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
             </CardContent>
           </Card>
         )}
@@ -1334,7 +1342,7 @@ function PaidForList({
   setManuallyEditedParticipants,
   recalculateByAmount
 }: {
-  form: any 
+  form: UseFormReturn<ExpenseFormValues> 
   group: NonNullable<AppRouterOutput['groups']['get']['group']>
   groupCurrency: any
   totalAmount: number
@@ -1480,6 +1488,7 @@ function PaidForList({
                         <CalculatorInput
                           inputClassName="text-base w-[80px] -my-2"
                           placeholder="0.00"
+                          decimalPlaces={groupCurrency.decimal_digits}
                           value={currentShare}
                           onValueChange={(val) => handleShareChange(id, val)}
                           disallowEmpty={false}
