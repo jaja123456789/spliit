@@ -80,7 +80,7 @@ export function Charts({
                     ))}
                   </Pie>
                   <Tooltip
-                    formatter={(value: number) => formatVal(value)}
+                    formatter={(value) => formatVal(Number(value ?? 0))}
                     contentStyle={{
                       backgroundColor: 'hsl(var(--card))',
                       borderColor: 'hsl(var(--border))',
@@ -123,7 +123,7 @@ export function Charts({
                     tick={{ fontSize: 12 }}
                   />
                   <Tooltip
-                    formatter={(value: number) => formatVal(value)}
+                    formatter={(value) => formatVal(Number(value ?? 0))}
                     cursor={{ fill: 'transparent' }}
                     contentStyle={{
                       backgroundColor: 'hsl(var(--card))',
@@ -166,7 +166,7 @@ export function Charts({
                     tick={{ fontSize: 12 }}
                   />
                   <Tooltip
-                    formatter={(value: number) => formatVal(value)}
+                    formatter={(value) => formatVal(Number(value ?? 0))}
                     labelFormatter={(label) =>
                       new Date(label).toLocaleDateString(locale, {
                         dateStyle: 'medium',

@@ -95,7 +95,6 @@ async function writeData(groupName: string, currency: string, data: any) {
         categoryId: expenseCategory === "payment" ? 2 : categoryMapping[expenseCategory] ?? 1,
         createdAt: new Date(),
         isReimbursement: expenseCategory === "payment",
-        paidById: participantIdsMapping[paidBy],
         splitMode: "BY_AMOUNT"
       })
     }
@@ -127,7 +126,7 @@ async function main() {
 
         createReadStream(fileName)
           .pipe(csv())
-          .on('data', (r) => {
+          .on('data', (r: any) => {
               // console.log(r);
               data.push(r);        
           })

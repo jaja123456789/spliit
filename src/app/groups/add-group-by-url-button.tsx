@@ -14,7 +14,7 @@ import { useTranslations } from 'next-intl'
 import { useState } from 'react'
 
 type Props = {
-  reload: () => void
+  reload?: () => void
 }
 
 export function AddGroupByUrlButton({ reload }: Props) {
@@ -51,7 +51,7 @@ export function AddGroupByUrlButton({ reload }: Props) {
       })
       if (group) {
         saveRecentGroup({ id: group.id, name: group.name })
-        reload()
+        reload?.()
         setUrl('')
         setOpen(false)
         setScanMode(false)

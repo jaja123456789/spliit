@@ -107,7 +107,7 @@ function ReceiptDialogContent() {
 
   // Accumulated images before analysis
   const [draftImages, setDraftImages] = useState<
-    { blobUrl: string; file: File; width: number; height: number }[]
+    { blobUrl: string; file: File; width: number|undefined; height: number|undefined }[]
   >([])
 
   // Result after analysis
@@ -167,7 +167,7 @@ function ReceiptDialogContent() {
     const files = event.target.files
     if (!files || files.length === 0) return
 
-    const newImages = []
+    const newImages: { blobUrl: string; file: File; width: number | undefined; height: number | undefined }[] = []
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
       if (file.size > MAX_FILE_SIZE) {
@@ -223,8 +223,8 @@ function ReceiptDialogContent() {
         uploadToS3(img.file)
           .then((res) => ({
             url: res.url,
-            width: img.width,
-            height: img.height,
+            width: img.width ?? 0,
+            height: img.height ?? 0,
             id: crypto.randomUUID(),
           }))
           .catch((err) => {

@@ -369,6 +369,11 @@ export async function updateGroup(
   const existingGroup = await getGroup(groupId)
   if (!existingGroup) throw new Error('Invalid group ID')
   await logActivity(groupId, ActivityType.UPDATE_GROUP, { participantId })
+
+  const participantIdsToKeep = groupFormValues.participants
+    .map((p) => p.id)
+    .filter((id): id is string => !!id)
+  
   return prisma.group.update({
     where: { id: groupId },
     data: {
@@ -378,27 +383,32 @@ export async function updateGroup(
       currencyCode: groupFormValues.currencyCode,
       simplifyDebts: groupFormValues.simplifyDebts,
       participants: {
-        deleteMany: existingGroup.participants.filter(
-          (p) => !groupFormValues.participants.some((p2) => p2.id === p.id),
-        ),
-        updateMany: groupFormValues.participants
-          .filter((participant) => participant.id !== undefined)
-          .map((participant) => ({
-            where: { id: participant.id },
+        // FIX: Pass a filter object { id: { notIn: [...] } } 
+        // instead of the array of filtered objects.
+        deleteMany: {
+          id: {
+            notIn: participantIdsToKeep,
+          },
+        },
+        // Update existing participants
+        update: groupFormValues.participants
+          .filter((p) => p.id !== undefined)
+          .map((p) => ({
+            where: { id: p.id },
             data: {
-              name: participant.name,
-              paymentProfile: participant.paymentProfile ?? Prisma.DbNull, // Handle update
+              name: p.name,
+              // Use Prisma.DbNull to explicitly clear the JSON field if it's empty
+              paymentProfile: p.paymentProfile ? (p.paymentProfile as any) : Prisma.DbNull,
             },
           })),
-        createMany: {
-          data: groupFormValues.participants
-            .filter((participant) => participant.id === undefined)
-            .map((participant) => ({
-              id: randomId(),
-              name: participant.name,
-              paymentProfile: participant.paymentProfile ?? undefined,
-            })),
-        },
+        // Create new participants
+        create: groupFormValues.participants
+          .filter((p) => p.id === undefined)
+          .map((p) => ({
+            id: randomId(),
+            name: p.name,
+            paymentProfile: p.paymentProfile ? (p.paymentProfile as any) : undefined,
+          })),
       },
     },
   })

@@ -20,7 +20,7 @@ export const groupFormSchema = z
     participants: z
       .array(
         z.object({
-          id: z.string().optional(),
+          id: z.string(),
           name: z.string().min(2, 'min2').max(50, 'max50'),
           paymentProfile: paymentProfileSchema
         }),

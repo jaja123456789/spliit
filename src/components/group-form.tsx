@@ -416,7 +416,17 @@ export function GroupForm({
             <Button
               variant="secondary"
               onClick={() => {
-                append({ name: '' })
+                append({ 
+                  name: '', 
+                  id: '', 
+                  paymentProfile: {
+                    venmo: '',
+                    paypal: '',
+                    cashapp: '',
+                    revolut: '',
+                    phone: '',
+                  } 
+                })
               }}
               type="button"
             >

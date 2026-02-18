@@ -24,7 +24,7 @@ export async function GET(
           originalAmount: true,
           originalCurrency: true,
           conversionRate: true,
-          paidById: true,
+          paidBy: { select: { participantId: true, amount: true } },
           paidFor: { select: { participantId: true, shares: true } },
           isReimbursement: true,
           splitMode: true,

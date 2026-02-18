@@ -71,6 +71,7 @@ import { extractCategoryFromTitle } from '../../../../components/expense-form-ac
 import { ItemizationBuilder } from './itemization-builder' // Import new component
 import { Crown } from 'lucide-react' // Add a subtle icon
 import { Badge } from '@/components/ui/badge'
+import { randomId } from '@/lib/api'
 
 
 
@@ -123,7 +124,7 @@ const getDefaultSplittingOptions = (
       splitMode: parsedDefaultSplitMode.splitMode,
       paidFor: parsedDefaultSplitMode.paidFor.map((paidFor) => ({
         participant: paidFor.participant,
-        shares: (paidFor.shares / 100).toString() as any,
+        shares: (parseFloat(paidFor.shares.toString()) / 100).toString() as any,
       })),
     }
   } catch (e) {
@@ -499,7 +500,7 @@ export function ExpenseForm({
       try {
         const storedData = sessionStorage.getItem('pendingReceiptData')
         if (storedData) {
-          const data = JSON.parse(storedData)
+          const data: any = JSON.parse(storedData)
           sessionStorage.removeItem('pendingReceiptData');
 
           const allParticipantIds = group.participants.map(p => p.id)
@@ -1383,6 +1384,7 @@ function PaidForList({
       isReimbursement: isReimbursement,
       paidBy: paidByValues.map((pb: any) => ({
         participantId: pb.participant,
+        participant: { id: pb.participant, name: '' }, 
         amount: 0,
       })),
     })

@@ -147,7 +147,7 @@ export function ExpenseCard({
                 className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium"
                 data-testid="expense-date"
               >
-                {formatDateOnly(expense.expenseDate, locale, { month: 'short', day: 'numeric' })}
+                {formatDateOnly(expense.expenseDate, locale, { dateStyle:'medium' })}
               </div>
               <DocumentsCount count={expense._count.documents} />
             </div>
