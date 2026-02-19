@@ -12,13 +12,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { cn } from '@/lib/utils' // Import cn
 import { Plus } from 'lucide-react'
 import { Metadata } from 'next'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
+import { useEffect, useState } from 'react' // Import react hooks
 import { useCurrentGroup } from '../current-group-context'
-import { cn } from '@/lib/utils' // Import cn
-import { useState, useEffect } from 'react' // Import react hooks
 
 export const revalidate = 3600
 
@@ -35,7 +35,7 @@ export default function GroupExpensesPageClient({
   const { groupId } = useCurrentGroup()
   const [isScrolled, setIsScrolled] = useState(false)
 
-  // Detect scroll to show shadow on sticky headers if implemented, 
+  // Detect scroll to show shadow on sticky headers if implemented,
   // or simply to handle FAB visibility interactions if needed later.
   useEffect(() => {
     const handleScroll = () => {
@@ -53,12 +53,12 @@ export default function GroupExpensesPageClient({
             <CardTitle>{t('title')}</CardTitle>
             <CardDescription>{t('description')}</CardDescription>
           </CardHeader>
-          
+
           {/* Desktop Toolbar */}
           <div className="flex flex-row space-x-2">
             <ExportButton groupId={groupId} />
             {enableReceiptExtract && <CreateFromReceiptButton />}
-            
+
             {/* Desktop Add Button (hidden on mobile to favor FAB) */}
             <Button asChild size="icon" className="hidden sm:inline-flex">
               <Link
@@ -82,14 +82,11 @@ export default function GroupExpensesPageClient({
           asChild
           size="icon"
           className={cn(
-            "h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 transition-transform active:scale-95",
-            "border-2 border-background" // Contrast border
+            'h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 transition-transform active:scale-95',
+            'border-2 border-background', // Contrast border
           )}
         >
-          <Link
-            href={`/groups/${groupId}/expenses/create`}
-            title={t('create')}
-          >
+          <Link href={`/groups/${groupId}/expenses/create`} title={t('create')}>
             <Plus className="w-8 h-8" />
           </Link>
         </Button>

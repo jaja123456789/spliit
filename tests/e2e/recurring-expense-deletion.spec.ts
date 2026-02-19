@@ -1,7 +1,7 @@
-import { expect, test } from '@playwright/test'
-import { createExpenseViaAPI, createGroupViaAPI } from '../helpers/batch-api'
-import { navigateToGroup } from '../helpers'
 import { randomId } from '@/lib/api'
+import { expect, test } from '@playwright/test'
+import { navigateToGroup } from '../helpers'
+import { createExpenseViaAPI, createGroupViaAPI } from '../helpers/batch-api'
 
 test.describe('Recurring Expense Deletion', () => {
   test('Delete single expense - other expenses remain', async ({ page }) => {

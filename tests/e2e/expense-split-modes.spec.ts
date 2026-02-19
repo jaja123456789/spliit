@@ -1,7 +1,7 @@
+import { randomId } from '@/lib/api'
 import { expect, test } from '@playwright/test'
 import { navigateToTab } from '../helpers'
 import { createGroupViaAPI } from '../helpers/batch-api'
-import { randomId } from '@/lib/api'
 
 test('Create expense - evenly split (most common flow)', async ({ page }) => {
   const groupName = `split modes ${randomId(4)}`

@@ -8,10 +8,13 @@ import {
   RecurringExpenseLink,
 } from '@prisma/client'
 import { nanoid } from 'nanoid'
-import { calculateNextDate } from './recurring-expenses'
-import { amountAsMinorUnits, formatAmountAsDecimal, getCurrencyFromGroup } from './utils'
 import { sendPushNotificationToGroup } from './push'
-
+import { calculateNextDate } from './recurring-expenses'
+import {
+  amountAsMinorUnits,
+  formatAmountAsDecimal,
+  getCurrencyFromGroup,
+} from './utils'
 
 export function randomId(size?: number) {
   return nanoid(size)
@@ -28,11 +31,13 @@ export async function createGroup(groupFormValues: GroupFormValues) {
       simplifyDebts: groupFormValues.simplifyDebts,
       participants: {
         createMany: {
-          data: groupFormValues.participants.map(({ name, paymentProfile }) => ({
-            id: randomId(),
-            name,
-            paymentProfile: paymentProfile ?? undefined, // Pass the JSON
-          })),
+          data: groupFormValues.participants.map(
+            ({ name, paymentProfile }) => ({
+              id: randomId(),
+              name,
+              paymentProfile: paymentProfile ?? undefined, // Pass the JSON
+            }),
+          ),
         },
       },
     },
@@ -52,21 +57,22 @@ export async function createExpense(
 
   // Validate participants
   const allParticipantIds = new Set([
-    ...expenseFormValues.paidBy.map(p => p.participant),
-    ...expenseFormValues.paidFor.map(p => p.participant)
+    ...expenseFormValues.paidBy.map((p) => p.participant),
+    ...expenseFormValues.paidFor.map((p) => p.participant),
   ])
-  
+
   for (const participant of allParticipantIds) {
     if (!group.participants.some((p) => p.id === participant))
       throw new Error(`Invalid participant ID: ${participant}`)
   }
 
-  const itemData = expenseFormValues.items?.map(item => ({
-    id: randomId(),
-    name: item.name,
-    price: amountAsMinorUnits(Number(item.price), groupCurrency),
-    participantIds: item.participantIds
-  })) || []
+  const itemData =
+    expenseFormValues.items?.map((item) => ({
+      id: randomId(),
+      name: item.name,
+      price: amountAsMinorUnits(Number(item.price), groupCurrency),
+      participantIds: item.participantIds,
+    })) || []
 
   const expenseId = randomId()
   await logActivity(groupId, ActivityType.CREATE_EXPENSE, {
@@ -89,7 +95,10 @@ export async function createExpense(
       groupId,
       expenseDate: expenseFormValues.expenseDate,
       categoryId: expenseFormValues.category,
-      amount: amountAsMinorUnits(Number(expenseFormValues.amount), groupCurrency),
+      amount: amountAsMinorUnits(
+        Number(expenseFormValues.amount),
+        groupCurrency,
+      ),
       originalAmount: expenseFormValues.originalAmount,
       originalCurrency: expenseFormValues.originalCurrency,
       conversionRate: expenseFormValues.conversionRate,
@@ -105,28 +114,29 @@ export async function createExpense(
       },
       paidBy: {
         createMany: {
-          data: expenseFormValues.paidBy.map(pb => ({
+          data: expenseFormValues.paidBy.map((pb) => ({
             participantId: pb.participant,
-            amount: amountAsMinorUnits(Number(pb.amount), groupCurrency)
-          }))
-        }
+            amount: amountAsMinorUnits(Number(pb.amount), groupCurrency),
+          })),
+        },
       },
       paidFor: {
         createMany: {
           data: expenseFormValues.paidFor.map((pf) => ({
             participantId: pf.participant,
             // Shares are stored as integers (cents if splitMode is BY_AMOUNT)
-            shares: expenseFormValues.splitMode === 'BY_AMOUNT' 
-              ? amountAsMinorUnits(Number(pf.shares), groupCurrency)
-              : Math.round(Number(pf.shares) * 100),
+            shares:
+              expenseFormValues.splitMode === 'BY_AMOUNT'
+                ? amountAsMinorUnits(Number(pf.shares), groupCurrency)
+                : Math.round(Number(pf.shares) * 100),
           })),
         },
       },
       isReimbursement: expenseFormValues.isReimbursement,
       items: {
         createMany: {
-          data: itemData
-        }
+          data: itemData,
+        },
       },
       documents: {
         createMany: {
@@ -145,11 +155,14 @@ export async function createExpense(
   sendPushNotificationToGroup(
     groupId,
     `New expense in ${group.name}`,
-    `${expenseFormValues.title} - ${formatAmountAsDecimal(Number(expenseFormValues.amount), groupCurrency)} ${groupCurrency.code}`,
+    `${expenseFormValues.title} - ${formatAmountAsDecimal(
+      Number(expenseFormValues.amount),
+      groupCurrency,
+    )} ${groupCurrency.code}`,
     `/groups/${groupId}/expenses/${expense.id}/edit`,
-    participantId // Assuming participantId can be mapped to userId, or just pass undefined if not available easily. 
-    // Ideally, pass the userId if available from context, but api.ts createExpense usually takes participantId. 
-    // To strictly exclude the sender, we'd need to know which User ID corresponds to the participantId. 
+    participantId, // Assuming participantId can be mapped to userId, or just pass undefined if not available easily.
+    // Ideally, pass the userId if available from context, but api.ts createExpense usually takes participantId.
+    // To strictly exclude the sender, we'd need to know which User ID corresponds to the participantId.
     // For now, it's safer to leave undefined or implement a lookup.
   ).catch(console.error)
 
@@ -178,7 +191,7 @@ export async function getGroupExpensesParticipants(groupId: string) {
   return Array.from(
     new Set(
       expenses.flatMap((e) => [
-        ...e.paidBy.map(pb => pb.participantId),
+        ...e.paidBy.map((pb) => pb.participantId),
         ...e.paidFor.map((pf) => pf.participant.id),
       ]),
     ),
@@ -207,16 +220,16 @@ export async function updateExpense(
   if (!group) throw new Error(`Invalid group ID: ${groupId}`)
 
   const groupCurrency = getCurrencyFromGroup(group)
-  
+
   const existingExpense = await getExpense(groupId, expenseId)
   if (!existingExpense) throw new Error(`Invalid expense ID: ${expenseId}`)
 
   // Validate participants
   const allParticipantIds = new Set([
-    ...expenseFormValues.paidBy.map(p => p.participant),
-    ...expenseFormValues.paidFor.map(p => p.participant)
+    ...expenseFormValues.paidBy.map((p) => p.participant),
+    ...expenseFormValues.paidFor.map((p) => p.participant),
   ])
-  
+
   for (const participant of allParticipantIds) {
     if (!group.participants.some((p) => p.id === participant))
       throw new Error(`Invalid participant ID: ${participant}`)
@@ -253,19 +266,23 @@ export async function updateExpense(
     existingExpense.expenseDate,
   )
 
-  const itemData = expenseFormValues.items?.map(item => ({
-    id: item.id || randomId(),
-    name: item.name,
-    price: amountAsMinorUnits(Number(item.price), groupCurrency),
-    participantIds: item.participantIds,
-    expenseId // needed for createMany
-  })) || []
+  const itemData =
+    expenseFormValues.items?.map((item) => ({
+      id: item.id || randomId(),
+      name: item.name,
+      price: amountAsMinorUnits(Number(item.price), groupCurrency),
+      participantIds: item.participantIds,
+      expenseId, // needed for createMany
+    })) || []
 
   return prisma.expense.update({
     where: { id: expenseId },
     data: {
       expenseDate: expenseFormValues.expenseDate,
-      amount: amountAsMinorUnits(Number(expenseFormValues.amount), groupCurrency),
+      amount: amountAsMinorUnits(
+        Number(expenseFormValues.amount),
+        groupCurrency,
+      ),
       originalAmount: expenseFormValues.originalAmount,
       originalCurrency: expenseFormValues.originalCurrency,
       conversionRate: expenseFormValues.conversionRate,
@@ -276,11 +293,11 @@ export async function updateExpense(
       paidBy: {
         deleteMany: { expenseId },
         createMany: {
-          data: expenseFormValues.paidBy.map(pb => ({
+          data: expenseFormValues.paidBy.map((pb) => ({
             participantId: pb.participant,
-            amount: amountAsMinorUnits(Number(pb.amount), groupCurrency)
-          }))
-        }
+            amount: amountAsMinorUnits(Number(pb.amount), groupCurrency),
+          })),
+        },
       },
       paidFor: {
         create: expenseFormValues.paidFor
@@ -292,9 +309,10 @@ export async function updateExpense(
           )
           .map((paidFor) => ({
             participantId: paidFor.participant,
-            shares: expenseFormValues.splitMode === 'BY_AMOUNT' 
-              ? amountAsMinorUnits(Number(paidFor.shares), groupCurrency)
-              : Math.round(Number(paidFor.shares) * 100),
+            shares:
+              expenseFormValues.splitMode === 'BY_AMOUNT'
+                ? amountAsMinorUnits(Number(paidFor.shares), groupCurrency)
+                : Math.round(Number(paidFor.shares) * 100),
           })),
         update: expenseFormValues.paidFor.map((paidFor) => ({
           where: {
@@ -304,9 +322,10 @@ export async function updateExpense(
             },
           },
           data: {
-            shares: expenseFormValues.splitMode === 'BY_AMOUNT' 
-              ? amountAsMinorUnits(Number(paidFor.shares), groupCurrency)
-              : Math.round(Number(paidFor.shares) * 100),
+            shares:
+              expenseFormValues.splitMode === 'BY_AMOUNT'
+                ? amountAsMinorUnits(Number(paidFor.shares), groupCurrency)
+                : Math.round(Number(paidFor.shares) * 100),
           },
         })),
         deleteMany: existingExpense.paidFor.filter(
@@ -336,9 +355,12 @@ export async function updateExpense(
         deleteMany: {}, // Clear old items
         createMany: {
           data: itemData.map(({ id, name, price, participantIds }) => ({
-            id, name, price, participantIds
-          }))
-        }
+            id,
+            name,
+            price,
+            participantIds,
+          })),
+        },
       },
       documents: {
         connectOrCreate: expenseFormValues.documents.map((doc) => ({
@@ -373,7 +395,7 @@ export async function updateGroup(
   const participantIdsToKeep = groupFormValues.participants
     .map((p) => p.id)
     .filter((id): id is string => !!id)
-  
+
   return prisma.group.update({
     where: { id: groupId },
     data: {
@@ -383,7 +405,7 @@ export async function updateGroup(
       currencyCode: groupFormValues.currencyCode,
       simplifyDebts: groupFormValues.simplifyDebts,
       participants: {
-        // FIX: Pass a filter object { id: { notIn: [...] } } 
+        // FIX: Pass a filter object { id: { notIn: [...] } }
         // instead of the array of filtered objects.
         deleteMany: {
           id: {
@@ -398,7 +420,9 @@ export async function updateGroup(
             data: {
               name: p.name,
               // Use Prisma.DbNull to explicitly clear the JSON field if it's empty
-              paymentProfile: p.paymentProfile ? (p.paymentProfile as any) : Prisma.DbNull,
+              paymentProfile: p.paymentProfile
+                ? (p.paymentProfile as any)
+                : Prisma.DbNull,
             },
           })),
         // Create new participants
@@ -407,7 +431,9 @@ export async function updateGroup(
           .map((p) => ({
             id: randomId(),
             name: p.name,
-            paymentProfile: p.paymentProfile ? (p.paymentProfile as any) : undefined,
+            paymentProfile: p.paymentProfile
+              ? (p.paymentProfile as any)
+              : undefined,
           })),
       },
     },
@@ -438,7 +464,13 @@ export async function getGroupExpenses(
       expenseDate: true,
       id: true,
       isReimbursement: true,
-      paidBy: { select: { amount: true, participantId: true, participant: { select: { id: true, name: true } } } },
+      paidBy: {
+        select: {
+          amount: true,
+          participantId: true,
+          participant: { select: { id: true, name: true } },
+        },
+      },
       paidFor: {
         select: {
           participant: { select: { id: true, name: true } },
@@ -524,11 +556,11 @@ export async function logActivity(
 }
 
 // ... existing createRecurringExpenses and createPayloadForNewRecurringExpenseLink (omitted for brevity, no changes needed if they use standard Create input)
-// Wait, createRecurringExpenses uses prisma.expense.create with paidBy. 
+// Wait, createRecurringExpenses uses prisma.expense.create with paidBy.
 // I need to update createRecurringExpenses to use paidBy: { createMany: ... } as well.
 
 export async function createRecurringExpenses() {
-  const localDate = new Date() 
+  const localDate = new Date()
   const utcDateFromLocal = new Date(
     Date.UTC(
       localDate.getUTCFullYear(),
@@ -575,7 +607,7 @@ export async function createRecurringExpenses() {
         documents,
         ...destructeredCurrentExpenseRecord
       } = currentExpenseRecord
-      
+
       const newExpense = await prisma
         .$transaction(async (transaction) => {
           const newExpense = await transaction.expense.create({
@@ -585,11 +617,11 @@ export async function createRecurringExpenses() {
               // paidById removed
               paidBy: {
                 createMany: {
-                    data: paidBy.map(pb => ({
-                        participantId: pb.participantId,
-                        amount: pb.amount
-                    }))
-                }
+                  data: paidBy.map((pb) => ({
+                    participantId: pb.participantId,
+                    amount: pb.amount,
+                  })),
+                },
               },
               paidFor: {
                 createMany: {
@@ -638,7 +670,7 @@ export async function createRecurringExpenses() {
           console.error(
             'Failed to created recurringExpense for expenseId: %s',
             currentExpenseRecord.id,
-            e
+            e,
           )
           return null
         })

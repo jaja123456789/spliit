@@ -1,7 +1,7 @@
+import { randomId } from '@/lib/api'
 import { expect, test } from '@playwright/test'
 import { navigateToTab } from '../helpers'
 import { createExpenseViaAPI, createGroupViaAPI } from '../helpers/batch-api'
-import { randomId } from '@/lib/api'
 
 test('Active user changes balance view', async ({ page }) => {
   const groupName = `active user balances ${randomId(4)}`

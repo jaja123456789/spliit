@@ -6,7 +6,7 @@ if (process.env.VAPID_PRIVATE_KEY && process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY) {
   webpush.setVapidDetails(
     `mailto:${process.env.EMAIL_FROM || 'noreply@example.com'}`,
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
-    process.env.VAPID_PRIVATE_KEY
+    process.env.VAPID_PRIVATE_KEY,
   )
 }
 
@@ -15,7 +15,7 @@ export async function sendPushNotificationToGroup(
   title: string,
   body: string,
   url: string,
-  excludeUserId?: string
+  excludeUserId?: string,
 ) {
   if (!process.env.VAPID_PRIVATE_KEY) return
 
@@ -53,7 +53,7 @@ export async function sendPushNotificationToGroup(
             auth: sub.auth,
           },
         },
-        payload
+        payload,
       )
       .catch((error) => {
         if (error.statusCode === 410 || error.statusCode === 404) {

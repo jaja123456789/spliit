@@ -1,7 +1,7 @@
+import { randomId } from '@/lib/api'
 import { expect, test } from '@playwright/test'
 import { navigateToExpenseCreate } from '../helpers'
 import { createGroupViaAPI } from '../helpers/batch-api'
-import { randomId } from '@/lib/api'
 
 test.describe('Expense Form Validation', () => {
   test('prevents submission with empty title', async ({ page }) => {

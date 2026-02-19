@@ -7,5 +7,7 @@ import { SessionProvider } from 'next-auth/react'
  * This is a client component that wraps the app with session context
  */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  return <SessionProvider basePath='/spliit/api/auth'>{children}</SessionProvider>
+  return (
+    <SessionProvider basePath="/spliit/api/auth">{children}</SessionProvider>
+  )
 }

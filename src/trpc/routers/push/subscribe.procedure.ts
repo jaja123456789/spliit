@@ -10,7 +10,7 @@ export const subscribeProcedure = protectedProcedure
         p256dh: z.string(),
         auth: z.string(),
       }),
-    })
+    }),
   )
   .mutation(async ({ ctx, input }) => {
     const { user } = ctx

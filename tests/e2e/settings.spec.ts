@@ -1,6 +1,6 @@
+import { randomId } from '@/lib/api'
 import { expect, test } from '@playwright/test'
 import { createGroupViaAPI } from '../helpers/batch-api'
-import { randomId } from '@/lib/api'
 
 test('Theme selection persists after reload', async ({ page }) => {
   await page.goto('/groups')

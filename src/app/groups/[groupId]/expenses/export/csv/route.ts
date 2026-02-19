@@ -30,7 +30,8 @@ export async function GET(
   const { groupId } = await params
   const group = await prisma.group.findUnique({
     where: { id: groupId },
-    include: { // Use include for simpler typing in exports
+    include: {
+      // Use include for simpler typing in exports
       expenses: {
         include: {
           category: true,
@@ -102,7 +103,10 @@ export async function GET(
       expenseDate: expense.expenseDate,
     })
 
-    const payerId = expense.paidBy[0]?.participantId ?? expense.paidFor[0]?.participant.id ?? null
+    const payerId =
+      expense.paidBy[0]?.participantId ??
+      expense.paidFor[0]?.participant.id ??
+      null
 
     return {
       date: formatDate(expense.expenseDate),
@@ -121,7 +125,8 @@ export async function GET(
         ? expense.conversionRate.toString()
         : null,
       isReimbursement: expense.isReimbursement ? 'Yes' : 'No',
-      splitMode: splitModeLabel[expense.splitMode as keyof typeof splitModeLabel],
+      splitMode:
+        splitModeLabel[expense.splitMode as keyof typeof splitModeLabel],
       ...Object.fromEntries(
         group.participants.map((participant) => {
           const participantShare = shares[participant.id] ?? 0

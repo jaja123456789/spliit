@@ -31,7 +31,7 @@ test.describe('Magic Link Authentication', () => {
     await signOut(page, false)
 
     // Verify signed out
-    await expect(page.getByText('Sign in to sync your groups')).toBeVisible();
+    await expect(page.getByText('Sign in to sync your groups')).toBeVisible()
   })
 
   test('magic link can only be used once', async ({ page, context }) => {
@@ -45,7 +45,9 @@ test.describe('Magic Link Authentication', () => {
     await newPage.goto(usedMagicLink)
 
     // Should show error or redirect to login (link already used)
-    await expect(newPage.getByRole('heading', { name: 'Authentication Error' })).toBeVisible()
+    await expect(
+      newPage.getByRole('heading', { name: 'Authentication Error' }),
+    ).toBeVisible()
 
     await newPage.close()
   })

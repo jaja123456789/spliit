@@ -11,14 +11,18 @@ export async function readRecentEmail(mailAddress: string): Promise<string> {
   const files = await readdir(mailDir)
 
   // Filter .eml files and sort by name (which includes timestamp)
-  const normalizedEmail = mailAddress.replace(/[^a-zA-Z0-9@.-]/g, '_').toLowerCase()
+  const normalizedEmail = mailAddress
+    .replace(/[^a-zA-Z0-9@.-]/g, '_')
+    .toLowerCase()
   const emlFiles = files
     .filter((f) => f.endsWith(`${normalizedEmail}.eml`))
     .sort()
     .reverse()
 
   if (emlFiles.length === 0) {
-    throw new Error(`No emails found in .mail/ directory for ${normalizedEmail}`)
+    throw new Error(
+      `No emails found in .mail/ directory for ${normalizedEmail}`,
+    )
   }
 
   const latestFile = emlFiles[0]!
@@ -68,7 +72,7 @@ export function extractMagicLinkFromEmail(emailContent: string): string {
 export async function signInWithMagicLink(
   page: Page,
   email: string,
-): Promise<{usedMagicLink: string}> {
+): Promise<{ usedMagicLink: string }> {
   await page.goto('/settings')
 
   // Enter email
@@ -128,7 +132,7 @@ export async function signOut(
   }
 
   // Wait for sign out to complete
-  await expect(page.getByText('Sign in to sync your groups')).toBeVisible();
+  await expect(page.getByText('Sign in to sync your groups')).toBeVisible()
 }
 
 /**
@@ -139,7 +143,7 @@ export async function isSignedIn(page: Page): Promise<boolean> {
   const signedOutElement = page.getByText('Sign in to sync your groups')
   const signedInElement = page.getByText('Signed in as')
   return Promise.race([
-    signedInElement.waitFor({state: 'visible'}).then(() => true),
-    signedOutElement.waitFor({state: 'visible'}).then(() => false)
+    signedInElement.waitFor({ state: 'visible' }).then(() => true),
+    signedOutElement.waitFor({ state: 'visible' }).then(() => false),
   ])
 }

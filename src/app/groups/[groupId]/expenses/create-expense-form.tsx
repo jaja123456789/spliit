@@ -1,10 +1,8 @@
 'use client'
 import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { trpc } from '@/trpc/client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { ExpenseForm } from './expense-form'
-import { useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
 
 export function CreateExpenseForm({
   groupId,

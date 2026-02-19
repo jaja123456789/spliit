@@ -7,13 +7,6 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-} from '@/components/ui/carousel'
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -41,7 +34,6 @@ import {
 import { trpc } from '@/trpc/client'
 import {
   Camera,
-  ChevronRight,
   FileQuestion,
   ImagePlus,
   Loader2,
@@ -107,7 +99,12 @@ function ReceiptDialogContent() {
 
   // Accumulated images before analysis
   const [draftImages, setDraftImages] = useState<
-    { blobUrl: string; file: File; width: number|undefined; height: number|undefined }[]
+    {
+      blobUrl: string
+      file: File
+      width: number | undefined
+      height: number | undefined
+    }[]
   >([])
 
   // Result after analysis
@@ -167,7 +164,12 @@ function ReceiptDialogContent() {
     const files = event.target.files
     if (!files || files.length === 0) return
 
-    const newImages: { blobUrl: string; file: File; width: number | undefined; height: number | undefined }[] = []
+    const newImages: {
+      blobUrl: string
+      file: File
+      width: number | undefined
+      height: number | undefined
+    }[] = []
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
       if (file.size > MAX_FILE_SIZE) {

@@ -69,7 +69,7 @@ export async function setExpenseRecurrence(
 
   // Select the recurrence option
   const recurrenceOption = page.getByRole('option', { name: recurrence })
-  await recurrenceOption.waitFor({ state: 'visible'})
+  await recurrenceOption.waitFor({ state: 'visible' })
   await recurrenceOption.click()
 }
 

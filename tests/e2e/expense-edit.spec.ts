@@ -1,6 +1,6 @@
+import { randomId } from '@/lib/api'
 import { expect, test } from '@playwright/test'
 import { createExpenseViaAPI, createGroupViaAPI } from '../helpers/batch-api'
-import { randomId } from '@/lib/api'
 
 test.describe('Expense Editing', () => {
   test('updates expense title and amount', async ({ page }) => {
@@ -85,10 +85,11 @@ test.describe('Expense Editing', () => {
 
   test('updates expense date', async ({ page }) => {
     await page.goto('/groups')
-    const groupId = await createGroupViaAPI(page, `Date Update ${randomId(4)}`, [
-      'Alice',
-      'Bob',
-    ])
+    const groupId = await createGroupViaAPI(
+      page,
+      `Date Update ${randomId(4)}`,
+      ['Alice', 'Bob'],
+    )
 
     const originalDate = '2024-05-15'
 
@@ -172,11 +173,11 @@ test.describe('Expense Editing', () => {
 
   test('updates all fields simultaneously', async ({ page }) => {
     await page.goto('/groups')
-    const groupId = await createGroupViaAPI(page, `Full Update ${randomId(4)}`, [
-      'Alice',
-      'Bob',
-      'Charlie',
-    ])
+    const groupId = await createGroupViaAPI(
+      page,
+      `Full Update ${randomId(4)}`,
+      ['Alice', 'Bob', 'Charlie'],
+    )
 
     // Create initial expense
     await createExpenseViaAPI(page, groupId, {

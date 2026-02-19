@@ -4,12 +4,11 @@ import type { QueryClient } from '@tanstack/react-query'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { httpBatchLink } from '@trpc/client'
 import { createTRPCReact } from '@trpc/react-query'
+import { addBasePath } from 'next/dist/client/add-base-path'
 import { useState } from 'react'
 import superjson from 'superjson'
 import { makeQueryClient } from './query-client'
 import type { AppRouter } from './routers/_app'
-import { addBasePath } from 'next/dist/client/add-base-path';
-
 
 superjson.registerCustom<Prisma.Decimal, string>(
   {

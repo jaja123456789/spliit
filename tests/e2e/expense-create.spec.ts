@@ -1,7 +1,7 @@
+import { randomId } from '@/lib/api'
 import { expect, test } from '@playwright/test'
 import { createExpense, navigateToExpenseCreate } from '../helpers'
 import { createGroupViaAPI } from '../helpers/batch-api'
-import { randomId } from '@/lib/api'
 
 test.describe('Expense Creation', () => {
   test('creates basic expense with correct values', async ({ page }) => {

@@ -2,8 +2,8 @@
 import { getCategories } from '@/lib/api'
 import { env } from '@/lib/env'
 import { formatCategoryForAIPrompt } from '@/lib/utils'
-import OpenAI from 'openai'
 import { GoogleGenAI } from '@google/genai'
+import OpenAI from 'openai'
 
 const limit = 40 // ~10 tokens
 

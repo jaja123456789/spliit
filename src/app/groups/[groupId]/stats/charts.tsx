@@ -46,8 +46,7 @@ export function Charts({
   const t = useTranslations('Stats.Charts')
   const locale = useLocale()
 
-  const formatVal = (val: number) =>
-    formatCurrency(currency, val, locale)
+  const formatVal = (val: number) => formatCurrency(currency, val, locale)
 
   return (
     <div className="grid gap-4 md:grid-cols-2">

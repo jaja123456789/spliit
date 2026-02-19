@@ -1,9 +1,9 @@
 import { getGroup, getGroupExpenses } from '@/lib/api' // Import getGroup
 import {
   getBalances,
+  getDirectReimbursements,
   getPublicBalances,
   getSuggestedReimbursements,
-  getDirectReimbursements, // Import new function
 } from '@/lib/balances'
 import { baseProcedure } from '@/trpc/init'
 import { z } from 'zod'
@@ -17,13 +17,13 @@ export const listGroupBalancesProcedure = baseProcedure
 
     const expenses = await getGroupExpenses(groupId)
     const balances = getBalances(expenses)
-    
+
     // 2. Choose algorithm based on setting
     let reimbursements
     if (group.simplifyDebts) {
-        reimbursements = getSuggestedReimbursements(balances)
+      reimbursements = getSuggestedReimbursements(balances)
     } else {
-        reimbursements = getDirectReimbursements(expenses)
+      reimbursements = getDirectReimbursements(expenses)
     }
 
     const publicBalances = getPublicBalances(reimbursements)

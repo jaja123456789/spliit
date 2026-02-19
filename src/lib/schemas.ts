@@ -2,13 +2,15 @@ import { RecurrenceRule, SplitMode } from '@prisma/client'
 import Decimal from 'decimal.js'
 import * as z from 'zod'
 
-const paymentProfileSchema = z.object({
-  venmo: z.string().nullish(),
-  paypal: z.string().nullish(),
-  cashapp: z.string().nullish(),
-  revolut: z.string().nullish(),
-  phone: z.string().nullish(),
-}).nullish()
+const paymentProfileSchema = z
+  .object({
+    venmo: z.string().nullish(),
+    paypal: z.string().nullish(),
+    cashapp: z.string().nullish(),
+    revolut: z.string().nullish(),
+    phone: z.string().nullish(),
+  })
+  .nullish()
 
 export const groupFormSchema = z
   .object({
@@ -22,7 +24,7 @@ export const groupFormSchema = z
         z.object({
           id: z.string(),
           name: z.string().min(2, 'min2').max(50, 'max50'),
-          paymentProfile: paymentProfileSchema
+          paymentProfile: paymentProfileSchema,
         }),
       )
       .min(1),
@@ -64,7 +66,7 @@ const expenseItemSchema = z.object({
     z.string().transform((val) => {
       const num = Number(val.replace(/,/g, '.'))
       return isNaN(num) ? 0 : num
-    })
+    }),
   ]),
   participantIds: z.array(z.string()).min(1, 'Select at least one person'),
 })
@@ -75,8 +77,8 @@ export const expenseFormSchema = z
     title: z.string({ required_error: 'titleRequired' }).min(2, 'min2'),
     category: z.coerce.number().default(0),
     // amount is purely optional/derived. We ignore input.
-    amount: z.number().optional(), 
-    
+    amount: z.number().optional(),
+
     originalAmount: z
       .union([
         z.literal('').transform(() => undefined),
@@ -92,41 +94,43 @@ export const expenseFormSchema = z
         inputCoercedToNumber.refine((amount) => amount > 0, 'ratePositive'),
       ])
       .optional(),
-    
-    paidBy: z.array(
-      z.object({
-        participant: z.string(),
-        // The inner transform handles string->number conversion immediately
-        // so 'amount' is a number by the time we reach superRefine
-        amount: z.union([
-          z.number(),
-          z.string().transform((value, ctx) => {
-            const normalizedValue = value.replace(/,/g, '.')
-            const valueAsNumber = Number(normalizedValue)
-            if (Number.isNaN(valueAsNumber))
-              ctx.addIssue({
-                code: z.ZodIssueCode.custom,
-                message: 'invalidNumber',
-              })
-            return valueAsNumber
-          }),
-        ]),
-        originalAmount: z.string().optional(),
-      })
-    ).min(1, 'paidByMin1')
-    .superRefine((items, ctx) => {
-       const participants = new Set();
-       items.forEach((item, index) => {
-         if (participants.has(item.participant)) {
-           ctx.addIssue({
-             code: z.ZodIssueCode.custom,
-             message: "duplicateParticipant",
-             path: [index, "participant"]
-           })
-         }
-         participants.add(item.participant);
-       });
-    }),
+
+    paidBy: z
+      .array(
+        z.object({
+          participant: z.string(),
+          // The inner transform handles string->number conversion immediately
+          // so 'amount' is a number by the time we reach superRefine
+          amount: z.union([
+            z.number(),
+            z.string().transform((value, ctx) => {
+              const normalizedValue = value.replace(/,/g, '.')
+              const valueAsNumber = Number(normalizedValue)
+              if (Number.isNaN(valueAsNumber))
+                ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
+                  message: 'invalidNumber',
+                })
+              return valueAsNumber
+            }),
+          ]),
+          originalAmount: z.string().optional(),
+        }),
+      )
+      .min(1, 'paidByMin1')
+      .superRefine((items, ctx) => {
+        const participants = new Set()
+        items.forEach((item, index) => {
+          if (participants.has(item.participant)) {
+            ctx.addIssue({
+              code: z.ZodIssueCode.custom,
+              message: 'duplicateParticipant',
+              path: [index, 'participant'],
+            })
+          }
+          participants.add(item.participant)
+        })
+      }),
 
     paidFor: z
       .array(
@@ -191,13 +195,13 @@ export const expenseFormSchema = z
     // Note: p.amount is already a number here due to the inner Zod schema on paidBy
     const totalAmount = expense.paidBy.reduce(
       (sum, p) => sum.add(new Decimal(p.amount || 0)),
-      new Decimal(0)
+      new Decimal(0),
     )
 
     if (expense.items && expense.items.length > 0) {
       const itemsTotal = expense.items.reduce(
-        (sum, item) => sum.add(new Decimal(item.price || 0)), 
-        new Decimal(0)
+        (sum, item) => sum.add(new Decimal(item.price || 0)),
+        new Decimal(0),
       )
       if (!itemsTotal.minus(totalAmount).abs().lt(0.01)) {
         ctx.addIssue({
@@ -206,16 +210,16 @@ export const expenseFormSchema = z
           path: ['items'],
         })
       }
-      // If we have items, we skip the manual paidFor sum check because 
+      // If we have items, we skip the manual paidFor sum check because
       // the transform will overwrite paidFor anyway.
-      return; 
+      return
     }
 
     if (totalAmount.isZero()) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'amountNotZero',
-        path: ['paidBy']
+        path: ['paidBy'],
       })
     }
 
@@ -258,28 +262,27 @@ export const expenseFormSchema = z
   // 2. Output Transformation: Prepare final data structure for API/DB
   .transform((expense) => {
     // Recalculate total for the output object
-    const totalAmount = expense.paidBy.reduce(
-      (sum, p) => sum.add(new Decimal(p.amount || 0)),
-      new Decimal(0)
-    ).toNumber()    
+    const totalAmount = expense.paidBy
+      .reduce((sum, p) => sum.add(new Decimal(p.amount || 0)), new Decimal(0))
+      .toNumber()
     let paidFor = expense.paidFor
-    
+
     // NEW: If items exist, recalculate `paidFor` (Shares) based on items
     // This allows the backend to remain mostly agnostic about items for balance calculations
     if (expense.items && expense.items.length > 0) {
       const distribution: Record<string, number> = {}
-      
-      expense.items.forEach(item => {
+
+      expense.items.forEach((item) => {
         const itemPrice = Number(item.price)
         const partCount = item.participantIds.length
         if (partCount === 0) return
-        
+
         // Simple division, create cents
         // We use Math.floor/ceil logic to ensure total matches exactly or handle cents distribution
         // For simplicity here, we do standard division
         const share = itemPrice / partCount
-        
-        item.participantIds.forEach(pid => {
+
+        item.participantIds.forEach((pid) => {
           distribution[pid] = (distribution[pid] || 0) + share
         })
       })
@@ -289,22 +292,22 @@ export const expenseFormSchema = z
       paidFor = Object.entries(distribution).map(([participantId, amount]) => ({
         participant: participantId,
         shares: amount, // Logic below handles rounding if needed
-        originalAmount: undefined
+        originalAmount: undefined,
       }))
-      
+
       // Override splitMode to BY_AMOUNT so the DB stores the calculated debts correctly
       expense.splitMode = 'BY_AMOUNT'
     } else {
-       // ... existing paidFor map logic ...
-       paidFor = expense.paidFor.map((paidFor) => {
+      // ... existing paidFor map logic ...
+      paidFor = expense.paidFor.map((paidFor) => {
         // ... existing logic ...
         return { ...paidFor, shares: Number(paidFor.shares) }
-       })
+      })
     }
 
-    const paidBy = expense.paidBy.map(pb => ({
+    const paidBy = expense.paidBy.map((pb) => ({
       ...pb,
-      amount: Number(pb.amount)
+      amount: Number(pb.amount),
     }))
 
     return {
@@ -312,7 +315,7 @@ export const expenseFormSchema = z
       amount: totalAmount,
       paidBy,
       paidFor,
-      items: expense.items.map(i => ({...i, price: Number(i.price)}))
+      items: expense.items.map((i) => ({ ...i, price: Number(i.price) })),
     }
   })
 

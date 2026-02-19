@@ -23,11 +23,12 @@ export function BalancesList({ balances, participants, currency }: Props) {
         const balance = balances[participant.id]?.total ?? 0
         const isPositive = balance > 0
         const isZero = Math.abs(balance) < 0.01 // Floating point safety
-        
+
         // Calculate bar width (percentage of max)
         // Ensure at least a tiny sliver is visible if there's any balance
-        const percentage = maxBalance > 0 ? (Math.abs(balance) / maxBalance) * 100 : 0
-        
+        const percentage =
+          maxBalance > 0 ? (Math.abs(balance) / maxBalance) * 100 : 0
+
         return (
           <div
             key={participant.id}
@@ -35,7 +36,11 @@ export function BalancesList({ balances, participants, currency }: Props) {
             data-testid={`balance-row-${participant.name}`}
           >
             {/* Avatar */}
-            <ProfileAvatar name={participant.name} size={40} fontSize="text-sm" />
+            <ProfileAvatar
+              name={participant.name}
+              size={40}
+              fontSize="text-sm"
+            />
 
             <div className="flex-1 min-w-0 flex flex-col gap-1">
               {/* Name & Amount Row */}
@@ -45,9 +50,12 @@ export function BalancesList({ balances, participants, currency }: Props) {
                 </span>
                 <span
                   className={cn(
-                    "text-sm font-semibold tabular-nums whitespace-nowrap",
-                    isPositive ? "text-emerald-600 dark:text-emerald-500" : 
-                    isZero ? "text-muted-foreground" : "text-orange-600 dark:text-orange-500"
+                    'text-sm font-semibold tabular-nums whitespace-nowrap',
+                    isPositive
+                      ? 'text-emerald-600 dark:text-emerald-500'
+                      : isZero
+                      ? 'text-muted-foreground'
+                      : 'text-orange-600 dark:text-orange-500',
                   )}
                 >
                   {formatCurrency(currency, balance, locale)}
@@ -62,27 +70,29 @@ export function BalancesList({ balances, participants, currency }: Props) {
                   Standard splitwise style is simple colored bars. 
                   Let's align them.
                 */}
-                
+
                 {isZero ? (
-                   <div className="w-full h-full bg-transparent" />
+                  <div className="w-full h-full bg-transparent" />
                 ) : (
                   // Bar wrapper
                   <div className="w-full h-full relative">
-                    <div 
-                        className={cn(
-                            "absolute h-full rounded-full transition-all duration-500 ease-out",
-                            isPositive ? "bg-emerald-500 right-0" : "bg-orange-500 left-0" // Align right for positive? Or strictly left? Strictly left is easier to read usually.
-                        )}
-                        // Let's stick to left-aligned for mobile readability, but color coded
-                        style={{ width: `${percentage}%`, left: 0 }}
+                    <div
+                      className={cn(
+                        'absolute h-full rounded-full transition-all duration-500 ease-out',
+                        isPositive
+                          ? 'bg-emerald-500 right-0'
+                          : 'bg-orange-500 left-0', // Align right for positive? Or strictly left? Strictly left is easier to read usually.
+                      )}
+                      // Let's stick to left-aligned for mobile readability, but color coded
+                      style={{ width: `${percentage}%`, left: 0 }}
                     />
                   </div>
                 )}
               </div>
-              
+
               {/* Optional: Text description below bar for context */}
               <div className="text-[10px] text-muted-foreground">
-                {isPositive ? "gets back" : isZero ? "settled up" : "owes"}
+                {isPositive ? 'gets back' : isZero ? 'settled up' : 'owes'}
               </div>
             </div>
           </div>

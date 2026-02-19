@@ -1,7 +1,7 @@
+import { randomId } from '@/lib/api'
 import { expect, test } from '@playwright/test'
 import { navigateToGroup, switchLocale } from '../helpers'
 import { createExpenseViaAPI, createGroupViaAPI } from '../helpers/batch-api'
-import { randomId } from '@/lib/api'
 
 test('Mobile navigation uses hamburger menu', async ({ page }) => {
   // Set viewport to mobile size (iPhone SE)
@@ -9,11 +9,10 @@ test('Mobile navigation uses hamburger menu', async ({ page }) => {
 
   // Create a test group
   await page.goto('/groups')
-  const groupId = await createGroupViaAPI(
-    page,
-    `mobile test ${randomId(4)}`,
-    ['Alice', 'Bob'],
-  )
+  const groupId = await createGroupViaAPI(page, `mobile test ${randomId(4)}`, [
+    'Alice',
+    'Bob',
+  ])
 
   // Create an expense so we have content to verify
   await createExpenseViaAPI(page, groupId, {
@@ -53,11 +52,10 @@ test('Desktop view displays full layout', async ({ page }) => {
 
   // Create a test group
   await page.goto('/groups')
-  const groupId = await createGroupViaAPI(
-    page,
-    `desktop test ${randomId(4)}`,
-    ['Alice', 'Bob'],
-  )
+  const groupId = await createGroupViaAPI(page, `desktop test ${randomId(4)}`, [
+    'Alice',
+    'Bob',
+  ])
 
   // Create an expense
   await createExpenseViaAPI(page, groupId, {
@@ -116,8 +114,7 @@ test('Date format changes with locale selection', async ({ page }) => {
   await navigateToGroup(page, groupId)
 
   // Verify expense is visible
-  const expenseItem = page
-    .getByTestId(`expense-item-${expense}`)
+  const expenseItem = page.getByTestId(`expense-item-${expense}`)
   await expect(expenseItem).toBeVisible()
 
   // Get the date text in English format (e.g., "Jan 17, 2026")

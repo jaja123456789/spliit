@@ -46,7 +46,7 @@ export function useMediaQuery(query: string): boolean {
 export function useBaseUrl() {
   const [baseUrl, setBaseUrl] = useState<string | null>(null)
   useEffect(() => {
-    setBaseUrl(window.location.origin + "/spliit")
+    setBaseUrl(window.location.origin + '/spliit')
   }, [])
   return baseUrl
 }
@@ -104,7 +104,7 @@ export function useCurrencyRate(
     let exchangeRate = undefined
     let sentError = error
     // Commented as when checking during weekends, the dates won't match
-    // if (!error && data.date !== dateString) { 
+    // if (!error && data.date !== dateString) {
     //   // this happens if for example, the requested date is in the future.
     //   sentError = new RangeError(data.date)
     // }

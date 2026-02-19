@@ -1,7 +1,7 @@
+import { randomId } from '@/lib/api'
 import { prisma } from '@/lib/prisma'
 import { expect, test } from '@playwright/test'
 import { createGroup, navigateToGroup } from '../helpers'
-import { randomId } from '@/lib/api'
 
 test.describe('Recurring Expense Instances', () => {
   test('Verify instances created for recurring expense', async ({ page }) => {

@@ -9,7 +9,6 @@ import { trpc } from '@/trpc/client'
 import { useCurrentGroup } from '../current-group-context'
 import { Charts } from './charts' // Import the new component
 
-
 export function Totals() {
   const { groupId, group } = useCurrentGroup()
   const activeUser = useActiveUser(groupId)
@@ -34,9 +33,9 @@ export function Totals() {
     totalGroupSpendings,
     totalParticipantShare,
     totalParticipantSpendings,
-    categorySpending, 
+    categorySpending,
     dailySpending,
-    participantSpending
+    participantSpending,
   } = data
 
   const currency = getCurrencyFromGroup(group)
@@ -64,10 +63,7 @@ export function Totals() {
       </div>
 
       {/* New Charts Section */}
-      <Charts 
-        data={data} 
-        currency={currency} 
-      />
+      <Charts data={data} currency={currency} />
     </div>
   )
 }

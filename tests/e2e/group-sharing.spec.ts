@@ -1,7 +1,7 @@
+import { randomId } from '@/lib/api'
 import { expect, test } from '@playwright/test'
 import { extractGroupId, verifyGroupHeading } from '../helpers'
 import { createGroupViaAPI } from '../helpers/batch-api'
-import { randomId } from '@/lib/api'
 
 test.describe('Group Sharing', () => {
   test('share group via copy URL button', async ({ page, context }) => {

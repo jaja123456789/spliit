@@ -1,7 +1,7 @@
+import { randomId } from '@/lib/api'
 import { expect, test } from '@playwright/test'
 import { navigateToGroup } from '../helpers'
 import { createGroupViaAPI } from '../helpers/batch-api'
-import { randomId } from '@/lib/api'
 
 test.describe('Active User Modal', () => {
   test('suppressActiveUserModal flag suppresses modal in createGroup', async ({
@@ -40,11 +40,11 @@ test.describe('Active User Modal', () => {
   }) => {
     // Create group with suppression to test modal appearance separately
     await page.goto('/groups')
-    const groupId = await createGroupViaAPI(
-      page,
-      `modal test ${randomId(4)}`,
-      ['Alice', 'Bob', 'Charlie'],
-    )
+    const groupId = await createGroupViaAPI(page, `modal test ${randomId(4)}`, [
+      'Alice',
+      'Bob',
+      'Charlie',
+    ])
 
     await page.goto(`/groups/${groupId}/expenses`)
 
@@ -190,11 +190,10 @@ test.describe('Active User Modal', () => {
     page,
   }) => {
     await page.goto('/groups')
-    const groupId = await createGroupViaAPI(
-      page,
-      `nav test ${randomId(4)}`,
-      ['Alice', 'Bob'],
-    )
+    const groupId = await createGroupViaAPI(page, `nav test ${randomId(4)}`, [
+      'Alice',
+      'Bob',
+    ])
 
     await page.goto(`/groups/${groupId}/expenses`)
 

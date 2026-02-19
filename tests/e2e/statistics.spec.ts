@@ -1,13 +1,17 @@
+import { randomId } from '@/lib/api'
 import { expect, test } from '@playwright/test'
 import { navigateToTab, setActiveUser } from '../helpers'
 import { createExpenseViaAPI, createGroupViaAPI } from '../helpers/batch-api'
-import { randomId } from '@/lib/api'
 
 test('View statistics page', async ({ page }) => {
   await page.goto('/groups')
-  
+
   const groupName = `stats ${randomId(4)}`
-  const groupId = await createGroupViaAPI(page, groupName, ['Alice', 'Bob', 'Charlie'])
+  const groupId = await createGroupViaAPI(page, groupName, [
+    'Alice',
+    'Bob',
+    'Charlie',
+  ])
   await page.goto(`/groups/${groupId}/expenses`)
 
   await navigateToTab(page, 'Stats')

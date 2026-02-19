@@ -6,7 +6,7 @@ import { Currency } from '@/lib/currency'
 import { getPaymentOptions, PaymentOption } from '@/lib/payment-links'
 import { formatCurrency } from '@/lib/utils'
 import { Participant } from '@prisma/client'
-import { Check, Copy, ExternalLink, Smartphone, Landmark } from 'lucide-react'
+import { Check, Copy, ExternalLink, Landmark, Smartphone } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -107,16 +107,16 @@ export function ReimbursementList({
   )
 }
 
-// FIX: Removed dynamic variable assignment. 
+// FIX: Removed dynamic variable assignment.
 // Uses direct returns to satisfy "static-components" linter rule.
-function PaymentOptionIcon({ 
-  option, 
-  copied, 
-  className 
-}: { 
+function PaymentOptionIcon({
+  option,
+  copied,
+  className,
+}: {
   option: PaymentOption
   copied: boolean
-  className?: string 
+  className?: string
 }) {
   if (option.type === 'link') {
     return <ExternalLink className={className} />
@@ -133,7 +133,7 @@ function PaymentOptionIcon({
   if (option.icon === 'landmark') {
     return <Landmark className={className} />
   }
-  
+
   return <Copy className={className} />
 }
 
@@ -147,12 +147,16 @@ function PaymentOptionButton({ option }: { option: PaymentOption }) {
   }
 
   const classes = `h-7 text-xs px-3 ${option.bgColor} ${option.textColor} hover:opacity-90 border-none transition-all`
-  const iconClasses = "w-3 h-3 ml-1.5 opacity-70"
+  const iconClasses = 'w-3 h-3 ml-1.5 opacity-70'
 
   const content = (
     <>
       {option.label}
-      <PaymentOptionIcon option={option} copied={copied} className={iconClasses} />
+      <PaymentOptionIcon
+        option={option}
+        copied={copied}
+        className={iconClasses}
+      />
     </>
   )
 

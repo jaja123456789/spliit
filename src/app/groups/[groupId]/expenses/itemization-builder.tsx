@@ -341,9 +341,7 @@ export function ItemizationBuilder({
                     >
                       {summaryText}
                     </span>
-                    {participantIds.length > 1
-                      ? ' will each pay'
-                      : ' will pay'}
+                    {participantIds.length > 1 ? ' will each pay' : ' will pay'}
                   </div>
 
                   {participantIds.length > 0 && itemPrice > 0 && (
@@ -355,12 +353,7 @@ export function ItemizationBuilder({
                           : 'text-muted-foreground',
                       )}
                     >
-                      {formatCurrency(
-                        currency,
-                        perPersonAmount,
-                        locale,
-                        true,
-                      )}
+                      {formatCurrency(currency, perPersonAmount, locale, true)}
                     </div>
                   )}
                 </div>
@@ -398,8 +391,7 @@ export function ItemizationBuilder({
           variant="outline"
           className="w-full border-dashed py-8 bg-background hover:bg-muted/50 transition-all flex flex-col gap-1"
           onClick={() => {
-            const nextAmount =
-              remaining > 0 ? Number(remaining.toFixed(2)) : 0
+            const nextAmount = remaining > 0 ? Number(remaining.toFixed(2)) : 0
             append({
               name: '',
               price: nextAmount,

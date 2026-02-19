@@ -1,5 +1,6 @@
 'use client'
 
+import { PushNotificationToggle } from '@/components/push-notification-toggle'
 import {
   Card,
   CardContent,
@@ -17,8 +18,6 @@ import {
   SyncPreferences,
   SyncedGroupsList,
 } from './components'
-import { PushNotificationToggle } from '@/components/push-notification-toggle'
-
 
 export function SettingsContent() {
   const { data: session, status } = useSession()

@@ -50,15 +50,18 @@ export const getGroupStatsProcedure = baseProcedure
       // We need to calculate who "consumed" this expense
       const shares = calculateShares(expense)
       for (const [pId, shareAmount] of Object.entries(shares)) {
-        // We need the name. Ideally we fetch the group participants, 
+        // We need the name. Ideally we fetch the group participants,
         // but we can try to find it in the expense data.
         if (!participantMap.has(pId)) {
           // Try to find name in paidFor array
-          const pName = expense.paidFor.find(pf => pf.participant.id === pId)?.participant.name 
+          const pName =
+            expense.paidFor.find((pf) => pf.participant.id === pId)?.participant
+              .name ??
             // Or paidBy array
-            ?? expense.paidBy.find(pb => pb.participantId === pId)?.participant.name
-            ?? 'Unknown'
-          
+            expense.paidBy.find((pb) => pb.participantId === pId)?.participant
+              .name ??
+            'Unknown'
+
           participantMap.set(pId, { name: pName, amount: 0 })
         }
         const entry = participantMap.get(pId)!
@@ -75,8 +78,9 @@ export const getGroupStatsProcedure = baseProcedure
       .map(([date, value]) => ({ date, value }))
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()) // Chronological
 
-    const participantSpending = Array.from(participantMap.values())
-      .sort((a, b) => b.amount - a.amount)
+    const participantSpending = Array.from(participantMap.values()).sort(
+      (a, b) => b.amount - a.amount,
+    )
 
     return {
       totalGroupSpendings,
@@ -85,6 +89,6 @@ export const getGroupStatsProcedure = baseProcedure
       // New Data
       categorySpending,
       dailySpending,
-      participantSpending
+      participantSpending,
     }
   })

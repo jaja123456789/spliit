@@ -9,7 +9,12 @@ import {
   CommandInput,
   CommandItem,
 } from '@/components/ui/command'
-import { Drawer, DrawerContent, DrawerTitle, DrawerTrigger } from '@/components/ui/drawer'
+import {
+  Drawer,
+  DrawerContent,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer'
 import {
   Popover,
   PopoverContent,
@@ -42,7 +47,7 @@ export function CategorySelector({
   useEffect(() => {
     setValue(defaultValue)
     onValueChange(defaultValue)
-  }, [defaultValue, onValueChange])
+  }, [defaultValue])
 
   const selectedCategory =
     categories.find((category) => category.id === value) ?? categories[0]
@@ -99,7 +104,7 @@ export function CategorySelector({
 function CategoryCommand({
   categories,
   onValueChange,
-  className
+  className,
 }: {
   categories: Category[]
   onValueChange: (categoryId: Category['id']) => void
@@ -132,7 +137,7 @@ function CategoryCommand({
                     const id = Number(currentValue.split(' ')[0])
                     onValueChange(id)
                   }}
-                  className="py-3 px-4 text-base" 
+                  className="py-3 px-4 text-base"
                 >
                   <CategoryLabel category={category} />
                 </CommandItem>
@@ -181,7 +186,10 @@ function CategoryLabel({ category }: { category: Category }) {
   const t = useTranslations('Categories')
   return (
     <div className="flex items-center gap-3">
-      <CategoryIcon category={category} className="w-5 h-5 text-muted-foreground" />
+      <CategoryIcon
+        category={category}
+        className="w-5 h-5 text-muted-foreground"
+      />
       <span>{t(`${category.grouping}.${category.name}`)}</span>
     </div>
   )

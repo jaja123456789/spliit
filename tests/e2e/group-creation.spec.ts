@@ -1,6 +1,6 @@
+import { randomId } from '@/lib/api'
 import { expect, test } from '@playwright/test'
 import { fillParticipants, verifyGroupHeading } from '../helpers'
-import { randomId } from '@/lib/api'
 
 test.describe('Group Creation', () => {
   test('create group with custom currency', async ({ page }) => {

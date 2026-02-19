@@ -1,15 +1,15 @@
+import { randomId } from '@/lib/api'
 import { expect, test } from '@playwright/test'
 import { createExpenseViaAPI, createGroupViaAPI } from '../helpers/batch-api'
-import { randomId } from '@/lib/api'
 
 test.describe('Expense Deletion', () => {
   test('deletes expense with confirmation dialog', async ({ page }) => {
     await page.goto('/groups')
-    const groupId = await createGroupViaAPI(page, `Delete Test ${randomId(4)}`, [
-      'Alice',
-      'Bob',
-      'Charlie',
-    ])
+    const groupId = await createGroupViaAPI(
+      page,
+      `Delete Test ${randomId(4)}`,
+      ['Alice', 'Bob', 'Charlie'],
+    )
 
     await createExpenseViaAPI(page, groupId, {
       title: 'Expense to Delete',

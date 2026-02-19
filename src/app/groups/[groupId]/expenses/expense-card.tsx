@@ -1,7 +1,6 @@
 'use client'
 import { CategoryIcon } from '@/app/groups/[groupId]/expenses/category-icon'
 import { DocumentsCount } from '@/app/groups/[groupId]/expenses/documents-count'
-import { Button } from '@/components/ui/button'
 import { getGroupExpenses } from '@/lib/api'
 import { getBalances } from '@/lib/balances'
 import { Currency } from '@/lib/currency'
@@ -9,7 +8,6 @@ import { useActiveUser } from '@/lib/hooks'
 import { cn, formatCurrency, formatDateOnly } from '@/lib/utils'
 import { ChevronRight } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Fragment } from 'react'
 
@@ -49,7 +47,9 @@ function Participants({
       ))
     )
   const participants = t.rich(key, {
-    strong: (chunks) => <strong className="font-medium text-foreground">{chunks}</strong>,
+    strong: (chunks) => (
+      <strong className="font-medium text-foreground">{chunks}</strong>
+    ),
     paidBy: payerName,
     paidFor: () => paidFor,
     forCount: expense.paidFor.length,
@@ -90,7 +90,7 @@ export function ExpenseCard({
       className={cn(
         'group relative flex justify-between px-4 sm:px-6 py-4 text-sm cursor-pointer transition-colors hover:bg-accent/50',
         'border-b last:border-b-0 sm:border sm:rounded-lg sm:mx-4 sm:my-1', // Clean standard borders
-        expense.isReimbursement && 'italic bg-muted/20'
+        expense.isReimbursement && 'italic bg-muted/20',
       )}
       onClick={() => {
         router.push(`/groups/${groupId}/expenses/${expense.id}/edit`)
@@ -101,13 +101,13 @@ export function ExpenseCard({
           category={expense.category}
           className="w-8 h-8 p-1.5 rounded-full bg-secondary text-secondary-foreground shrink-0 mt-0.5"
         />
-        
+
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-start gap-2">
             <div
               className={cn(
                 'font-medium text-base truncate pr-2',
-                expense.isReimbursement && 'italic text-muted-foreground'
+                expense.isReimbursement && 'italic text-muted-foreground',
               )}
               data-testid="expense-title"
             >
@@ -117,7 +117,7 @@ export function ExpenseCard({
               <div
                 className={cn(
                   'tabular-nums whitespace-nowrap text-base',
-                  expense.isReimbursement ? 'italic font-normal' : 'font-bold'
+                  expense.isReimbursement ? 'italic font-normal' : 'font-bold',
                 )}
                 data-testid="expense-amount"
               >
@@ -128,26 +128,39 @@ export function ExpenseCard({
 
           <div className="flex justify-between items-end mt-1">
             <div className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-              <Participants expense={expense} participantCount={participantCount} />
-              
+              <Participants
+                expense={expense}
+                participantCount={participantCount}
+              />
+
               {/* Contextual Balance Text - Colored text only, no card background */}
               {userBalanceAmount !== 0 && (
-                <div className={cn(
-                  "mt-1 font-medium",
-                  userBalanceAmount > 0 ? "text-emerald-600 dark:text-emerald-500" : "text-orange-600 dark:text-orange-500"
-                )}>
-                  {userBalanceAmount > 0 ? "You lent " : "You borrowed "}
-                  {formatCurrency(currency, Math.abs(userBalanceAmount), locale)}
+                <div
+                  className={cn(
+                    'mt-1 font-medium',
+                    userBalanceAmount > 0
+                      ? 'text-emerald-600 dark:text-emerald-500'
+                      : 'text-orange-600 dark:text-orange-500',
+                  )}
+                >
+                  {userBalanceAmount > 0 ? 'You lent ' : 'You borrowed '}
+                  {formatCurrency(
+                    currency,
+                    Math.abs(userBalanceAmount),
+                    locale,
+                  )}
                 </div>
               )}
             </div>
-            
+
             <div className="flex flex-col items-end gap-1 ml-2">
               <div
                 className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium"
                 data-testid="expense-date"
               >
-                {formatDateOnly(expense.expenseDate, locale, { dateStyle:'medium' })}
+                {formatDateOnly(expense.expenseDate, locale, {
+                  dateStyle: 'medium',
+                })}
               </div>
               <DocumentsCount count={expense._count.documents} />
             </div>

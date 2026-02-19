@@ -1,11 +1,11 @@
 'use server'
 import { getCategories } from '@/lib/api'
 import { env } from '@/lib/env'
-import { z } from 'zod'
 import { formatCategoryForAIPrompt } from '@/lib/utils'
 import { GoogleGenAI, ThinkingLevel } from '@google/genai'
-import { zodToJsonSchema } from 'zod-to-json-schema'
 import OpenAI from 'openai'
+import { z } from 'zod'
+import { zodToJsonSchema } from 'zod-to-json-schema'
 
 const recipeItemSchema = z.object({
   name: z.string().optional().describe('Name of the item'),
@@ -23,10 +23,7 @@ const recipeSchema = z.object({
     .number()
     .optional()
     .describe('The ID of the category from the provided list'),
-  currency: z
-    .string()
-    .optional()
-    .describe('The currency code (e.g. USD, EUR)'),
+  currency: z.string().optional().describe('The currency code (e.g. USD, EUR)'),
   items: z
     .array(recipeItemSchema)
     .optional()
@@ -86,8 +83,8 @@ export async function extractExpenseInformationFromImage(
           responseMimeType: 'application/json',
           responseJsonSchema: zodToJsonSchema(recipeSchema),
           thinkingConfig: {
-            thinkingLevel: ThinkingLevel.MINIMAL
-          }
+            thinkingLevel: ThinkingLevel.MINIMAL,
+          },
         },
       })
 

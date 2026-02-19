@@ -1,5 +1,5 @@
-import Decimal from 'decimal.js'
 import { getGroupExpenses } from '@/lib/api'
+import Decimal from 'decimal.js'
 
 export function getTotalGroupSpending(
   expenses: NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>>,
@@ -15,15 +15,14 @@ export function getTotalActiveUserPaidFor(
   activeUserId: string | null,
   expenses: NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>>,
 ): number {
-  return expenses.reduce(
-    (total, expense) => {
-      const userPayment = expense.paidBy.find(p => p.participantId === activeUserId)
-      return (userPayment && !expense.isReimbursement)
-        ? total + userPayment.amount
-        : total
-    },
-    0,
-  )
+  return expenses.reduce((total, expense) => {
+    const userPayment = expense.paidBy.find(
+      (p) => p.participantId === activeUserId,
+    )
+    return userPayment && !expense.isReimbursement
+      ? total + userPayment.amount
+      : total
+  }, 0)
 }
 
 type Expense = NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>>[number]
@@ -73,7 +72,7 @@ export function calculateShares(
     sumRounded = sumRounded.add(rounded)
     participantOrder.push(pf.participant.id)
   })
-  
+
   let diff = amount.minus(sumRounded)
   if (diff.isZero()) {
     return result
@@ -81,7 +80,8 @@ export function calculateShares(
 
   // Get first payer ID for remainder attribution
   // In multi-payer, we arbitrarily pick the first one for now or check if there is one
-  const firstPayerId = expense.paidBy[0]?.participantId ?? expense.paidFor[0]?.participant.id
+  const firstPayerId =
+    expense.paidBy[0]?.participantId ?? expense.paidFor[0]?.participant.id
 
   if (expense.splitMode === 'BY_AMOUNT') {
     if (firstPayerId) {
@@ -100,30 +100,33 @@ export function calculateShares(
   if (!diff.isZero() && participantOrder.length > 0) {
     const direction = diff.gt(0) ? 1 : -1
     let remaining = diff.abs().toNumber()
-    
+
     // Simple string hash function
     const getHash = (str: string) => {
-      let hash = 0;
+      let hash = 0
       for (let i = 0; i < str.length; i++) {
-        hash = ((hash << 5) - hash) + str.charCodeAt(i);
-        hash |= 0;
+        hash = (hash << 5) - hash + str.charCodeAt(i)
+        hash |= 0
       }
-      return Math.abs(hash);
+      return Math.abs(hash)
     }
 
-    // Seed based on amount + participant list. 
+    // Seed based on amount + participant list.
     // This ensures if the expense doesn't change, the "random" person stays the same.
-    const seed = amount.toString() + participantOrder.join('') + (expense.expenseDate?.toISOString() || '');
-    let hash = getHash(seed);
+    const seed =
+      amount.toString() +
+      participantOrder.join('') +
+      (expense.expenseDate?.toISOString() || '')
+    let hash = getHash(seed)
 
     while (remaining > 0) {
       // Pick a participant based on the hash
       const targetIndex = hash % participantOrder.length
       const targetId = participantOrder[targetIndex]
-      
+
       result[targetId] = (result[targetId] ?? 0) + direction
       remaining--
-      
+
       // Mutate hash for next iteration (in case remaining > 1)
       hash = getHash(hash.toString())
     }

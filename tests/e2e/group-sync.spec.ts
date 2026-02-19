@@ -1,8 +1,8 @@
 import { randomId } from '@/lib/api'
 import { expect, test } from '@playwright/test'
+import { createGroup } from '../helpers'
 import { signInWithMagicLink, signOut } from '../helpers/auth'
 import { createGroupViaAPI } from '../helpers/batch-api'
-import { createGroup } from '../helpers'
 
 test.describe('Group Cloud Sync', () => {
   test('sync and unsync group flow', async ({ page }) => {
@@ -11,7 +11,11 @@ test.describe('Group Cloud Sync', () => {
 
     // Create a group
     const groupName = `Sync Test ${randomId(4)}`
-    const groupId = await createGroup({page, groupName, participants: ['Alice', 'Bob']})
+    const groupId = await createGroup({
+      page,
+      groupName,
+      participants: ['Alice', 'Bob'],
+    })
 
     // Go to groups list where sync buttons are
     await page.goto('/groups')
@@ -57,7 +61,7 @@ test.describe('Group Cloud Sync', () => {
 
     // Create a new group via UI (not API) to trigger auto-sync
     const groupName = `Auto Sync Test ${randomId(4)}`
-    await createGroup({page, groupName, participants: ['Alice', 'Bob']})
+    await createGroup({ page, groupName, participants: ['Alice', 'Bob'] })
 
     // Go to groups list to check sync status
     await page.goto('/groups')
@@ -113,13 +117,17 @@ test.describe('Group Cloud Sync', () => {
       .first()
     await expect(syncButton).toBeVisible()
     await syncButton.click()
-    await expect(page1.locator('svg.lucide-cloud.text-blue-500').first()).toBeVisible()
+    await expect(
+      page1.locator('svg.lucide-cloud.text-blue-500').first(),
+    ).toBeVisible()
 
     // Star the group
     const starButton = page1.getByRole('button', { name: 'Add to favorites' })
     await expect(starButton).toBeVisible()
     await starButton.click()
-    await expect(page1.getByRole('button', { name: 'Remove from favorites' })).toBeVisible()
+    await expect(
+      page1.getByRole('button', { name: 'Remove from favorites' }),
+    ).toBeVisible()
 
     await context1.close()
 
@@ -133,7 +141,9 @@ test.describe('Group Cloud Sync', () => {
     await page2.goto('/groups')
 
     // The starred group should appear in starred section
-    const starredSection = page2.getByRole('button', { name: 'Remove from favorites' })
+    const starredSection = page2.getByRole('button', {
+      name: 'Remove from favorites',
+    })
     await expect(starredSection).toBeVisible()
     await expect(page2.getByText(groupName)).toBeVisible()
 

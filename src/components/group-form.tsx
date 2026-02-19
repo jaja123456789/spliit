@@ -24,6 +24,11 @@ import {
 } from '@/components/ui/hover-card'
 import { Input } from '@/components/ui/input'
 import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -35,15 +40,14 @@ import { getGroup } from '@/lib/api'
 import { defaultCurrencyList, getCurrency } from '@/lib/currency'
 import { GroupFormValues, groupFormSchema } from '@/lib/schemas'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Save, Trash2, CreditCard, Landmark, Smartphone } from 'lucide-react'
+import { CreditCard, Save, Smartphone, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { CurrencySelector } from './currency-selector'
-import { Textarea } from './ui/textarea'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Switch } from './ui/switch'
+import { Textarea } from './ui/textarea'
 
 export type Props = {
   group?: NonNullable<Awaited<ReturnType<typeof getGroup>>>
@@ -61,7 +65,8 @@ export function GroupForm({
 }: Props) {
   const locale = useLocale()
   const t = useTranslations('GroupForm')
-  const defaultCurrencyCode = process.env.NEXT_PUBLIC_DEFAULT_CURRENCY_CODE || 'USD' 
+  const defaultCurrencyCode =
+    process.env.NEXT_PUBLIC_DEFAULT_CURRENCY_CODE || 'USD'
   const form = useForm<GroupFormValues>({
     resolver: zodResolver(groupFormSchema),
     defaultValues: group
@@ -70,12 +75,12 @@ export function GroupForm({
           information: group.information ?? '',
           currency: group.currency ?? '',
           currencyCode: group.currencyCode ?? '',
-          participants: group.participants.map(p => ({
+          participants: group.participants.map((p) => ({
             id: p.id,
             name: p.name,
-            paymentProfile: (p.paymentProfile as any) ?? {} 
+            paymentProfile: (p.paymentProfile as any) ?? {},
           })),
-          simplifyDebts: group.simplifyDebts ?? true, 
+          simplifyDebts: group.simplifyDebts ?? true,
         }
       : {
           name: '',
@@ -87,7 +92,7 @@ export function GroupForm({
             { name: t('Participants.Jane') },
             { name: t('Participants.Jack') },
           ],
-          simplifyDebts: true, 
+          simplifyDebts: true,
         },
   })
   const { fields, append, remove } = useFieldArray({
@@ -255,7 +260,7 @@ export function GroupForm({
                     </div>
                     <FormControl>
                       <Switch
-                        checked={field.value ?? true} 
+                        checked={field.value ?? true}
                         onCheckedChange={field.onChange}
                       />
                     </FormControl>
@@ -324,11 +329,17 @@ export function GroupForm({
                             )}
                             <Popover>
                               <PopoverTrigger asChild>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon" 
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
                                   title="Payment Methods"
-                                  className={form.watch(`participants.${index}.paymentProfile`) ? "text-primary bg-primary/10" : "text-muted-foreground"}
+                                  className={
+                                    form.watch(
+                                      `participants.${index}.paymentProfile`,
+                                    )
+                                      ? 'text-primary bg-primary/10'
+                                      : 'text-muted-foreground'
+                                  }
                                 >
                                   <CreditCard className="w-4 h-4" />
                                 </Button>
@@ -336,21 +347,33 @@ export function GroupForm({
                               <PopoverContent className="w-80" align="end">
                                 <div className="grid gap-4">
                                   <div className="space-y-1">
-                                    <h4 className="font-medium leading-none">Payment Methods</h4>
+                                    <h4 className="font-medium leading-none">
+                                      Payment Methods
+                                    </h4>
                                     <p className="text-xs text-muted-foreground">
-                                      Add details to enable direct repayment links.
+                                      Add details to enable direct repayment
+                                      links.
                                     </p>
                                   </div>
-                                  
+
                                   <div className="grid gap-4">
                                     {/* Payment Apps Section */}
                                     <div className="space-y-2">
-                                      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Payment Apps</h5>
-                                      {['venmo', 'paypal', 'cashapp', 'revolut'].map((provider) => (
+                                      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                        Payment Apps
+                                      </h5>
+                                      {[
+                                        'venmo',
+                                        'paypal',
+                                        'cashapp',
+                                        'revolut',
+                                      ].map((provider) => (
                                         <FormField
                                           key={provider}
                                           control={form.control}
-                                          name={`participants.${index}.paymentProfile.${provider}` as any}
+                                          name={
+                                            `participants.${index}.paymentProfile.${provider}` as any
+                                          }
                                           render={({ field }) => (
                                             <FormItem className="grid grid-cols-3 items-center gap-3 space-y-0">
                                               <FormLabel className="capitalize text-xs cursor-pointer">
@@ -362,7 +385,10 @@ export function GroupForm({
                                                     className="h-8 text-sm"
                                                     placeholder="username"
                                                     {...field}
-                                                    value={(field.value as string) ?? ''}
+                                                    value={
+                                                      (field.value as string) ??
+                                                      ''
+                                                    }
                                                   />
                                                 </FormControl>
                                               </div>
@@ -374,15 +400,20 @@ export function GroupForm({
 
                                     {/* Manual Section */}
                                     <div className="space-y-2 pt-2 border-t">
-                                      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Manual Details</h5>
-                                      
+                                      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                        Manual Details
+                                      </h5>
+
                                       <FormField
                                         control={form.control}
-                                        name={`participants.${index}.paymentProfile.phone` as any}
+                                        name={
+                                          `participants.${index}.paymentProfile.phone` as any
+                                        }
                                         render={({ field }) => (
                                           <FormItem className="grid grid-cols-3 items-center gap-3 space-y-0">
                                             <FormLabel className="text-xs cursor-pointer flex items-center gap-1">
-                                              <Smartphone className="w-3 h-3" /> Phone
+                                              <Smartphone className="w-3 h-3" />{' '}
+                                              Phone
                                             </FormLabel>
                                             <div className="col-span-2">
                                               <FormControl>
@@ -390,7 +421,10 @@ export function GroupForm({
                                                   className="h-8 text-sm"
                                                   placeholder="+1 234..."
                                                   {...field}
-                                                  value={(field.value as string) ?? ''}
+                                                  value={
+                                                    (field.value as string) ??
+                                                    ''
+                                                  }
                                                 />
                                               </FormControl>
                                             </div>
@@ -416,16 +450,16 @@ export function GroupForm({
             <Button
               variant="secondary"
               onClick={() => {
-                append({ 
-                  name: '', 
-                  id: '', 
+                append({
+                  name: '',
+                  id: '',
                   paymentProfile: {
                     venmo: '',
                     paypal: '',
                     cashapp: '',
                     revolut: '',
                     phone: '',
-                  } 
+                  },
                 })
               }}
               type="button"

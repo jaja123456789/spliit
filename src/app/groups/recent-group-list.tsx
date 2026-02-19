@@ -13,10 +13,9 @@ import { Loader2 } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { PropsWithChildren } from 'react'
-import { RecentGroupListCard } from './recent-group-list-card'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { PropsWithChildren, useEffect } from 'react'
+import { RecentGroupListCard } from './recent-group-list-card'
 
 export type RecentGroupsState =
   | { status: 'pending' }

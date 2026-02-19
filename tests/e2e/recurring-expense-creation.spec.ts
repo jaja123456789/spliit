@@ -1,11 +1,11 @@
+import { randomId } from '@/lib/api'
 import { expect, test } from '@playwright/test'
+import { createGroup, navigateToGroup } from '../helpers'
 import {
   createExpense,
   openExpenseForEdit,
   verifyExpenseRecurrence,
 } from '../helpers/expense'
-import { createGroup, navigateToGroup } from '../helpers'
-import { randomId } from '@/lib/api'
 
 test.describe('Recurring Expense Creation', () => {
   test('Create daily recurring expense', async ({ page }) => {

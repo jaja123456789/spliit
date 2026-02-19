@@ -1,3 +1,4 @@
+import { randomId } from '@/lib/api'
 import { expect, test } from '@playwright/test'
 import { navigateToGroup, navigateToTab } from '../helpers'
 import {
@@ -5,7 +6,6 @@ import {
   createExpensesViaAPI,
   createGroupViaAPI,
 } from '../helpers/batch-api'
-import { randomId } from '@/lib/api'
 
 test('View activity page', async ({ page }) => {
   // Setup: Create group with 3 participants and immediately create an expense
@@ -93,7 +93,7 @@ test('Log shows update', async ({ page }) => {
   })
 
   // Navigate to group page
-  await navigateToGroup(page, groupId);
+  await navigateToGroup(page, groupId)
 
   // Wait for the expense to be visible and clickable
   const expenseRow = page.getByText(expenseTitle)
@@ -197,7 +197,7 @@ test('Log pagination', async ({ page }) => {
   expect(createdExpenses).toHaveLength(numExpenses)
 
   // Navigate to group page
-  await navigateToGroup(page, groupId);
+  await navigateToGroup(page, groupId)
 
   // Navigate to Activity tab
   await navigateToTab(page, 'Activity')
@@ -207,7 +207,9 @@ test('Log pagination', async ({ page }) => {
   await expect(activityListWrapper).toBeVisible()
 
   // Verify the most recent expense appears (last in array)
-  await expect(page.getByText(`Expense “Expense ${numExpenses}” created`)).toBeVisible()
+  await expect(
+    page.getByText(`Expense “Expense ${numExpenses}” created`),
+  ).toBeVisible()
 
   // Scroll down to trigger infinite scroll pagination
   await page.mouse.wheel(0, 1000)

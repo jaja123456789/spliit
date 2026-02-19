@@ -1,11 +1,10 @@
 'use client'
-import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
+import { Switch } from '@/components/ui/switch'
+import { useToast } from '@/components/ui/use-toast'
 import { trpc } from '@/trpc/client'
 import { Bell, BellOff, Loader2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import { useToast } from '@/components/ui/use-toast'
 
 function urlBase64ToUint8Array(base64String: string) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -20,7 +19,9 @@ function urlBase64ToUint8Array(base64String: string) {
 
 export function PushNotificationToggle() {
   const [isSupported, setIsSupported] = useState(false)
-  const [subscription, setSubscription] = useState<PushSubscription | null>(null)
+  const [subscription, setSubscription] = useState<PushSubscription | null>(
+    null,
+  )
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
   const subscribeMutation = trpc.push.subscribe.useMutation()
@@ -36,10 +37,13 @@ export function PushNotificationToggle() {
 
   const registerServiceWorker = async () => {
     try {
-      const registration = await navigator.serviceWorker.register('/spliit/sw.js', {
-        scope: '/spliit/',
-        updateViaCache: 'none',
-      })
+      const registration = await navigator.serviceWorker.register(
+        '/spliit/sw.js',
+        {
+          scope: '/spliit/',
+          updateViaCache: 'none',
+        },
+      )
       const sub = await registration.pushManager.getSubscription()
       setSubscription(sub)
     } catch (error) {
@@ -54,7 +58,7 @@ export function PushNotificationToggle() {
     try {
       const registration = await navigator.serviceWorker.ready
       const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
-      
+
       if (!vapidKey) {
         throw new Error('VAPID public key not found')
       }
@@ -75,11 +79,18 @@ export function PushNotificationToggle() {
           },
         })
         setSubscription(sub)
-        toast({ title: "Notifications enabled", description: "You will now receive updates for your groups." })
+        toast({
+          title: 'Notifications enabled',
+          description: 'You will now receive updates for your groups.',
+        })
       }
     } catch (error) {
       console.error('Failed to subscribe:', error)
-      toast({ title: "Error", description: "Failed to enable notifications.", variant: "destructive" })
+      toast({
+        title: 'Error',
+        description: 'Failed to enable notifications.',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
@@ -104,8 +115,15 @@ export function PushNotificationToggle() {
   return (
     <div className="flex items-center justify-between space-x-2">
       <div className="flex-1">
-        <Label htmlFor="push-notifs" className="font-medium flex items-center gap-2">
-          {subscription ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+        <Label
+          htmlFor="push-notifs"
+          className="font-medium flex items-center gap-2"
+        >
+          {subscription ? (
+            <Bell className="w-4 h-4" />
+          ) : (
+            <BellOff className="w-4 h-4" />
+          )}
           Push Notifications
         </Label>
         <p className="text-sm text-muted-foreground">
@@ -118,7 +136,7 @@ export function PushNotificationToggle() {
         <Switch
           id="push-notifs"
           checked={!!subscription}
-          onCheckedChange={(checked) => checked ? subscribe() : unsubscribe()}
+          onCheckedChange={(checked) => (checked ? subscribe() : unsubscribe())}
         />
       )}
     </div>
