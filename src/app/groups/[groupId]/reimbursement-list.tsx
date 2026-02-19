@@ -44,7 +44,6 @@ export function ReimbursementList({
         const fromName = fromParticipant?.name ?? ''
         const toName = toParticipant?.name ?? ''
 
-        // Ensure we cast paymentProfile to any or PaymentProfile type depending on your Prisma types generation
         const paymentOptions = getPaymentOptions(
           toParticipant?.paymentProfile as any,
           reimbursement.amount,
@@ -90,7 +89,7 @@ export function ReimbursementList({
               </div>
             </div>
 
-            {/* NEW: Payment Links Row */}
+            {/* Payment Links Row */}
             {paymentOptions.length > 0 && (
               <div className="flex gap-2 flex-wrap mt-1">
                 <span className="text-xs text-muted-foreground self-center">
@@ -108,7 +107,36 @@ export function ReimbursementList({
   )
 }
 
-// Sub-component to handle copy state locally
+// FIX: Removed dynamic variable assignment. 
+// Uses direct returns to satisfy "static-components" linter rule.
+function PaymentOptionIcon({ 
+  option, 
+  copied, 
+  className 
+}: { 
+  option: PaymentOption
+  copied: boolean
+  className?: string 
+}) {
+  if (option.type === 'link') {
+    return <ExternalLink className={className} />
+  }
+
+  if (copied) {
+    return <Check className={className} />
+  }
+
+  if (option.icon === 'phone') {
+    return <Smartphone className={className} />
+  }
+
+  if (option.icon === 'landmark') {
+    return <Landmark className={className} />
+  }
+  
+  return <Copy className={className} />
+}
+
 function PaymentOptionButton({ option }: { option: PaymentOption }) {
   const [copied, setCopied] = useState(false)
 
@@ -118,18 +146,21 @@ function PaymentOptionButton({ option }: { option: PaymentOption }) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const Icon = option.type === 'copy'
-    ? (copied ? Check : (getIcon(option.icon) || Copy))
-    : ExternalLink
-
   const classes = `h-7 text-xs px-3 ${option.bgColor} ${option.textColor} hover:opacity-90 border-none transition-all`
+  const iconClasses = "w-3 h-3 ml-1.5 opacity-70"
+
+  const content = (
+    <>
+      {option.label}
+      <PaymentOptionIcon option={option} copied={copied} className={iconClasses} />
+    </>
+  )
 
   if (option.type === 'link') {
     return (
       <Button size="sm" className={classes} asChild>
         <a href={option.value} target="_blank" rel="noopener noreferrer">
-          {option.label}
-          <Icon className="w-3 h-3 ml-1.5 opacity-70" />
+          {content}
         </a>
       </Button>
     )
@@ -137,14 +168,7 @@ function PaymentOptionButton({ option }: { option: PaymentOption }) {
 
   return (
     <Button size="sm" className={classes} onClick={handleCopy}>
-      {option.label}
-      <Icon className="w-3 h-3 ml-1.5 opacity-70" />
+      {content}
     </Button>
   )
-}
-
-function getIcon(name?: string) {
-  if (name === 'phone') return Smartphone
-  if (name === 'landmark') return Landmark
-  return null
 }

@@ -41,7 +41,7 @@ export function CurrencySelector({
   useEffect(() => {
     setValue(defaultValue)
     onValueChange(defaultValue)
-  }, [defaultValue])
+  }, [defaultValue, onValueChange])
 
   const selectedCurrency =
     currencies.find((currency) => (currency.code ?? '') === value) ??

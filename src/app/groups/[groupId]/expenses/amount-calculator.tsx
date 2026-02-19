@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { Delete, Check, Equal } from 'lucide-react'
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 
 interface AmountCalculatorProps {
   onApply: (value: string) => void
@@ -17,6 +17,50 @@ type Operator = '+' | '-' | '×' | '÷'
 
 const isOperator = (char: string): char is Operator => 
   ['+', '-', '×', '÷'].includes(char)
+
+const getMathResult = (text: string, decimalPlaces: number): string | null => {
+  try {
+    const expression = text
+      .replace(/×/g, '*')
+      .replace(/÷/g, '/')
+      .replace(/[+\-*/]$/, '')
+
+    if (!expression) return null
+
+    const result = new Function(`return Number(${expression})`)()
+    
+    if (typeof result === 'number' && isFinite(result)) {
+      return parseFloat(result.toFixed(decimalPlaces)).toString()
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
+// FIX: Moved ButtonKey outside of the main component
+interface ButtonKeyProps { 
+  children: React.ReactNode
+  onClick: () => void
+  variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link"
+  className?: string 
+}
+
+const ButtonKey = ({ 
+  children, 
+  onClick, 
+  variant = "outline", 
+  className 
+}: ButtonKeyProps) => (
+  <Button 
+    variant={variant} 
+    className={cn("h-14 text-xl font-normal shadow-sm active:scale-95 transition-transform", className)} 
+    onClick={onClick}
+    type="button"
+  >
+    {children}
+  </Button>
+)
 
 export function AmountCalculator({ 
   onApply, 
@@ -31,28 +75,7 @@ export function AmountCalculator({
   // Haptic feedback for mobile
   const vibrate = () => {
     if (typeof window !== 'undefined' && window.navigator.vibrate) {
-      window.navigator.vibrate(5) // Subtle click
-    }
-  }
-
-  const getMathResult = (text: string): string | null => {
-    try {
-      const expression = text
-        .replace(/×/g, '*')
-        .replace(/÷/g, '/')
-        .replace(/[+\-*/]$/, '')
-
-      if (!expression) return null
-
-      const result = new Function(`return Number(${expression})`)()
-      
-      // FIX: Check for Infinity or NaN explicitly
-      if (typeof result === 'number' && isFinite(result)) {
-        return parseFloat(result.toFixed(decimalPlaces)).toString()
-      }
-      return null
-    } catch {
-      return null
+      window.navigator.vibrate(5)
     }
   }
 
@@ -84,23 +107,23 @@ export function AmountCalculator({
 
   const calculate = useCallback(() => {
     vibrate()
-    const result = getMathResult(display)
+    const result = getMathResult(display, decimalPlaces)
     if (result !== null) {
       setFormula(display + ' =')
       setDisplay(result)
       setHasResult(true)
     }
-  }, [display])
+  }, [display, decimalPlaces])
 
   const handleApply = useCallback(() => {
     vibrate()
     let finalValue = display
     if (!hasResult && /[+\-×÷]/.test(display)) {
-      const calculated = getMathResult(display)
+      const calculated = getMathResult(display, decimalPlaces)
       if (calculated !== null) finalValue = calculated
     }
     onApply(finalValue)
-  }, [display, hasResult, onApply])
+  }, [display, hasResult, onApply, decimalPlaces])
 
   const backspace = useCallback(() => {
     vibrate()
@@ -124,27 +147,6 @@ export function AmountCalculator({
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
   }, [appendToDisplay, calculate, handleApply, backspace, hasResult])
-
-  const ButtonKey = ({ 
-    children, 
-    onClick, 
-    variant = "outline", 
-    className 
-  }: { 
-    children: React.ReactNode, 
-    onClick: () => void, 
-    variant?: "default" | "destructive" | "outline" | "secondary" | "ghost" | "link", 
-    className?: string 
-  }) => (
-    <Button 
-      variant={variant} 
-      className={cn("h-14 text-xl font-normal shadow-sm active:scale-95 transition-transform", className)} 
-      onClick={onClick}
-      type="button"
-    >
-      {children}
-    </Button>
-  )
 
   return (
     <Card className={cn("p-4 w-full max-w-[340px] shadow-lg select-none touch-none bg-background", className)}>

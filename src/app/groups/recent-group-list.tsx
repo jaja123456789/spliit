@@ -72,8 +72,6 @@ export function RecentGroupList() {
     isPending,
   } = useGroups()
 
-  if (isPending && recentGroups.length === 0) return null
-
   useEffect(() => {
     // Check for pending shared receipt
     const pendingReceipt = sessionStorage.getItem('pending-share-receipt')
@@ -88,6 +86,8 @@ export function RecentGroupList() {
       */
     }
   }, [])
+
+  if (isPending && recentGroups.length === 0) return null
 
   return (
     <RecentGroupList_
