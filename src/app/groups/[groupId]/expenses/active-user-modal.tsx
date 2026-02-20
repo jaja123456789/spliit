@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/drawer'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { useMediaQuery } from '@/lib/hooks'
+import { useMediaQuery, useMobilePopoverState } from '@/lib/hooks'
 import { cn } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { AppRouterOutput } from '@/trpc/routers/_app'
@@ -28,7 +28,8 @@ import { ComponentProps, useEffect, useState } from 'react'
 export function ActiveUserModal({ groupId }: { groupId: string }) {
   const t = useTranslations('Expenses.ActiveUserModal')
   const [open, setOpen] = useState(false)
-  const isDesktop = useMediaQuery('(min-width: 768px)')
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
+  useMobilePopoverState(open, setOpen, isDesktop)
   const { data: groupData } = trpc.groups.get.useQuery({ groupId })
 
   const group = groupData?.group

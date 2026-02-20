@@ -274,12 +274,20 @@ export function ItemizationBuilder({
                                         )}
                                         onClick={() => {
                                           const current = field.value || []
-                                          const next = isSelected
-                                            ? current.filter(
-                                                (id: string) =>
-                                                  id !== participant.id,
-                                              )
-                                            : [...current, participant.id]
+                                          const isAllSelected =
+                                            current.length ===
+                                            group.participants.length
+                                          let next
+                                          if (isAllSelected) {
+                                            next = [participant.id]
+                                          } else {
+                                            next = isSelected
+                                              ? current.filter(
+                                                  (id: string) =>
+                                                    id !== participant.id,
+                                                )
+                                              : [...current, participant.id]
+                                          }
                                           field.onChange(next)
                                         }}
                                       >

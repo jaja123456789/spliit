@@ -20,7 +20,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover'
 import { Currency } from '@/lib/currency'
-import { useMediaQuery } from '@/lib/hooks'
+import { useMediaQuery, useMobilePopoverState } from '@/lib/hooks'
 import { useTranslations } from 'next-intl'
 import { forwardRef, useEffect, useState } from 'react'
 
@@ -40,7 +40,8 @@ export function CurrencySelector({
 }: Props) {
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState<string>(defaultValue)
-  const isDesktop = useMediaQuery('(min-width: 768px)')
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
+  useMobilePopoverState(open, setOpen, isDesktop)
 
   // allow overwriting currently selected currency from outside
   useEffect(() => {

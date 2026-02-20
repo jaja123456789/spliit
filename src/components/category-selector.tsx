@@ -20,7 +20,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { useMediaQuery } from '@/lib/hooks'
+import { useMediaQuery, useMobilePopoverState } from '@/lib/hooks'
 import { Category } from '@prisma/client'
 import { useTranslations } from 'next-intl'
 import { forwardRef, useEffect, useState } from 'react'
@@ -41,7 +41,8 @@ export function CategorySelector({
 }: Props) {
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState<number>(defaultValue)
-  const isDesktop = useMediaQuery('(min-width: 768px)')
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
+  useMobilePopoverState(open, setOpen, isDesktop)
 
   // allow overwriting currently selected category from outside
   useEffect(() => {

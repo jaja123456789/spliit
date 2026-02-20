@@ -43,6 +43,31 @@ export function useMediaQuery(query: string): boolean {
   return matches
 }
 
+export function useMobilePopoverState(
+  open: boolean,
+  setOpen: (open: boolean) => void,
+  isDesktop: boolean,
+) {
+  useEffect(() => {
+    if (open && !isDesktop) {
+      window.history.pushState({ drawerOpen: true }, '')
+
+      const onPopState = () => {
+        setOpen(false)
+      }
+
+      window.addEventListener('popstate', onPopState)
+
+      return () => {
+        window.removeEventListener('popstate', onPopState)
+        if (window.history.state?.drawerOpen) {
+          window.history.back()
+        }
+      }
+    }
+  }, [open, isDesktop, setOpen])
+}
+
 export function useBaseUrl() {
   const [baseUrl, setBaseUrl] = useState<string | null>(null)
   useEffect(() => {

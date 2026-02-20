@@ -22,7 +22,7 @@ import {
   InputGroupAddon,
 } from "@/components/ui/input-group"
 import { AmountCalculator } from "@/app/groups/[groupId]/expenses/amount-calculator"
-import { useMediaQuery } from '@/lib/hooks'
+import { useMediaQuery, useMobilePopoverState } from '@/lib/hooks'
 
 interface CalculatorInputProps 
   extends Omit<React.ComponentProps<typeof InputGroupInput>, "onChange" | "value"> {
@@ -47,7 +47,19 @@ export function CalculatorInput({
   ...props
 }: CalculatorInputProps) {
   const [open, setOpen] = React.useState(false)
-  const isDesktop = useMediaQuery("(min-width: 768px)")
+  const isDesktop = useMediaQuery("(min-width: 1024px)")
+  useMobilePopoverState(open, setOpen, isDesktop)
+
+  const [isInternalReadOnly, setInternalReadOnly] = React.useState(false)
+  React.useEffect(() => {
+    if (open) {
+      setInternalReadOnly(true)
+    } else {
+      // Delay removing readOnly to prevent keyboard flash during close/focus restoration
+      const timer = setTimeout(() => setInternalReadOnly(false), 300)
+      return () => clearTimeout(timer)
+    }
+  }, [open])
 
   const handleCalculatorApply = (newValue: string) => {
     onValueChange(newValue)
@@ -94,6 +106,7 @@ export function CalculatorInput({
         inputMode="decimal"
         placeholder={placeholder}
         disabled={disabled}
+        readOnly={isInternalReadOnly}
         value={value}
         onChange={handleInputChange}
         onBlur={handleBlur}
@@ -115,7 +128,10 @@ export function CalculatorInput({
           </Popover>
         ) : (
           /* MOBILE: DRAWER */
-          <Drawer open={open} onOpenChange={setOpen}>
+          <Drawer 
+            open={open} 
+            onOpenChange={setOpen}
+          >
             <DrawerTrigger asChild>
               <Button variant="ghost" size="icon" className="h-9 w-9">
                 <Calculator className="h-4 w-4 text-muted-foreground" />

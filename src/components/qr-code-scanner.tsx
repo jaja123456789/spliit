@@ -31,6 +31,10 @@ export function QrCodeScanner({ onScan, onError, onClose }: Props) {
 
   const startScanning = async () => {
     try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        throw new Error('Camera not available')
+      }
+
       const html5QrCode = new Html5Qrcode(elementId)
       scannerRef.current = html5QrCode
 

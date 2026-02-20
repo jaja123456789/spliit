@@ -72,7 +72,7 @@ export function getPaymentOptions(
   if (profile.phone) {
     options.push({
       type: 'copy',
-      label: 'Phone',
+      label: profile.phone,
       value: profile.phone,
       color: '#71717a', // Zinc-500
       bgColor: 'bg-zinc-100 dark:bg-zinc-800',

@@ -52,7 +52,7 @@ const MAX_FILE_SIZE = 10 * 1024 ** 2
 
 export function CreateFromReceiptButton() {
   const t = useTranslations('CreateFromReceipt')
-  const isDesktop = useMediaQuery('(min-width: 640px)')
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
   const DialogOrDrawer = isDesktop
     ? CreateFromReceiptDialog
     : CreateFromReceiptDrawer

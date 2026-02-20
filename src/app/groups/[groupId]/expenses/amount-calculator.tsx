@@ -127,15 +127,20 @@ export function AmountCalculator({
     }
   }, [display, decimalPlaces])
 
-  const handleApply = useCallback(() => {
-    vibrate()
-    let finalValue = display
-    if (!hasResult && /[+\-×÷]/.test(display)) {
-      const calculated = getMathResult(display, decimalPlaces)
-      if (calculated !== null) finalValue = calculated
-    }
-    onApply(finalValue)
-  }, [display, hasResult, onApply, decimalPlaces])
+  const handleApply = useCallback(
+    (e?: { preventDefault: () => void }) => {
+      vibrate()
+      e?.preventDefault()
+
+      let finalValue = display
+      if (!hasResult && /[+\-×÷]/.test(display)) {
+        const calculated = getMathResult(display, decimalPlaces)
+        if (calculated !== null) finalValue = calculated
+      }
+      onApply(finalValue)
+    },
+    [display, hasResult, onApply, decimalPlaces],
+  )
 
   const backspace = useCallback(() => {
     vibrate()
