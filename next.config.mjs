@@ -24,6 +24,7 @@ if (process.env.S3_UPLOAD_ENDPOINT) {
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: "standalone",
   images: {
     remotePatterns,
   },
