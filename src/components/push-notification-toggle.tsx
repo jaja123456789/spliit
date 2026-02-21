@@ -17,7 +17,11 @@ function urlBase64ToUint8Array(base64String: string) {
   return outputArray
 }
 
-export function PushNotificationToggle() {
+export function PushNotificationToggle({
+  vapidKey,
+}: {
+  vapidKey: string | undefined
+}) {
   const [isSupported, setIsSupported] = useState(false)
   const [subscription, setSubscription] = useState<PushSubscription | null>(
     null,
@@ -25,6 +29,7 @@ export function PushNotificationToggle() {
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
   const subscribeMutation = trpc.push.subscribe.useMutation()
+  const unsubscribeMutation = trpc.push.unsubscribe.useMutation()
 
   useEffect(() => {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
@@ -57,7 +62,6 @@ export function PushNotificationToggle() {
     setLoading(true)
     try {
       const registration = await navigator.serviceWorker.ready
-      const vapidKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
       if (!vapidKey) {
         throw new Error('VAPID public key not found')
@@ -100,11 +104,25 @@ export function PushNotificationToggle() {
     if (!subscription) return
     setLoading(true)
     try {
+      // 1. Unsubscribe in browser
       await subscription.unsubscribe()
+
+      // 2. Unsubscribe in DB (Clean up)
+      await unsubscribeMutation.mutateAsync({
+        endpoint: subscription.endpoint,
+      })
+
       setSubscription(null)
-      // Ideally call a server mutation to delete, but server handles 410/404 automatically on send
+      toast({
+        title: 'Notifications disabled',
+      })
     } catch (error) {
       console.error('Error unsubscribing', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to disable notifications.',
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
@@ -135,6 +153,7 @@ export function PushNotificationToggle() {
       ) : (
         <Switch
           id="push-notifs"
+          disabled={loading || (!subscription && !vapidKey)}
           checked={!!subscription}
           onCheckedChange={(checked) => (checked ? subscribe() : unsubscribe())}
         />

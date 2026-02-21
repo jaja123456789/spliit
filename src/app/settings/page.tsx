@@ -6,5 +6,7 @@ export const metadata: Metadata = {
 }
 
 export default function SettingsPage() {
-  return <SettingsContent />
+  const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
+
+  return <SettingsContent vapidKey={vapidPublicKey} />
 }

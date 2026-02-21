@@ -19,7 +19,7 @@ import {
   SyncedGroupsList,
 } from './components'
 
-export function SettingsContent() {
+export function SettingsContent({ vapidKey }: { vapidKey?: string }) {
   const { data: session, status } = useSession()
   const t = useTranslations('Settings')
   const commonT = useTranslations('Common')
@@ -82,7 +82,7 @@ export function SettingsContent() {
               </div>
               <div className="border-t pt-4">
                 <h3 className="text-sm font-medium mb-3">Notifications</h3>
-                <PushNotificationToggle />
+                <PushNotificationToggle vapidKey={vapidKey} />
               </div>
             </div>
           )}
