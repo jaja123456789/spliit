@@ -61,6 +61,19 @@ export function PushNotificationToggle({
   const subscribe = async () => {
     setLoading(true)
     try {
+      if (!('Notification' in window)) {
+        throw new Error('Notifications API not supported')
+      }
+
+      let permission = Notification.permission
+      if (permission === 'default') {
+        permission = await Notification.requestPermission()
+      }
+
+      if (permission !== 'granted') {
+        throw new Error(`Notification permission is ${permission}`)
+      }
+
       const registration = await navigator.serviceWorker.ready
 
       if (!vapidKey) {
@@ -90,9 +103,18 @@ export function PushNotificationToggle({
       }
     } catch (error) {
       console.error('Failed to subscribe:', error)
+      const permissionState =
+        typeof Notification !== 'undefined'
+          ? Notification.permission
+          : 'unsupported'
       toast({
         title: 'Error',
-        description: 'Failed to enable notifications.',
+        description:
+          permissionState === 'denied'
+            ? 'Notifications are blocked for this site. Allow them in browser settings and try again.'
+            : permissionState === 'default'
+              ? 'Notification permission was not granted.'
+              : 'Failed to enable notifications.',
         variant: 'destructive',
       })
     } finally {
