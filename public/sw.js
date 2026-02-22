@@ -7,11 +7,13 @@ self.addEventListener('push', function (event) {
   const title = data.title || 'New Activity in Spliit'
   const message = data.body || 'Something happened in your group.'
   const url = data.url || '/groups'
+  const icon = data.icon || '/logo/192x192.png'
+  const badge = data.badge || '/logo/96x96.png'
 
   const options = {
     body: message,
-    icon: '/logo/192x192.png',
-    badge: '/logo/96x96.png', // Create a monochrome icon for best results on Android
+    icon: icon,
+    badge: badge,
     data: {
       url: url,
     },

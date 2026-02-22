@@ -1,5 +1,6 @@
 import { ApplePwaSplash } from '@/app/apple-pwa-splash'
 import { AuthProvider } from '@/components/auth-provider'
+import { EnvProvider } from '@/components/env-provider'
 import { LocaleSwitcher } from '@/components/locale-switcher'
 import { ProgressBar } from '@/components/progress-bar'
 import { ThemeProvider } from '@/components/theme-provider'
@@ -25,20 +26,20 @@ export const metadata: Metadata = {
   },
   description:
     'Spliit is a minimalist web application to share expenses with friends and family. No ads, no account, no problem.',
-  manifest: `/spliit/manifest.webmanifest`,
+  manifest: `${env.NEXT_PUBLIC_BASE_PATH}/manifest.webmanifest`,
   openGraph: {
     title: 'Spliit · Share Expenses with Friends & Family',
     description:
       'Spliit is a minimalist web application to share expenses with friends and family. No ads, no account, no problem.',
-    images: `/spliit/banner.png`,
+    images: `${env.NEXT_PUBLIC_BASE_PATH}/banner.png`,
     type: 'website',
-    url: '/spliit',
+    url: env.NEXT_PUBLIC_BASE_PATH || '/',
   },
   twitter: {
     card: 'summary_large_image',
     creator: '@scastiel',
     site: '@scastiel',
-    images: `/spliit/banner.png`,
+    images: `${env.NEXT_PUBLIC_BASE_PATH}/banner.png`,
     title: 'Spliit · Share Expenses with Friends & Family',
     description:
       'Spliit is a minimalist web application to share expenses with friends and family. No ads, no account, no problem.',
@@ -50,12 +51,12 @@ export const metadata: Metadata = {
   applicationName: 'Spliit',
   icons: [
     {
-      url: '/spliit/android-chrome-192x192.png',
+      url: `${env.NEXT_PUBLIC_BASE_PATH}/android-chrome-192x192.png`,
       sizes: '192x192',
       type: 'image/png',
     },
     {
-      url: '/spliit/android-chrome-512x512.png',
+      url: `${env.NEXT_PUBLIC_BASE_PATH}/android-chrome-512x512.png`,
       sizes: '512x512',
       type: 'image/png',
     },
@@ -68,6 +69,7 @@ export const viewport: Viewport = {
 
 function Content({ children }: { children: React.ReactNode }) {
   const t = useTranslations()
+  const basePath = env.NEXT_PUBLIC_BASE_PATH
   return (
     <TRPCProvider>
       <AuthProvider>
@@ -75,11 +77,11 @@ function Content({ children }: { children: React.ReactNode }) {
           <header className="fixed top-0 left-0 right-0 h-16 flex justify-between bg-white dark:bg-gray-950 bg-opacity-50 dark:bg-opacity-50 p-2 border-b backdrop-blur-sm z-50">
             <Link
               className="flex items-center gap-2 hover:scale-105 transition-transform"
-              href="/spliit"
+              href="/"
             >
               <h1>
                 <Image
-                  src="/spliit/logo-with-text.png"
+                  src={`${basePath}/logo-with-text.png`}
                   className="m-1 h-auto w-auto"
                   width={(35 * 522) / 180}
                   height={35}
@@ -124,9 +126,9 @@ function Content({ children }: { children: React.ReactNode }) {
           <footer className="sm:p-8 md:p-16 sm:mt-16 sm:text-sm md:text-base md:mt-32 bg-slate-50 dark:bg-card border-t p-6 mt-8 flex flex-col sm:flex-row sm:justify-between gap-4 text-xs [&_a]:underline">
             <div className="flex flex-col space-y-2">
               <div className="sm:text-lg font-semibold text-base flex space-x-2 items-center">
-                <Link className="flex items-center gap-2" href="/spliit">
+                <Link className="flex items-center gap-2" href="/">
                   <Image
-                    src="/spliit/logo-with-text.png"
+                    src={`${basePath}/logo-with-text.png`}
                     className="m-1 h-auto w-auto"
                     width={(35 * 522) / 180}
                     height={35}
@@ -175,9 +177,11 @@ export default async function RootLayout({
 }) {
   const locale = await getLocale()
   const messages = await getMessages()
+  const basePath = env.NEXT_PUBLIC_BASE_PATH
+
   return (
     <html lang={locale} suppressHydrationWarning>
-      <ApplePwaSplash icon="/spliit/logo-with-text.png" color="#027756" />
+      <ApplePwaSplash icon={`${basePath}/logo-with-text.png`} color="#027756" />
       <body className="min-h-[100dvh] flex flex-col items-stretch bg-slate-50 bg-opacity-30 dark:bg-background">
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider
@@ -186,10 +190,12 @@ export default async function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <Suspense>
-              <ProgressBar />
-            </Suspense>
-            <Content>{children}</Content>
+            <EnvProvider basePath={basePath}>
+              <Suspense>
+                <ProgressBar />
+              </Suspense>
+              <Content>{children}</Content>
+            </EnvProvider>
           </ThemeProvider>
         </NextIntlClientProvider>
       </body>

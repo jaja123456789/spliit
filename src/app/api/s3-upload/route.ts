@@ -1,5 +1,5 @@
-import { randomId } from '@/lib/api'
 import { env } from '@/lib/env'
+import { randomId } from '@/lib/utils'
 import { POST as route } from 'next-s3-upload/route'
 
 export const POST = route.configure({

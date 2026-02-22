@@ -1,7 +1,12 @@
 import { Category, Group } from '@prisma/client'
 import { clsx, type ClassValue } from 'clsx'
+import { nanoid } from 'nanoid'
 import { twMerge } from 'tailwind-merge'
 import { Currency, getCurrency } from './currency'
+
+export function randomId(size?: number) {
+  return nanoid(size)
+}
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

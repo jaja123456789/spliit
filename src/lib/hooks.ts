@@ -1,3 +1,4 @@
+import { useEnv } from '@/components/env-provider'
 import dayjs from 'dayjs'
 import { useEffect, useState } from 'react'
 import useSWR, { Fetcher } from 'swr'
@@ -70,8 +71,10 @@ export function useMobilePopoverState(
 
 export function useBaseUrl() {
   const [baseUrl, setBaseUrl] = useState<string | null>(null)
+  const { NEXT_PUBLIC_BASE_PATH } = useEnv()
+
   useEffect(() => {
-    setBaseUrl(window.location.origin + '/spliit')
+    setBaseUrl(window.location.origin + NEXT_PUBLIC_BASE_PATH)
   }, [])
   return baseUrl
 }

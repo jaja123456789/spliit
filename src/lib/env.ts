@@ -17,6 +17,10 @@ const envSchema = z
           ? `https://${process.env.VERCEL_URL}`
           : 'http://localhost:3000',
       ),
+    NEXT_PUBLIC_BASE_PATH: z
+      .string()
+      .optional()
+      .default('/___SPLIIT_BASE_PATH_PLACEHOLDER___'),
     NEXT_PUBLIC_ENABLE_EXPENSE_DOCUMENTS: z.preprocess(
       interpretEnvVarAsBool,
       z.boolean().default(false),
@@ -67,4 +71,7 @@ const envSchema = z
     }
   })
 
-export const env = envSchema.parse(process.env)
+export const env =
+  typeof window === 'undefined'
+    ? envSchema.parse(process.env)
+    : ({} as z.infer<typeof envSchema>)

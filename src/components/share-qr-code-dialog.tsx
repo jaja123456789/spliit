@@ -1,5 +1,6 @@
 'use client'
 
+import { useEnv } from '@/components/env-provider'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -23,12 +24,15 @@ export function ShareQrCodeDialog({ url, groupName }: Props) {
   const t = useTranslations('Share')
   const qrCodeId = useId()
   const [logoDataUrl, setLogoDataUrl] = useState<string>('')
+  const { NEXT_PUBLIC_BASE_PATH } = useEnv()
 
   useEffect(() => {
     // Load the Spliit logo and convert it to a data URL
     const loadLogo = async () => {
       try {
-        const response = await fetch('/logo/192x192.png')
+        const response = await fetch(
+          `${NEXT_PUBLIC_BASE_PATH}/logo/192x192.png`,
+        )
         const blob = await response.blob()
         const reader = new FileReader()
         reader.onloadend = () => {

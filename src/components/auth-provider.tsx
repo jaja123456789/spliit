@@ -1,13 +1,13 @@
 'use client'
 
+import { useEnv } from '@/components/env-provider'
 import { SessionProvider } from 'next-auth/react'
 
-/**
- * NextAuth SessionProvider wrapper
- * This is a client component that wraps the app with session context
- */
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const { NEXT_PUBLIC_BASE_PATH } = useEnv()
   return (
-    <SessionProvider basePath="/spliit/api/auth">{children}</SessionProvider>
+    <SessionProvider basePath={`${NEXT_PUBLIC_BASE_PATH}/api/auth`}>
+      {children}
+    </SessionProvider>
   )
 }

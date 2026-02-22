@@ -1,3 +1,4 @@
+import { env } from '@/lib/env'
 import { prisma } from '@/lib/prisma'
 import webpush from 'web-push'
 
@@ -43,7 +44,15 @@ export async function sendPushNotificationToGroup(
 
   // 3. Send notifications
   const notifications = subscriptions.map((sub) => {
-    const payload = JSON.stringify({ title, body, url })
+    const basePath = env.NEXT_PUBLIC_BASE_PATH
+    const payload = JSON.stringify({
+      title,
+      body,
+      url,
+      // Inject paths here
+      icon: `${basePath}/logo/192x192.png`,
+      badge: `${basePath}/logo/96x96.png`,
+    })
     return webpush
       .sendNotification(
         {

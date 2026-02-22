@@ -152,8 +152,22 @@ function RecentGroupList_({
     )
   }
 
+  const sortedGroups = [...groups].sort((a, b) => {
+    const detailsA = data.groups.find((g) => g.id === a.id)
+    const detailsB = data.groups.find((g) => g.id === b.id)
+
+    const timeA = detailsA?.updatedAt
+      ? new Date(detailsA.updatedAt).getTime()
+      : 0
+    const timeB = detailsB?.updatedAt
+      ? new Date(detailsB.updatedAt).getTime()
+      : 0
+
+    return timeB - timeA
+  })
+
   const { starredGroupInfo, groupInfo, archivedGroupInfo } = sortGroups({
-    groups,
+    groups: sortedGroups,
     starredGroups,
     archivedGroups,
   })
