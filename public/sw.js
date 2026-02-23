@@ -3,23 +3,37 @@ self.addEventListener('push', function (event) {
     return
   }
 
-  const data = event.data?.json() ?? {}
-  const title = data.title || 'New Activity in Spliit'
-  const message = data.body || 'Something happened in your group.'
-  const url = data.url || '/groups'
-  const icon = data.icon || '/logo/192x192.png'
-  const badge = data.badge || '/logo/96x96.png'
+  event.waitUntil(
+    clients
+      .matchAll({ type: 'window', includeUncontrolled: true })
+      .then(function (clientList) {
+        for (let i = 0; i < clientList.length; i++) {
+          const client = clientList[i]
+          if (client.focused && client.visibilityState === 'visible') {
+            // App is open and focused, don't show notification
+            return
+          }
+        }
 
-  const options = {
-    body: message,
-    icon: icon,
-    badge: badge,
-    data: {
-      url: url,
-    },
-  }
+        const data = event.data?.json() ?? {}
+        const title = data.title || 'New Activity in Spliit'
+        const message = data.body || 'Something happened in your group.'
+        const url = data.url || '/groups'
+        const icon = data.icon || '/logo/192x192.png'
+        const badge = data.badge || '/logo/96x96.png'
 
-  event.waitUntil(self.registration.showNotification(title, options))
+        const options = {
+          body: message,
+          icon: icon,
+          badge: badge,
+          data: {
+            url: url,
+          },
+        }
+
+        return self.registration.showNotification(title, options)
+      }),
+  )
 })
 
 self.addEventListener('notificationclick', function (event) {

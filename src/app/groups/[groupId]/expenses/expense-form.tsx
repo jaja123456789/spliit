@@ -385,6 +385,8 @@ export function ExpenseForm({
     return sum + (Number(item.price) || 0)
   }, 0)
 
+  const effectiveTotal = isItemized ? groupSplitSum : totalAmount
+
   const totalExcluded = isItemized ? totalAmount - groupSplitSum : 0
   const hasExcludedItems = isItemized && totalExcluded > 0.009
 
@@ -1217,7 +1219,12 @@ export function ExpenseForm({
                     <span className="text-[10px] uppercase tracking-wider mr-2 align-middle">
                       {t('groupExpense')}:
                     </span>
-                    {formatCurrency(groupCurrency, groupSplitSum, locale, true)}
+                    {formatCurrency(
+                      groupCurrency,
+                      effectiveTotal,
+                      locale,
+                      true,
+                    )}
                   </div>
                 </div>
               </div>

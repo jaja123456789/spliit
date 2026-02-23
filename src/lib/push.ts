@@ -16,7 +16,7 @@ export async function sendPushNotificationToGroup(
   title: string,
   body: string,
   url: string,
-  excludeUserId?: string,
+  excludeParticipantId?: string,
 ) {
   if (!process.env.VAPID_PRIVATE_KEY) return
 
@@ -38,17 +38,22 @@ export async function sendPushNotificationToGroup(
 
   // 2. Aggregate subscriptions
   const subscriptions = syncedGroups
+    .filter((sg) => sg.activeParticipantId != excludeParticipantId) // Don't notify the person who did the action
     .map((sg) => sg.profile.user)
-    .filter((user) => user.id !== excludeUserId) // Don't notify the person who did the action
     .flatMap((user) => user.pushSubscriptions)
 
   // 3. Send notifications
   const notifications = subscriptions.map((sub) => {
     const basePath = env.NEXT_PUBLIC_BASE_PATH
+
+    const fullUrl = url.startsWith('http')
+      ? url
+      : `${env.NEXT_PUBLIC_BASE_URL}${env.NEXT_PUBLIC_BASE_PATH}${url}`
+
     const payload = JSON.stringify({
       title,
       body,
-      url,
+      url: fullUrl,
       // Inject paths here
       icon: `${basePath}/logo/192x192.png`,
       badge: `${basePath}/logo/96x96.png`,

@@ -148,13 +148,19 @@ export async function createExpense(
     },
   })
 
+  const amountInMinorUnits = amountAsMinorUnits(
+    Number(expenseFormValues.amount),
+    groupCurrency,
+  )
+  const formattedAmount = formatAmountAsDecimal(
+    amountInMinorUnits,
+    groupCurrency,
+  )
+
   sendPushNotificationToGroup(
     groupId,
     `New expense in ${group.name}`,
-    `${expenseFormValues.title} - ${formatAmountAsDecimal(
-      Number(expenseFormValues.amount),
-      groupCurrency,
-    )} ${groupCurrency.code}`,
+    `${expenseFormValues.title} - ${formattedAmount} ${groupCurrency.code}`,
     `/groups/${groupId}/expenses/${expense.id}/edit`,
     participantId, // Assuming participantId can be mapped to userId, or just pass undefined if not available easily.
     // Ideally, pass the userId if available from context, but api.ts createExpense usually takes participantId.
