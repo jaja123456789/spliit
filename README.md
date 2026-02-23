@@ -1,172 +1,96 @@
+
+# Spliit (Fork)
+
 [<img alt="Spliit" height="60" src="https://github.com/spliit-app/spliit/blob/main/public/logo-with-text.png?raw=true" />](https://spliit.app)
 
-Spliit is a free and open source alternative to Splitwise. You can either use the official instance at [Spliit.app](https://spliit.app), or deploy your own instance:
+This is a fork of [Spliit](https://github.com/spliit-app/spliit) (an open-source Splitwise alternative). I modified it to support my specific use cases that weren't in the original repo.
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fspliit-app%2Fspliit&project-name=my-spliit-instance&repository-name=my-spliit-instance&stores=%5B%7B%22type%22%3A%22postgres%22%7D%5D&)
+**Disclaimer:** I used AI agents extensively to write and modify the code in this fork. While it works for my needs, the codebase has changed significantly from upstream. Features are experimental and test coverage is mixed.
 
-## Features
+## Added Features
 
-- [x] Create a group and share it with friends
-- [x] Create expenses with description
-- [x] Display group balances
-- [x] Create reimbursement expenses
-- [x] Progressive Web App
-- [x] Select all/no participant for expenses
-- [x] Split expenses unevenly [(#6)](https://github.com/spliit-app/spliit/issues/6)
-- [x] Mark a group as favorite [(#29)](https://github.com/spliit-app/spliit/issues/29)
-- [x] Tell the application who you are when opening a group [(#7)](https://github.com/spliit-app/spliit/issues/7)
-- [x] Assign a category to expenses [(#35)](https://github.com/spliit-app/spliit/issues/35)
-- [x] Search for expenses in a group [(#51)](https://github.com/spliit-app/spliit/issues/51)
-- [x] Upload and attach images to expenses [(#63)](https://github.com/spliit-app/spliit/issues/63)
-- [x] Create expense by scanning a receipt [(#23)](https://github.com/spliit-app/spliit/issues/23)
+-   **Cloud Sync:** Sync groups across devices using Magic Links (based on [PR #495](https://github.com/spliit-app/spliit/pull/495)).
+-   **Receipt Scanning:** Upload a photo of a receipt to automatically extract items, prices, and dates using Google Gemini or OpenAI.
+-   **Itemized Splitting:** Assign specific items from a receipt to specific people, rather than just splitting the total.
+-   **Multiple Payers:** Handle scenarios where multiple people contributed to a single bill (e.g., A paid deposit, B paid remainder).
+-   **Payment Links:** Add Venmo, PayPal, CashApp, or Revolut handles to profiles so balances link directly to the payment app.
+-   **Exclusions:** Logic to exclude specific items from the group split (for personal items on a shared bill).
 
-### Possible incoming features
+## Deployment (Docker Compose)
 
-- [ ] Ability to create recurring expenses [(#5)](https://github.com/spliit-app/spliit/issues/5)
-- [ ] Import expenses from Splitwise [(#22)](https://github.com/spliit-app/spliit/issues/22)
+Quickest way to get started:
 
-## Stack
+```yaml
+services:
+  app:
+    image: ghcr.io/jaja123456789/spliit:latest
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: always
 
-- [Next.js](https://nextjs.org/) for the web application
-- [TailwindCSS](https://tailwindcss.com/) for the styling
-- [shadcn/UI](https://ui.shadcn.com/) for the UI components
-- [Prisma](https://prisma.io) to access the database
-- [Vercel](https://vercel.com/) for hosting (application and database)
+  db:
+    image: postgres:15-alpine
+    expose:
+      - 5432
+    environment:
+      # --- Database ---
+      POSTGRES_PASSWORD: "password"
+      POSTGRES_PRISMA_URL: "postgresql://postgres:password@db:5432/spliit"
+      POSTGRES_URL_NON_POOLING: "postgresql://postgres:password@db:5432/spliit"
+  
+      # --- App ---
+      NODE_ENV: "production"
+      NEXT_PUBLIC_BASE_URL: "https://your-domain.com"
+      # Optional to serve the app under a sub-directory
+      NEXT_PUBLIC_BASE_PATH: "/spliit"
+      # Use a random string: openssl rand -base64 32
+      NEXTAUTH_SECRET: "replace_this_with_secret"
+      NEXTAUTH_URL: "https://your-domain.com/api/auth"
+  
+      # --- Cloud Sync (Email) ---
+      # Required for sending Magic Links
+      SMTP_HOST: "smtp.provider.com"
+      SMTP_PORT: 587
+      SMTP_USER: "user"
+      SMTP_PASS: "your-key"
+      EMAIL_FROM: "noreply@your-domain.com"
+  
+      # --- AI Features (Receipt Scanning) ---
+      # Get a free key at https://aistudio.google.com/
+      GEMINI_API_KEY: "your_gemini_key"
+      # Or use OpenAI
+      # OPENAI_API_KEY=sk-...
+  
+      # --- Feature Flags ---
+      NEXT_PUBLIC_ENABLE_RECEIPT_EXTRACT: true
+      NEXT_PUBLIC_ENABLE_CATEGORY_EXTRACT: true
+      NEXT_PUBLIC_ENABLE_EXPENSE_DOCUMENTS: false # S3 storage still has to be tested
+  
+      # --- Push Notifications (VAPID) ---  
+      # Generate these by running: npx web-push generate-vapid-keys
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: "your_public_key"
+      VAPID_PRIVATE_KEY: "your_private_key"
+  
+      # --- Storage (S3) ---
+      # Required for storing receipt images
+      S3_UPLOAD_BUCKET: "your-bucket"
+      S3_UPLOAD_REGION: "auto"
+      S3_UPLOAD_KEY: "access-key"
+      S3_UPLOAD_SECRET: "secret-key"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: always
 
-## Contribute
-
-The project is open to contributions. Feel free to open an issue or even a pull-request!
-Join the discussion in [the Spliit Discord server](https://discord.gg/YSyVXbwvSY).
-
-If you want to contribute financially and help us keep the application free and without ads, you can also:
-
-- 💜 [Sponsor me (Sebastien)](https://github.com/sponsors/scastiel), or
-- 💙 [Make a small one-time donation](https://donate.stripe.com/28o3eh96G7hH8k89Ba).
-
-### Translation
-
-The project's translations are managed using [our Weblate project](https://hosted.weblate.org/projects/spliit/spliit/).
-You can easily add missing translations to the project or even add a new language!
-Here is the current state of translation:
-
-<a href="https://hosted.weblate.org/engage/spliit/">
-<img src="https://hosted.weblate.org/widget/spliit/spliit/multi-auto.svg" alt="Translation status" />
-</a>
-
-## Run locally
-
-1. Clone the repository (or fork it if you intend to contribute)
-2. Run `npm install` to install dependencies.
-3. Start a PostgreSQL server with `./scripts/start-local-db.sh`.
-4. Copy the file `.env.example` as `.env`
-5. Run prisma migrations and generate the client with `npm run prisma-migrate` and `npm run prisma-generate`
-6. Run `npm run dev` to start the development server
-
-## Run in a container
-
-1. Run `npm run build-image` to build the docker image from the Dockerfile
-2. Copy the file `container.env.example` as `container.env`
-3. Run `npm run start-container` to start the postgres and the spliit2 containers
-4. You can access the app by browsing to http://localhost:3000
-
-## Health check
-
-The application has a health check endpoint that can be used to check if the application is running and if the database is accessible.
-
-- `GET /api/health/readiness` or `GET /api/health` - Check if the application is ready to serve requests, including database connectivity.
-- `GET /api/health/liveness` - Check if the application is running, but not necessarily ready to serve requests.
-
-## Opt-in features
-
-### Expense documents
-
-Spliit offers users to upload images (to an AWS S3 bucket) and attach them to expenses. To enable this feature:
-
-- Follow the instructions in the _S3 bucket_ and _IAM user_ sections of [next-s3-upload](https://next-s3-upload.codingvalue.com/setup#s3-bucket) to create and set up an S3 bucket where images will be stored.
-- Update your environments variables with appropriate values:
-
-```.env
-NEXT_PUBLIC_ENABLE_EXPENSE_DOCUMENTS=true
-S3_UPLOAD_KEY=AAAAAAAAAAAAAAAAAAAA
-S3_UPLOAD_SECRET=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
-S3_UPLOAD_BUCKET=name-of-s3-bucket
-S3_UPLOAD_REGION=us-east-1
+volumes:
+  postgres-data:
 ```
-
-You can also use other S3 providers by providing a custom endpoint:
-
-```.env
-S3_UPLOAD_ENDPOINT=http://localhost:9000
-```
-
-### Create expense from receipt
-
-You can offer users to create expense by uploading a receipt. This feature relies on [OpenAI GPT-4 with Vision](https://platform.openai.com/docs/guides/vision) and a public S3 storage endpoint.
-
-To enable the feature:
-
-- You must enable expense documents feature as well (see section above). That might change in the future, but for now we need to store images to make receipt scanning work.
-- Subscribe to OpenAI API and get access to GPT 4 with Vision (you might need to buy credits in advance).
-- Update your environment variables with appropriate values:
-
-```.env
-NEXT_PUBLIC_ENABLE_RECEIPT_EXTRACT=true
-OPENAI_API_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXX
-```
-
-### Deduce category from title
-
-You can offer users to automatically deduce the expense category from the title. Since this feature relies on a OpenAI subscription, follow the signup instructions above and configure the following environment variables:
-
-```.env
-NEXT_PUBLIC_ENABLE_CATEGORY_EXTRACT=true
-OPENAI_API_KEY=XXXXXXXXXXXXXXXXXXXXXXXXXXXX
-```
-
-### Group cloud sync
-
-Spliit allows users to sync their groups to the cloud and access them across multiple devices. This feature uses magic link authentication via email.
-
-#### How it works
-
-1. Users can opt-in to sync a group by providing their email address (upcoming oauth provide support)
-2. A magic link is sent to their email for authentication
-3. Once verified, the group is synced with their sync profile
-4. They can access all their synced groups from any device by signing in with their sync profile
-5. Users control sync preferences (sync can be enabled/disabled at any time for each group)
-
-#### SMTP setup
-
-To enable group sync, configure an SMTP server for sending magic link emails:
-
-```.env
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-EMAIL_FROM=noreply@yourdomain.com
-NEXTAUTH_SECRET=<run: openssl rand -base64 32>
-```
-
-**Popular SMTP providers:**
-
-- **Smtp2go**: Use `mail.smtp2go.com:2525` with your SMTP2GO credentials. Generous free tier.
-- **Gmail**: Use `smtp.gmail.com:587` with an [app-specific password](https://support.google.com/accounts/answer/185833)
-- **SendGrid**: Use `smtp.sendgrid.net:587` with your API key as password
-- **Mailgun**: Use `smtp.mailgun.org:587` with your Mailgun credentials
-
-#### Local development
-
-When `SMTP_HOST` is not configured, Spliit writes emails to the `.mail/` directory instead of sending them. Check this folder for magic link emails during development.
-
-#### Sync behavior
-
-- Groups are stored locally by default (no account required)
-- Users can enable sync for individual groups at any time
-- Synced groups appear in "My groups" when signed in
-- Local groups remain accessible even when signed out
-- Disabling sync does not delete the group, only removes cloud association
-
-## License
-
-MIT, see [LICENSE](./LICENSE).
