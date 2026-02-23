@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/popover'
 import { cn, formatCurrency } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
-import { Check, Plus, Trash2, Users } from 'lucide-react'
+import { Check, EyeOff, Plus, Trash2, Users } from 'lucide-react'
 import { useLocale } from 'next-intl'
 import { useFormContext } from 'react-hook-form'
 
@@ -50,12 +50,22 @@ export function ItemizationBuilder({
   // but we iterate over 'fields' for the inputs to maintain focus/state
   const watchedItems = watch('items') || []
 
-  const currentTotal = watchedItems.reduce(
-    (sum: number, item: any) => sum + (Number(item.price) || 0),
+  const currentTotal = watchedItems.reduce((sum: number, item: any) => {
+    if (!item.participantIds || item.participantIds.length === 0) return sum
+    return sum + (Number(item.price) || 0)
+  }, 0)
+
+  const allItemsEnteredSum = watchedItems.reduce(
+    (sum: number, i: any) => sum + (Number(i.price) || 0),
     0,
   )
-  const remaining = totalAmount - currentTotal
-  const isBalanced = Math.abs(remaining) < 0.01
+  const groupSplitSum = watchedItems.reduce((sum: number, item: any) => {
+    if (!item.participantIds || item.participantIds.length === 0) return sum
+    return sum + (Number(item.price) || 0)
+  }, 0)
+  const totalExcluded = totalAmount - groupSplitSum
+  const unassignedRemainder = totalAmount - allItemsEnteredSum
+  const isBalanced = Math.abs(unassignedRemainder) < 0.01
 
   const getPayerSummary = (selectedIds: string[]) => {
     if (!selectedIds || selectedIds.length === 0) return 'No one'
@@ -85,30 +95,35 @@ export function ItemizationBuilder({
   return (
     <div className="sticky top-0 z-10 bg-card/95 backdrop-blur py-2 justify-between items-center mb-2 border-b">
       <div className="space-y-4">
-        {/* Header Section */}
-        <div className="flex justify-between items-center mb-2">
-          <div className="text-sm font-medium flex items-center gap-2">
-            Receipt Items
-            <Badge variant="outline" className="font-mono text-[10px]">
-              {fields.length}
-            </Badge>
-          </div>
-          <div
-            className={cn(
-              'text-xs font-mono px-2 py-1 rounded-full border transition-colors',
-              isBalanced
-                ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800'
-                : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
-            )}
-          >
-            {isBalanced ? (
-              <span className="flex items-center gap-1">
-                <Check className="w-3 h-3" /> Balanced
+        <div className="flex flex-wrap justify-between items-center mb-2 gap-2">
+          <div className="text-sm font-medium">Receipt Breakdown</div>
+
+          <div className="flex items-center gap-2">
+            <div className="text-[10px] font-mono flex flex-col items-end">
+              <span className="text-emerald-600 font-bold">
+                Shared Total:{' '}
+                {formatCurrency(currency, groupSplitSum, locale, true)}
               </span>
+              {totalExcluded > 0 && (
+                <span className="text-muted-foreground line-through">
+                  Excluded:{' '}
+                  {formatCurrency(currency, totalExcluded, locale, true)}
+                </span>
+              )}
+            </div>
+
+            {Math.abs(unassignedRemainder) > 0.01 ? (
+              <Badge
+                variant="destructive"
+                className="text-[10px] animate-pulse"
+              >
+                Unassigned:{' '}
+                {formatCurrency(currency, unassignedRemainder, locale, true)}
+              </Badge>
             ) : (
-              <span>
-                Remaining: {formatCurrency(currency, remaining, locale, true)}
-              </span>
+              <div className="text-xs font-mono px-2 py-1 rounded-full border bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
+                <Check className="w-3 h-3" /> All set
+              </div>
             )}
           </div>
         </div>
@@ -120,6 +135,7 @@ export function ItemizationBuilder({
             const currentItem = watchedItems[index] || {}
             const itemPrice = Number(currentItem.price) || 0
             const participantIds = currentItem.participantIds || []
+            const isExcluded = participantIds.length === 0
             const perPersonAmount =
               participantIds.length > 0 ? itemPrice / participantIds.length : 0
             const summaryText = getPayerSummary(participantIds)
@@ -132,7 +148,12 @@ export function ItemizationBuilder({
             return (
               <div
                 key={field.id}
-                className="group relative flex flex-col gap-3 p-3 rounded-lg bg-card border shadow-sm hover:border-primary/40 transition-all"
+                className={cn(
+                  'group relative flex flex-col gap-3 p-3 rounded-lg border shadow-sm transition-all',
+                  isExcluded
+                    ? 'bg-muted/30 border-dashed opacity-75'
+                    : 'bg-card hover:border-primary/40',
+                )}
               >
                 <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-start">
                   {/* Item Name */}
@@ -146,7 +167,10 @@ export function ItemizationBuilder({
                             <Input
                               {...field}
                               placeholder="Item name..."
-                              className="h-9 text-sm"
+                              className={cn(
+                                'h-9 text-sm transition-all',
+                                isExcluded && 'text-muted-foreground',
+                              )}
                             />
                           </FormControl>
                           <FormMessage className="text-[10px] pl-1 mt-1" />
@@ -169,7 +193,10 @@ export function ItemizationBuilder({
                                   {...field}
                                   placeholder="0.00"
                                   className="h-9"
-                                  inputClassName="h-9 text-sm text-right pr-8"
+                                  inputClassName={cn(
+                                    'h-9 text-sm text-right pr-8',
+                                    isExcluded && 'text-muted-foreground',
+                                  )}
                                   onValueChange={(val) => {
                                     field.onChange(val)
                                     trigger('items')
@@ -197,22 +224,27 @@ export function ItemizationBuilder({
                             <PopoverTrigger asChild>
                               <FormControl>
                                 <Button
-                                  variant={
-                                    participantIds.length === 0
-                                      ? 'outline'
-                                      : 'secondary'
-                                  }
+                                  variant={isExcluded ? 'outline' : 'secondary'}
                                   size="icon"
                                   className={cn(
                                     'h-9 w-9 shrink-0 relative transition-colors',
-                                    participantIds.length === 0 &&
+                                    isExcluded &&
                                       'border-dashed border-muted-foreground/50 text-muted-foreground',
                                     isMeInvolved &&
                                       'bg-primary/10 text-primary border-primary/20',
                                   )}
                                   type="button"
+                                  title={
+                                    isExcluded
+                                      ? 'Assign to someone'
+                                      : 'Edit assignment'
+                                  }
                                 >
-                                  <Users className="h-4 w-4" />
+                                  {isExcluded ? (
+                                    <EyeOff className="h-4 w-4 opacity-50" />
+                                  ) : (
+                                    <Users className="h-4 w-4" />
+                                  )}
                                   {participantIds.length > 0 &&
                                     participantIds.length <
                                       group.participants.length && (
@@ -243,13 +275,17 @@ export function ItemizationBuilder({
                                       setValue(
                                         `items.${index}.participantIds`,
                                         isAllSelected ? [] : allIds,
-                                        { shouldValidate: true },
+                                        {
+                                          shouldValidate: true,
+                                          shouldDirty: true,
+                                        },
                                       )
+                                      trigger('items')
                                     }}
                                   >
                                     {participantIds.length ===
                                     group.participants.length
-                                      ? 'Clear'
+                                      ? 'Clear (Exclude)'
                                       : 'Select All'}
                                   </Button>
                                 </div>
@@ -336,33 +372,48 @@ export function ItemizationBuilder({
                   </div>
                 </div>
 
-                {/* Personalized Summary Row */}
-                <div className="flex items-center justify-between px-1 text-[11px] leading-tight">
-                  <div className="text-muted-foreground truncate max-w-[70%]">
-                    <span
-                      className={cn(
-                        'font-medium',
-                        isMeInvolved
-                          ? 'text-primary font-bold'
-                          : 'text-foreground/80',
-                      )}
-                    >
-                      {summaryText}
+                {/* Status / Summary Row */}
+                <div className="flex items-center justify-between px-1 text-[11px] leading-tight min-h-[1.25rem]">
+                  {isExcluded ? (
+                    <span className="text-muted-foreground/60 italic flex items-center gap-1">
+                      Excluded (assign to include)
                     </span>
-                    {participantIds.length > 1 ? ' will each pay' : ' will pay'}
-                  </div>
+                  ) : (
+                    <>
+                      <div className="text-muted-foreground truncate max-w-[70%]">
+                        <span
+                          className={cn(
+                            'font-medium',
+                            isMeInvolved
+                              ? 'text-primary font-bold'
+                              : 'text-foreground/80',
+                          )}
+                        >
+                          {summaryText}
+                        </span>
+                        {participantIds.length > 1
+                          ? ' will each pay'
+                          : ' will pay'}
+                      </div>
 
-                  {participantIds.length > 0 && itemPrice > 0 && (
-                    <div
-                      className={cn(
-                        'whitespace-nowrap transition-colors',
-                        isMeInvolved
-                          ? 'font-bold text-primary'
-                          : 'text-muted-foreground',
+                      {participantIds.length > 0 && itemPrice > 0 && (
+                        <div
+                          className={cn(
+                            'whitespace-nowrap transition-colors',
+                            isMeInvolved
+                              ? 'font-bold text-primary'
+                              : 'text-muted-foreground',
+                          )}
+                        >
+                          {formatCurrency(
+                            currency,
+                            perPersonAmount,
+                            locale,
+                            true,
+                          )}
+                        </div>
                       )}
-                    >
-                      {formatCurrency(currency, perPersonAmount, locale, true)}
-                    </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -371,7 +422,7 @@ export function ItemizationBuilder({
         </div>
 
         {/* Adjustment Button */}
-        {!isBalanced && Math.abs(remaining) > 0.01 && (
+        {!isBalanced && Math.abs(unassignedRemainder) > 0.01 && (
           <div className="flex justify-center">
             <Button
               type="button"
@@ -381,14 +432,14 @@ export function ItemizationBuilder({
               onClick={() => {
                 append({
                   name: 'Adjustment',
-                  price: Number(remaining.toFixed(2)),
+                  price: Number(unassignedRemainder.toFixed(2)),
                   participantIds: group.participants.map((p) => p.id),
                 })
                 setTimeout(() => trigger(['items', 'paidBy']), 0)
               }}
             >
-              Add {formatCurrency(currency, remaining, locale, true)} as
-              adjustment item
+              Add {formatCurrency(currency, unassignedRemainder, locale, true)}{' '}
+              as adjustment item
             </Button>
           </div>
         )}
@@ -399,7 +450,10 @@ export function ItemizationBuilder({
           variant="outline"
           className="w-full border-dashed py-8 bg-background hover:bg-muted/50 transition-all flex flex-col gap-1"
           onClick={() => {
-            const nextAmount = remaining > 0 ? Number(remaining.toFixed(2)) : 0
+            const nextAmount =
+              unassignedRemainder > 0
+                ? Number(unassignedRemainder.toFixed(2))
+                : 0
             append({
               name: '',
               price: nextAmount,
