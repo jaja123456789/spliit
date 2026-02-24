@@ -28,6 +28,22 @@ const nextConfig = {
   images: {
     remotePatterns,
   },
+  async redirects() {
+    return [
+      {
+        source: '/api/auth/:path*',
+        destination: '/spliit/api/auth/:path*',
+        permanent: false,
+        basePath: false,
+      },
+      {
+        source: '/',
+        destination: '/spliit',
+        permanent: false,
+        basePath: false,
+      },
+    ]
+  },
   // Required to run in a codespace (see https://github.com/vercel/next.js/issues/58019)
   experimental: {
     serverActions: {
