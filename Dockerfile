@@ -41,7 +41,10 @@ COPY --from=builder --chown=nextjs:nodejs /usr/app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /usr/app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nodejs /usr/app/prisma ./prisma
 
-RUN npm install -g prisma@6
+RUN chown -R nextjs:nodejs /usr/app
+
+RUN npm install -g prisma@6 && \
+    npm cache clean --force
 
 USER nextjs
 

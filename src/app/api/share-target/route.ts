@@ -1,9 +1,11 @@
-// ## File: src/app/api/share-target/route.ts
+import { env } from '@/lib/env'
 import { NextRequest, NextResponse } from 'next/server'
 
 // Handle GET requests (validation pings from OS)
 export async function GET(req: NextRequest) {
-  return NextResponse.redirect(new URL('/spliit/groups', req.url))
+  return NextResponse.redirect(
+    new URL(`${env.NEXT_PUBLIC_BASE_PATH}/groups`, req.url),
+  )
 }
 
 export async function POST(req: NextRequest) {
@@ -36,7 +38,7 @@ export async function POST(req: NextRequest) {
         <script>
           try {
             sessionStorage.setItem('pending-receipt-image', "${dataUrl}");
-            window.location.href = '/spliit/groups';
+            window.location.href = '${env.NEXT_PUBLIC_BASE_PATH}/groups';
           } catch (e) {
             console.error(e);
             document.body.innerHTML = '<p style="color:red">Error saving image: ' + e.message + '</p>';

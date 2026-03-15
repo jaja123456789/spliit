@@ -7,18 +7,14 @@ import {
   RecurrenceRule,
   RecurringExpenseLink,
 } from '@prisma/client'
-import { nanoid } from 'nanoid'
 import { sendPushNotificationToGroup } from './push'
 import { calculateNextDate } from './recurring-expenses'
 import {
   amountAsMinorUnits,
   formatAmountAsDecimal,
   getCurrencyFromGroup,
+  randomId,
 } from './utils'
-
-export function randomId(size?: number) {
-  return nanoid(size)
-}
 
 export async function createGroup(groupFormValues: GroupFormValues) {
   return prisma.group.create({
@@ -152,13 +148,19 @@ export async function createExpense(
     },
   })
 
+  const amountInMinorUnits = amountAsMinorUnits(
+    Number(expenseFormValues.amount),
+    groupCurrency,
+  )
+  const formattedAmount = formatAmountAsDecimal(
+    amountInMinorUnits,
+    groupCurrency,
+  )
+
   sendPushNotificationToGroup(
     groupId,
     `New expense in ${group.name}`,
-    `${expenseFormValues.title} - ${formatAmountAsDecimal(
-      Number(expenseFormValues.amount),
-      groupCurrency,
-    )} ${groupCurrency.code}`,
+    `${expenseFormValues.title} - ${formattedAmount} ${groupCurrency.code}`,
     `/groups/${groupId}/expenses/${expense.id}/edit`,
     participantId, // Assuming participantId can be mapped to userId, or just pass undefined if not available easily.
     // Ideally, pass the userId if available from context, but api.ts createExpense usually takes participantId.
@@ -199,15 +201,30 @@ export async function getGroupExpensesParticipants(groupId: string) {
 }
 
 export async function getGroups(groupIds: string[]) {
-  return (
-    await prisma.group.findMany({
-      where: { id: { in: groupIds } },
-      include: { _count: { select: { participants: true } } },
-    })
-  ).map((group) => ({
-    ...group,
-    createdAt: group.createdAt.toISOString(),
-  }))
+  const groups = await prisma.group.findMany({
+    where: { id: { in: groupIds } },
+    include: {
+      _count: { select: { participants: true } },
+      activities: {
+        orderBy: { time: 'desc' },
+        take: 1,
+        select: { time: true },
+      },
+    },
+  })
+
+  return groups.map((group) => {
+    const lastActiveAt = group.activities[0]?.time ?? group.createdAt
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { activities, ...rest } = group
+
+    return {
+      ...rest,
+      createdAt: group.createdAt.toISOString(),
+      updatedAt: lastActiveAt.toISOString(),
+    }
+  })
 }
 
 export async function updateExpense(

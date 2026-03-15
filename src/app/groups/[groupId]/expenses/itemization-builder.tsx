@@ -4,6 +4,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CalculatorInput } from '@/components/ui/calculator-input'
 import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer'
+import {
   FormControl,
   FormField,
   FormItem,
@@ -15,10 +22,12 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { useMediaQuery, useMobilePopoverState } from '@/lib/hooks'
 import { cn, formatCurrency } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
-import { Check, Plus, Trash2, Users } from 'lucide-react'
+import { Check, EyeOff, Plus, Trash2, Users } from 'lucide-react'
 import { useLocale } from 'next-intl'
+import { useState } from 'react'
 import { useFormContext } from 'react-hook-form'
 
 type Group = NonNullable<AppRouterOutput['groups']['get']['group']>
@@ -45,17 +54,28 @@ export function ItemizationBuilder({
 }: Props) {
   const { control, watch, setValue, trigger } = useFormContext()
   const locale = useLocale()
+  const isDesktop = useMediaQuery('(min-width: 1024px)')
 
   // We use the 'items' from watch for calculating totals dynamically,
   // but we iterate over 'fields' for the inputs to maintain focus/state
   const watchedItems = watch('items') || []
 
-  const currentTotal = watchedItems.reduce(
-    (sum: number, item: any) => sum + (Number(item.price) || 0),
+  const currentTotal = watchedItems.reduce((sum: number, item: any) => {
+    if (!item.participantIds || item.participantIds.length === 0) return sum
+    return sum + (Number(item.price) || 0)
+  }, 0)
+
+  const allItemsEnteredSum = watchedItems.reduce(
+    (sum: number, i: any) => sum + (Number(i.price) || 0),
     0,
   )
-  const remaining = totalAmount - currentTotal
-  const isBalanced = Math.abs(remaining) < 0.01
+  const groupSplitSum = watchedItems.reduce((sum: number, item: any) => {
+    if (!item.participantIds || item.participantIds.length === 0) return sum
+    return sum + (Number(item.price) || 0)
+  }, 0)
+  const totalExcluded = totalAmount - groupSplitSum
+  const unassignedRemainder = totalAmount - allItemsEnteredSum
+  const isBalanced = Math.abs(unassignedRemainder) < 0.01
 
   const getPayerSummary = (selectedIds: string[]) => {
     if (!selectedIds || selectedIds.length === 0) return 'No one'
@@ -85,30 +105,35 @@ export function ItemizationBuilder({
   return (
     <div className="sticky top-0 z-10 bg-card/95 backdrop-blur py-2 justify-between items-center mb-2 border-b">
       <div className="space-y-4">
-        {/* Header Section */}
-        <div className="flex justify-between items-center mb-2">
-          <div className="text-sm font-medium flex items-center gap-2">
-            Receipt Items
-            <Badge variant="outline" className="font-mono text-[10px]">
-              {fields.length}
-            </Badge>
-          </div>
-          <div
-            className={cn(
-              'text-xs font-mono px-2 py-1 rounded-full border transition-colors',
-              isBalanced
-                ? 'bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800'
-                : 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800',
-            )}
-          >
-            {isBalanced ? (
-              <span className="flex items-center gap-1">
-                <Check className="w-3 h-3" /> Balanced
+        <div className="flex flex-wrap justify-between items-center mb-2 gap-2">
+          <div className="text-sm font-medium">Receipt Breakdown</div>
+
+          <div className="flex items-center gap-2">
+            <div className="text-[10px] font-mono flex flex-col items-end">
+              <span className="text-emerald-600 font-bold">
+                Shared Total:{' '}
+                {formatCurrency(currency, groupSplitSum, locale, true)}
               </span>
+              {totalExcluded > 0 && (
+                <span className="text-muted-foreground line-through">
+                  Excluded:{' '}
+                  {formatCurrency(currency, totalExcluded, locale, true)}
+                </span>
+              )}
+            </div>
+
+            {Math.abs(unassignedRemainder) > 0.01 ? (
+              <Badge
+                variant="destructive"
+                className="text-[10px] animate-pulse"
+              >
+                Unassigned:{' '}
+                {formatCurrency(currency, unassignedRemainder, locale, true)}
+              </Badge>
             ) : (
-              <span>
-                Remaining: {formatCurrency(currency, remaining, locale, true)}
-              </span>
+              <div className="text-xs font-mono px-2 py-1 rounded-full border bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
+                <Check className="w-3 h-3" /> All set
+              </div>
             )}
           </div>
         </div>
@@ -120,6 +145,7 @@ export function ItemizationBuilder({
             const currentItem = watchedItems[index] || {}
             const itemPrice = Number(currentItem.price) || 0
             const participantIds = currentItem.participantIds || []
+            const isExcluded = participantIds.length === 0
             const perPersonAmount =
               participantIds.length > 0 ? itemPrice / participantIds.length : 0
             const summaryText = getPayerSummary(participantIds)
@@ -132,7 +158,12 @@ export function ItemizationBuilder({
             return (
               <div
                 key={field.id}
-                className="group relative flex flex-col gap-3 p-3 rounded-lg bg-card border shadow-sm hover:border-primary/40 transition-all"
+                className={cn(
+                  'group relative flex flex-col gap-3 p-3 rounded-lg border shadow-sm transition-all',
+                  isExcluded
+                    ? 'bg-muted/30 border-dashed opacity-75'
+                    : 'bg-card hover:border-primary/40',
+                )}
               >
                 <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-start">
                   {/* Item Name */}
@@ -146,7 +177,10 @@ export function ItemizationBuilder({
                             <Input
                               {...field}
                               placeholder="Item name..."
-                              className="h-9 text-sm"
+                              className={cn(
+                                'h-9 text-sm transition-all',
+                                isExcluded && 'text-muted-foreground',
+                              )}
                             />
                           </FormControl>
                           <FormMessage className="text-[10px] pl-1 mt-1" />
@@ -169,7 +203,10 @@ export function ItemizationBuilder({
                                   {...field}
                                   placeholder="0.00"
                                   className="h-9"
-                                  inputClassName="h-9 text-sm text-right pr-8"
+                                  inputClassName={cn(
+                                    'h-9 text-sm text-right pr-8',
+                                    isExcluded && 'text-muted-foreground',
+                                  )}
                                   onValueChange={(val) => {
                                     field.onChange(val)
                                     trigger('items')
@@ -193,132 +230,18 @@ export function ItemizationBuilder({
                       name={`items.${index}.participantIds`}
                       render={({ field }) => (
                         <FormItem className="space-y-0">
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant={
-                                    participantIds.length === 0
-                                      ? 'outline'
-                                      : 'secondary'
-                                  }
-                                  size="icon"
-                                  className={cn(
-                                    'h-9 w-9 shrink-0 relative transition-colors',
-                                    participantIds.length === 0 &&
-                                      'border-dashed border-muted-foreground/50 text-muted-foreground',
-                                    isMeInvolved &&
-                                      'bg-primary/10 text-primary border-primary/20',
-                                  )}
-                                  type="button"
-                                >
-                                  <Users className="h-4 w-4" />
-                                  {participantIds.length > 0 &&
-                                    participantIds.length <
-                                      group.participants.length && (
-                                      <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold shadow-sm">
-                                        {participantIds.length}
-                                      </span>
-                                    )}
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-56 p-2" align="end">
-                              <div className="space-y-1">
-                                <div className="flex justify-between items-center px-2 pb-2 border-b mb-1">
-                                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                                    Split among
-                                  </span>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-auto p-1 text-[10px] text-primary hover:bg-primary/10"
-                                    onClick={() => {
-                                      const allIds = group.participants.map(
-                                        (p) => p.id,
-                                      )
-                                      const isAllSelected =
-                                        participantIds.length ===
-                                        group.participants.length
-                                      setValue(
-                                        `items.${index}.participantIds`,
-                                        isAllSelected ? [] : allIds,
-                                        { shouldValidate: true },
-                                      )
-                                    }}
-                                  >
-                                    {participantIds.length ===
-                                    group.participants.length
-                                      ? 'Clear'
-                                      : 'Select All'}
-                                  </Button>
-                                </div>
-                                <div className="max-h-[200px] overflow-y-auto grid grid-cols-1 gap-0.5">
-                                  {group.participants.map((participant) => {
-                                    const isSelected = field.value?.includes(
-                                      participant.id,
-                                    )
-                                    // Identify current user in the list
-                                    const isMe =
-                                      activeUserId &&
-                                      participant.id === activeUserId &&
-                                      activeUserId !== 'None'
-
-                                    return (
-                                      <div
-                                        key={participant.id}
-                                        className={cn(
-                                          'flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-accent text-sm transition-colors',
-                                          isSelected &&
-                                            'bg-primary/5 font-medium text-primary',
-                                        )}
-                                        onClick={() => {
-                                          const current = field.value || []
-                                          const isAllSelected =
-                                            current.length ===
-                                            group.participants.length
-                                          let next
-                                          if (isAllSelected) {
-                                            next = [participant.id]
-                                          } else {
-                                            next = isSelected
-                                              ? current.filter(
-                                                  (id: string) =>
-                                                    id !== participant.id,
-                                                )
-                                              : [...current, participant.id]
-                                          }
-                                          field.onChange(next)
-                                        }}
-                                      >
-                                        <div
-                                          className={cn(
-                                            'w-4 h-4 rounded border flex items-center justify-center transition-colors',
-                                            isSelected
-                                              ? 'bg-primary border-primary'
-                                              : 'border-muted-foreground/30 bg-background',
-                                          )}
-                                        >
-                                          {isSelected && (
-                                            <Check className="w-3 h-3 text-primary-foreground stroke-[3]" />
-                                          )}
-                                        </div>
-                                        <span className="truncate">
-                                          {participant.name}
-                                          {isMe && (
-                                            <span className="ml-1 text-xs text-muted-foreground">
-                                              (You)
-                                            </span>
-                                          )}
-                                        </span>
-                                      </div>
-                                    )
-                                  })}
-                                </div>
-                                <FormMessage className="px-2 pt-2 border-t mt-2" />
-                              </div>
-                            </PopoverContent>
-                          </Popover>
+                          <ParticipantSelector
+                            value={field.value || []}
+                            onChange={(val) => {
+                              field.onChange(val)
+                              trigger('items')
+                            }}
+                            group={group}
+                            isDesktop={isDesktop}
+                            activeUserId={activeUserId}
+                            isExcluded={isExcluded}
+                            isMeInvolved={isMeInvolved}
+                          />
                         </FormItem>
                       )}
                     />
@@ -336,33 +259,48 @@ export function ItemizationBuilder({
                   </div>
                 </div>
 
-                {/* Personalized Summary Row */}
-                <div className="flex items-center justify-between px-1 text-[11px] leading-tight">
-                  <div className="text-muted-foreground truncate max-w-[70%]">
-                    <span
-                      className={cn(
-                        'font-medium',
-                        isMeInvolved
-                          ? 'text-primary font-bold'
-                          : 'text-foreground/80',
-                      )}
-                    >
-                      {summaryText}
+                {/* Status / Summary Row */}
+                <div className="flex items-center justify-between px-1 text-[11px] leading-tight min-h-[1.25rem]">
+                  {isExcluded ? (
+                    <span className="text-muted-foreground/60 italic flex items-center gap-1">
+                      Excluded (assign to include)
                     </span>
-                    {participantIds.length > 1 ? ' will each pay' : ' will pay'}
-                  </div>
+                  ) : (
+                    <>
+                      <div className="text-muted-foreground truncate max-w-[70%]">
+                        <span
+                          className={cn(
+                            'font-medium',
+                            isMeInvolved
+                              ? 'text-primary font-bold'
+                              : 'text-foreground/80',
+                          )}
+                        >
+                          {summaryText}
+                        </span>
+                        {participantIds.length > 1
+                          ? ' will each pay'
+                          : ' will pay'}
+                      </div>
 
-                  {participantIds.length > 0 && itemPrice > 0 && (
-                    <div
-                      className={cn(
-                        'whitespace-nowrap transition-colors',
-                        isMeInvolved
-                          ? 'font-bold text-primary'
-                          : 'text-muted-foreground',
+                      {participantIds.length > 0 && itemPrice > 0 && (
+                        <div
+                          className={cn(
+                            'whitespace-nowrap transition-colors',
+                            isMeInvolved
+                              ? 'font-bold text-primary'
+                              : 'text-muted-foreground',
+                          )}
+                        >
+                          {formatCurrency(
+                            currency,
+                            perPersonAmount,
+                            locale,
+                            true,
+                          )}
+                        </div>
                       )}
-                    >
-                      {formatCurrency(currency, perPersonAmount, locale, true)}
-                    </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -371,7 +309,7 @@ export function ItemizationBuilder({
         </div>
 
         {/* Adjustment Button */}
-        {!isBalanced && Math.abs(remaining) > 0.01 && (
+        {!isBalanced && Math.abs(unassignedRemainder) > 0.01 && (
           <div className="flex justify-center">
             <Button
               type="button"
@@ -381,14 +319,14 @@ export function ItemizationBuilder({
               onClick={() => {
                 append({
                   name: 'Adjustment',
-                  price: Number(remaining.toFixed(2)),
+                  price: Number(unassignedRemainder.toFixed(2)),
                   participantIds: group.participants.map((p) => p.id),
                 })
                 setTimeout(() => trigger(['items', 'paidBy']), 0)
               }}
             >
-              Add {formatCurrency(currency, remaining, locale, true)} as
-              adjustment item
+              Add {formatCurrency(currency, unassignedRemainder, locale, true)}{' '}
+              as adjustment item
             </Button>
           </div>
         )}
@@ -399,7 +337,10 @@ export function ItemizationBuilder({
           variant="outline"
           className="w-full border-dashed py-8 bg-background hover:bg-muted/50 transition-all flex flex-col gap-1"
           onClick={() => {
-            const nextAmount = remaining > 0 ? Number(remaining.toFixed(2)) : 0
+            const nextAmount =
+              unassignedRemainder > 0
+                ? Number(unassignedRemainder.toFixed(2))
+                : 0
             append({
               name: '',
               price: nextAmount,
@@ -421,5 +362,158 @@ export function ItemizationBuilder({
         />
       </div>
     </div>
+  )
+}
+
+function ParticipantSelector({
+  value,
+  onChange,
+  group,
+  isDesktop,
+  activeUserId,
+  isExcluded,
+  isMeInvolved,
+}: {
+  value: string[]
+  onChange: (val: string[]) => void
+  group: Group
+  isDesktop: boolean
+  activeUserId?: string | null
+  isExcluded: boolean
+  isMeInvolved: boolean | null
+}) {
+  const [open, setOpen] = useState(false)
+  useMobilePopoverState(open, setOpen, isDesktop)
+
+  const TriggerButton = (
+    <FormControl>
+      <Button
+        variant={isExcluded ? 'outline' : 'secondary'}
+        size="icon"
+        className={cn(
+          'h-9 w-9 shrink-0 relative transition-colors',
+          isExcluded &&
+            'border-dashed border-muted-foreground/50 text-muted-foreground',
+          isMeInvolved && 'bg-primary/10 text-primary border-primary/20',
+        )}
+        type="button"
+        title={isExcluded ? 'Assign to someone' : 'Edit assignment'}
+      >
+        {isExcluded ? (
+          <EyeOff className="h-4 w-4 opacity-50" />
+        ) : (
+          <Users className="h-4 w-4" />
+        )}
+        {value.length > 0 && value.length < group.participants.length && (
+          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold shadow-sm">
+            {value.length}
+          </span>
+        )}
+      </Button>
+    </FormControl>
+  )
+
+  const SelectionList = (
+    <div className="space-y-1">
+      <div className="flex justify-between items-center px-2 pb-2 border-b mb-1">
+        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+          Split among
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-auto p-1 text-[10px] text-primary hover:bg-primary/10"
+          onClick={() => {
+            const allIds = group.participants.map((p) => p.id)
+            const isAllSelected = value.length === group.participants.length
+            onChange(isAllSelected ? [] : allIds)
+          }}
+        >
+          {value.length === group.participants.length
+            ? 'Clear (Exclude)'
+            : 'Select All'}
+        </Button>
+      </div>
+      <div className="max-h-[300px] overflow-y-auto grid grid-cols-1 gap-1">
+        {group.participants.map((participant) => {
+          const isSelected = value.includes(participant.id)
+          const isMe =
+            activeUserId &&
+            participant.id === activeUserId &&
+            activeUserId !== 'None'
+
+          return (
+            <div
+              key={participant.id}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer text-sm transition-colors',
+                isSelected
+                  ? 'bg-primary/5 font-medium text-primary'
+                  : 'hover:bg-muted',
+              )}
+              onClick={() => {
+                const isAllSelected = value.length === group.participants.length
+                let next
+                if (isAllSelected) {
+                  // If all were selected, clicking one isolates it (optional behavior, but sticking to toggle here for simplicity)
+                  next = isSelected
+                    ? value.filter((id) => id !== participant.id)
+                    : [...value, participant.id]
+                } else {
+                  next = isSelected
+                    ? value.filter((id) => id !== participant.id)
+                    : [...value, participant.id]
+                }
+                onChange(next)
+              }}
+            >
+              <div
+                className={cn(
+                  'w-5 h-5 rounded border flex items-center justify-center transition-colors',
+                  isSelected
+                    ? 'bg-primary border-primary'
+                    : 'border-muted-foreground/30 bg-background',
+                )}
+              >
+                {isSelected && (
+                  <Check className="w-3.5 h-3.5 text-primary-foreground stroke-[3]" />
+                )}
+              </div>
+              <span className="truncate flex-1">
+                {participant.name}
+                {isMe && (
+                  <span className="ml-1 text-xs text-muted-foreground">
+                    (You)
+                  </span>
+                )}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+
+  if (isDesktop) {
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>{TriggerButton}</PopoverTrigger>
+        <PopoverContent className="w-64 p-2" align="end">
+          {SelectionList}
+        </PopoverContent>
+      </Popover>
+    )
+  }
+
+  return (
+    <Drawer open={open} onOpenChange={setOpen}>
+      <DrawerTrigger asChild>{TriggerButton}</DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader className="text-left pb-0">
+          <DrawerTitle>Split Item</DrawerTitle>
+        </DrawerHeader>
+        <div className="p-4 pb-8">{SelectionList}</div>
+      </DrawerContent>
+    </Drawer>
   )
 }

@@ -1,5 +1,6 @@
-import { getCategories, randomId } from '@/lib/api'
+import { getCategories } from '@/lib/api'
 import { prisma } from '@/lib/prisma'
+import { randomId } from '@/lib/utils'
 import { Prisma } from '@prisma/client'
 import { default as csv } from 'csv-parser'
 import { createReadStream } from 'fs'

@@ -293,7 +293,9 @@
     "cancel": "Cancel",
     "reimbursement": "Reimbursement",
     "addPayer": "Add Payer",
-    "total": "Total"
+    "total": "Total",
+    "excludedItems": "excluded from group",
+    "groupExpense": "Final Group Split"
   },
   "ExpenseDocumentsInput": {
     "TooBigToast": {

@@ -1,4 +1,5 @@
 'use client'
+import { useEnv } from '@/components/env-provider'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/components/ui/use-toast'
@@ -22,6 +23,7 @@ export function PushNotificationToggle({
 }: {
   vapidKey: string | undefined
 }) {
+  const { NEXT_PUBLIC_BASE_PATH } = useEnv() // Get runtime value
   const [isSupported, setIsSupported] = useState(false)
   const [subscription, setSubscription] = useState<PushSubscription | null>(
     null,
@@ -41,11 +43,12 @@ export function PushNotificationToggle({
   }, [])
 
   const registerServiceWorker = async () => {
+    const basePath = process.env.NEXT_PUBLIC_BASE_PATH || ''
     try {
       const registration = await navigator.serviceWorker.register(
-        '/spliit/sw.js',
+        `${NEXT_PUBLIC_BASE_PATH}/sw.js`,
         {
-          scope: '/spliit/',
+          scope: `${NEXT_PUBLIC_BASE_PATH}/`,
           updateViaCache: 'none',
         },
       )

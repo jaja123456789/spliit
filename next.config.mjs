@@ -51,7 +51,8 @@ const nextConfig = {
       bodySizeLimit: '10mb',
     },
   },
-  basePath: '/spliit',
+  basePath:
+    process.env.NEXT_PUBLIC_BASE_PATH || '/___SPLIIT_BASE_PATH_PLACEHOLDER___',
 }
 
 export default withNextIntl(nextConfig)

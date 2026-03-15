@@ -68,7 +68,7 @@ const expenseItemSchema = z.object({
       return isNaN(num) ? 0 : num
     }),
   ]),
-  participantIds: z.array(z.string()).min(1, 'Select at least one person'),
+  participantIds: z.array(z.string()),
 })
 
 export const expenseFormSchema = z
@@ -261,61 +261,78 @@ export const expenseFormSchema = z
   })
   // 2. Output Transformation: Prepare final data structure for API/DB
   .transform((expense) => {
-    // Recalculate total for the output object
-    const totalAmount = expense.paidBy
+    const inputTotal = expense.paidBy
       .reduce((sum, p) => sum.add(new Decimal(p.amount || 0)), new Decimal(0))
       .toNumber()
+
+    let finalAmount = inputTotal
+    let paidBy = expense.paidBy
     let paidFor = expense.paidFor
+    let items = expense.items
 
-    // NEW: If items exist, recalculate `paidFor` (Shares) based on items
-    // This allows the backend to remain mostly agnostic about items for balance calculations
     if (expense.items && expense.items.length > 0) {
-      const distribution: Record<string, number> = {}
+      // 1. Separate included vs excluded items
+      const includedItems = expense.items.filter(
+        (i) => i.participantIds.length > 0,
+      )
 
-      expense.items.forEach((item) => {
+      // 2. Calculate the "Split Total" (the real expense)
+      const splitTotal = includedItems
+        .reduce(
+          (sum, item) => sum.add(new Decimal(item.price || 0)),
+          new Decimal(0),
+        )
+        .toNumber()
+
+      // 3. Determine the scaling ratio
+      // (If receipt was $100 and we split $80, we scale "paidBy" amounts by 0.8)
+      const ratio = inputTotal > 0 ? splitTotal / inputTotal : 0
+
+      finalAmount = splitTotal
+      items = includedItems
+
+      // 4. Adjust PaidBy amounts so (Sum PaidBy === Sum Included Items)
+      paidBy = expense.paidBy.map((pb) => ({
+        ...pb,
+        amount: new Decimal(pb.amount).mul(ratio).toNumber(),
+      }))
+
+      // 5. Generate distribution from items
+      const distribution: Record<string, number> = {}
+      includedItems.forEach((item) => {
         const itemPrice = Number(item.price)
         const partCount = item.participantIds.length
-        if (partCount === 0) return
-
-        // Simple division, create cents
-        // We use Math.floor/ceil logic to ensure total matches exactly or handle cents distribution
-        // For simplicity here, we do standard division
         const share = itemPrice / partCount
-
         item.participantIds.forEach((pid) => {
           distribution[pid] = (distribution[pid] || 0) + share
         })
       })
 
-      // Convert distribution map to paidFor array
-      // We force splitMode to BY_AMOUNT effectively
       paidFor = Object.entries(distribution).map(([participantId, amount]) => ({
         participant: participantId,
-        shares: amount, // Logic below handles rounding if needed
+        shares: amount,
         originalAmount: undefined,
       }))
 
-      // Override splitMode to BY_AMOUNT so the DB stores the calculated debts correctly
       expense.splitMode = 'BY_AMOUNT'
     } else {
       // ... existing paidFor map logic ...
-      paidFor = expense.paidFor.map((paidFor) => {
-        // ... existing logic ...
-        return { ...paidFor, shares: Number(paidFor.shares) }
-      })
+      paidBy = expense.paidBy.map((pb) => ({
+        ...pb,
+        amount: Number(pb.amount),
+      }))
+      paidFor = expense.paidFor.map((pf) => ({
+        ...pf,
+        shares: Number(pf.shares),
+      }))
     }
-
-    const paidBy = expense.paidBy.map((pb) => ({
-      ...pb,
-      amount: Number(pb.amount),
-    }))
 
     return {
       ...expense,
-      amount: totalAmount,
+      amount: finalAmount,
       paidBy,
       paidFor,
-      items: expense.items.map((i) => ({ ...i, price: Number(i.price) })),
+      items: items.map((i) => ({ ...i, price: Number(i.price) })),
     }
   })
 

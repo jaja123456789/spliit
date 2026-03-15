@@ -41,7 +41,6 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Locale } from '@/i18n/request'
-import { randomId } from '@/lib/api'
 import { defaultCurrencyList, getCurrency } from '@/lib/currency'
 import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { useActiveUser, useCurrencyRate } from '@/lib/hooks'
@@ -57,6 +56,7 @@ import {
   cn,
   formatCurrency,
   getCurrencyFromGroup,
+  randomId,
 } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -378,6 +378,17 @@ export function ExpenseForm({
   const [isItemized, setIsItemized] = useState(
     form.getValues('items')?.length > 0,
   )
+
+  const watchedItems = useWatch({ control: form.control, name: 'items' }) || []
+  const groupSplitSum = watchedItems.reduce((sum, item) => {
+    if (!item.participantIds || item.participantIds.length === 0) return sum
+    return sum + (Number(item.price) || 0)
+  }, 0)
+
+  const effectiveTotal = isItemized ? groupSplitSum : totalAmount
+
+  const totalExcluded = isItemized ? totalAmount - groupSplitSum : 0
+  const hasExcludedItems = isItemized && totalExcluded > 0.009
 
   const getIsParticipantPaying = (
     participantId: string,
@@ -1180,17 +1191,42 @@ export function ExpenseForm({
                   <Plus className="w-4 h-4 mr-2" />
                   {t('addPayer')}
                 </Button>
-                {payerFields.length > 1 && (
+                <div className="flex flex-col items-end gap-1">
+                  {/* The Subtraction Message */}
+                  {hasExcludedItems && (
+                    <div className="text-right text-[11px] text-amber-600 font-medium animate-in fade-in slide-in-from-right-1">
+                      —{' '}
+                      {formatCurrency(
+                        groupCurrency,
+                        totalExcluded,
+                        locale,
+                        true,
+                      )}{' '}
+                      {t('excludedItems')}
+                    </div>
+                  )}
+
+                  {/* The Final Group Amount (What hits the stats) */}
                   <div
                     className={cn(
-                      'text-right font-medium px-3 py-2 bg-muted/50 rounded-md transition-colors',
-                      totalAmount <= 0 ? 'text-destructive' : 'text-foreground',
+                      'text-right font-bold px-3 py-1 rounded-md transition-colors border',
+                      hasExcludedItems
+                        ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950 dark:border-emerald-800'
+                        : 'bg-muted/50 border-transparent text-foreground',
+                      totalAmount <= 0 ? 'text-destructive' : '',
                     )}
                   >
-                    {t('total')}:{' '}
-                    {formatCurrency(groupCurrency, totalAmount, locale, true)}
+                    <span className="text-[10px] uppercase tracking-wider mr-2 align-middle">
+                      {t('groupExpense')}:
+                    </span>
+                    {formatCurrency(
+                      groupCurrency,
+                      effectiveTotal,
+                      locale,
+                      true,
+                    )}
                   </div>
-                )}
+                </div>
               </div>
             </div>
           </CardContent>
