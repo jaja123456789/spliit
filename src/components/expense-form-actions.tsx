@@ -2,10 +2,9 @@
 import { getCategories } from '@/lib/api'
 import { env } from '@/lib/env'
 import { formatCategoryForAIPrompt } from '@/lib/utils'
-import { GoogleGenAI } from '@google/genai'
 import OpenAI from 'openai'
 
-const limit = 40 // ~10 tokens
+const limit = 50 // ~10 tokens
 
 /**
  * Attempt extraction of category from expense title
@@ -30,69 +29,50 @@ export async function extractCategoryFromTitle(description: string) {
   `
 
   // 1. Priority: Gemini
-  if (env.GEMINI_API_KEY) {
+  if (env.OPENROUTER_API_KEY) {
     try {
-      const client = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY })
-      const response = await client.models.generateContent({
-        model: 'gemini-2.5-flash-lite',
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              { text: systemPrompt },
-              { text: `Expense Title: ${description.substring(0, limit)}` },
-            ],
-          },
-        ],
-        config: {
-          responseMimeType: 'text/plain',
-          temperature: 0.1,
-        },
+      const openai = new OpenAI({
+        baseURL: 'https://openrouter.ai/api/v1',
+        apiKey: env.OPENROUTER_API_KEY,
       })
 
-      const text = response.text
-      // Extract the first number found (Gemini is usually chatty without structured output config)
-      const match = text?.match(/\d+/)
+      const completion = await openai.chat.completions.create({
+        model: env.OPENROUTER_CATEGORY_MODEL,
+        temperature: 0.1,
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt,
+          },
+          {
+            role: 'user',
+            content: description.substring(0, limit),
+          },
+        ],
+      })
+
+      let messageContent = completion.choices.at(0)?.message.content
+
+      if (!messageContent) {
+        console.warn(
+          'OpenRouter returned null or empty content for category extraction.',
+        )
+        return { categoryId: 0 }
+      }
+
+      // Strip any residual <think> blocks just in case
+      messageContent = messageContent
+        .replace(/<think>[\s\S]*?<\/think>/gi, '')
+        .trim()
+
+      // Extract the first number found
+      const match = messageContent.match(/\d+/)
       const id = match ? Number(match[0]) : 0
 
-      // Ensure the returned id actually exists
       const category = categories.find((category) => category.id === id)
       return { categoryId: category?.id || 0 }
     } catch (error) {
-      console.error('Gemini category extraction failed:', error)
-      // Fallthrough to OpenAI if available
-      if (!env.OPENAI_API_KEY) return { categoryId: 0 }
-    }
-  }
-
-  // 2. Fallback: OpenAI
-  if (env.OPENAI_API_KEY) {
-    try {
-      const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY })
-      const body: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming =
-        {
-          model: 'gpt-3.5-turbo',
-          temperature: 0.1,
-          max_tokens: 10,
-          messages: [
-            {
-              role: 'system',
-              content: systemPrompt,
-            },
-            {
-              role: 'user',
-              content: description.substring(0, limit),
-            },
-          ],
-        }
-      const completion = await openai.chat.completions.create(body)
-      const messageContent = completion.choices.at(0)?.message.content
-      const category = categories.find((category) => {
-        return category.id === Number(messageContent)
-      })
-      return { categoryId: category?.id || 0 }
-    } catch (error) {
-      console.error('OpenAI category extraction failed:', error)
+      console.error('OpenRouter category extraction failed:', error)
       return { categoryId: 0 }
     }
   }

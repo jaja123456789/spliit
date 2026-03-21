@@ -2,7 +2,6 @@
 import { getCategories } from '@/lib/api'
 import { env } from '@/lib/env'
 import { formatCategoryForAIPrompt } from '@/lib/utils'
-import { GoogleGenAI, ThinkingLevel } from '@google/genai'
 import OpenAI from 'openai'
 import { z } from 'zod'
 import { zodToJsonSchema } from 'zod-to-json-schema'
@@ -35,8 +34,8 @@ export async function extractExpenseInformationFromImage(
 ) {
   'use server'
 
-  if (!env.GEMINI_API_KEY && !env.OPENAI_API_KEY) {
-    throw new Error('Neither GEMINI_API_KEY nor OPENAI_API_KEY is defined')
+  if (!env.OPENROUTER_API_KEY) {
+    throw new Error('OPENROUTER_API_KEY is not defined')
   }
 
   const categories = await getCategories()
@@ -60,83 +59,56 @@ export async function extractExpenseInformationFromImage(
       - Guess the category ID from this list: ${categoriesList}. If unsure, use 0.
     `
 
-  // 1. Priority: Gemini
-  if (env.GEMINI_API_KEY) {
-    try {
-      const client = new GoogleGenAI({ apiKey: env.GEMINI_API_KEY })
-      const imageParts = images.map((img) => ({
-        inlineData: {
-          mimeType: img.mimeType,
-          data: img.base64,
-        },
-      }))
+  try {
+    const openai = new OpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
+      apiKey: env.OPENROUTER_API_KEY,
+    })
 
-      const response = await client.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: prompt }, ...imageParts],
-          },
-        ],
-        config: {
-          responseMimeType: 'application/json',
-          responseJsonSchema: zodToJsonSchema(recipeSchema),
-          thinkingConfig: {
-            thinkingLevel: ThinkingLevel.MINIMAL,
-          },
+    // Append schema instruction for OpenRouter
+    const openAIPrompt = `${prompt} \n\nRespond strictly in valid JSON format matching this schema: ${JSON.stringify(
+      zodToJsonSchema(recipeSchema),
+    )}`
+
+    const contentParts: any[] = [{ type: 'text', text: openAIPrompt }]
+
+    images.forEach((img) => {
+      contentParts.push({
+        type: 'image_url',
+        image_url: {
+          url: `data:${img.mimeType};base64,${img.base64}`,
         },
       })
+    })
 
-      const data = recipeSchema.parse(JSON.parse(response.text!))
-      return normalizeResponse(data)
-    } catch (error) {
-      console.error('Error processing receipt with Gemini:', error)
-      if (!env.OPENAI_API_KEY) throw error
+    const completion = await openai.chat.completions.create({
+      model: env.OPENROUTER_RECEIPT_MODEL,
+      messages: [{ role: 'user', content: contentParts }],
+      temperature: 0.2,
+    })
+
+    const rawContent = completion.choices[0]?.message?.content
+    if (!rawContent) {
+      throw new Error(
+        'No content received from OpenRouter. The model may have timed out or blocked the request.',
+      )
     }
+
+    // Clean out <think> tags if the model still forces them through
+    let cleanedContent = rawContent
+      .replace(/<think>[\s\S]*?<\/think>/gi, '')
+      .trim()
+
+    // Extract just the JSON block
+    const jsonMatch = cleanedContent.match(/\{[\s\S]*\}/)
+    cleanedContent = jsonMatch ? jsonMatch[0] : cleanedContent
+
+    const data = recipeSchema.parse(JSON.parse(cleanedContent))
+    return normalizeResponse(data)
+  } catch (error) {
+    console.error('Error processing receipt with OpenRouter:', error)
+    throw new Error('Failed to extract information from receipt')
   }
-
-  // 2. Fallback: OpenAI
-  if (env.OPENAI_API_KEY) {
-    try {
-      const openai = new OpenAI({ apiKey: env.OPENAI_API_KEY })
-
-      const contentParts: any[] = [{ type: 'text', text: prompt }]
-
-      images.forEach((img) => {
-        contentParts.push({
-          type: 'image_url',
-          image_url: {
-            url: `data:${img.mimeType};base64,${img.base64}`,
-          },
-        })
-      })
-
-      // Append schema instruction for OpenAI (since we use generic JSON mode here)
-      const openAIPrompt = `${prompt} \n\n Respond in JSON format matching this schema: ${JSON.stringify(
-        zodToJsonSchema(recipeSchema),
-      )}`
-      contentParts[0].text = openAIPrompt
-
-      const completion = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [{ role: 'user', content: contentParts }],
-        response_format: { type: 'json_object' },
-        temperature: 0.1,
-      })
-
-      const rawContent = completion.choices[0].message.content
-      if (!rawContent) throw new Error('No content received from OpenAI')
-
-      const data = recipeSchema.parse(JSON.parse(rawContent))
-      return normalizeResponse(data)
-    } catch (error) {
-      console.error('Error processing receipt with OpenAI:', error)
-      throw new Error('Failed to extract information from receipt')
-    }
-  }
-
-  throw new Error('No AI provider available')
 }
 
 function normalizeResponse(data: z.infer<typeof recipeSchema>) {
