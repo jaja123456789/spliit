@@ -30,7 +30,7 @@ type Props = {
   updateDocuments: (documents: ExpenseFormValues['documents']) => void
 }
 
-const MAX_FILE_SIZE = 5 * 1024 ** 2
+const MAX_FILE_SIZE = 50 * 1024 ** 2
 
 export function ExpenseDocumentsInput({ documents, updateDocuments }: Props) {
   const locale = useLocale()
@@ -55,8 +55,15 @@ export function ExpenseDocumentsInput({ documents, updateDocuments }: Props) {
     const upload = async () => {
       try {
         setPending(true)
-        const { width, height } = await getImageData(file)
-        if (!width || !height) throw new Error('Cannot get image dimensions')
+        let width = 0
+        let height = 0
+        try {
+          const dims = await getImageData(file)
+          width = dims.width ?? 0
+          height = dims.height ?? 0
+        } catch (e) {
+          console.warn('Could not read image dimensions, proceeding anyway', e)
+        }
         const { url } = await uploadToS3(file)
         updateDocuments([...documents, { id: randomId(), url, width, height }])
       } catch (err) {

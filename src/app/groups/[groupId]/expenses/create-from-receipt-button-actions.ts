@@ -8,7 +8,19 @@ import { zodToJsonSchema } from 'zod-to-json-schema'
 
 const recipeItemSchema = z.object({
   name: z.string().optional().describe('Name of the item'),
-  price: z.number().describe('Price of the item'),
+  quantity: z
+    .number()
+    .optional()
+    .describe('Quantity of the item (default 1 if not shown)'),
+  unitPrice: z
+    .number()
+    .nullish()
+    .describe('Unit price of a single item before multiplying by quantity'),
+  price: z
+    .number()
+    .describe(
+      'Total price for this line (unitPrice * quantity). If only one price is shown, use it here.',
+    ),
 })
 
 const recipeSchema = z.object({
@@ -44,19 +56,38 @@ export async function extractExpenseInformationFromImage(
     .join(', ')
 
   const prompt = `
-      Analyze these images of a receipt.
-      
-      NOTE: The images might represent:
-      1. A complete receipt (potentially split across multiple photos).
-      2. A PARTIAL receipt (e.g., just a photo of a few items at the bottom).
+      You are a receipt parser. Carefully analyze the receipt image(s) and extract structured data.
 
-      Extract the following information:
-      - Total amount: Look for a distinct "Total" line. If this is a PARTIAL receipt and no total is visible, return 0 or null. DO NOT guess the total by summing items if the image looks incomplete.
-      - Date (YYYY-MM-DD)
-      - Merchant name as Title
-      - Currency Code (ISO 4217)
-      - List of items with names and prices. Catch as many as visible.
-      - Guess the category ID from this list: ${categoriesList}. If unsure, use 0.
+      The images may represent:
+      1. A complete receipt (possibly split across multiple photos — treat them as one receipt).
+      2. A PARTIAL receipt (only some items visible, no total shown).
+
+      ## Instructions
+
+      ### Total Amount
+      - Look for a line explicitly labeled "Total", "Grand Total", "Amount Due", or similar.
+      - If this is a partial receipt or no total line is visible, return null. Do NOT sum up items to guess the total.
+
+      ### Items
+      Extract EVERY line item visible. For each item:
+      - **name**: the product/item name as written on the receipt.
+      - **quantity**: the number of units. Look for patterns like "2x", "Qty: 3", or a quantity column. Default to 1 if not shown.
+      - **unitPrice**: the per-unit price, if shown separately (e.g., "2 x $3.50").
+      - **price**: the TOTAL price for that line (unitPrice × quantity). If only one price is shown for the line, use it as-is.
+
+      Examples:
+      - "2x Coffee    $7.00"  → name: "Coffee", quantity: 2, unitPrice: 3.50, price: 7.00
+      - "Orange Juice $4.50"  → name: "Orange Juice", quantity: 1, price: 4.50
+      - "Burger  3  $12.00"   → name: "Burger", quantity: 3, unitPrice: 4.00, price: 12.00
+
+      Do NOT collapse multiple identical items into one — keep each line as-is from the receipt.
+      Do NOT skip items even if they look like discounts, taxes, or fees (unless they are the Total line).
+
+      ### Other Fields
+      - Date: format as YYYY-MM-DD. If not found, omit.
+      - Merchant name: the store/restaurant name, usually at the top.
+      - Currency: ISO 4217 code (e.g. USD, EUR, GBP). Infer from symbols if not written ($ → USD, € → EUR, £ → GBP).
+      - Category: pick the best matching ID from this list: ${categoriesList}. If unsure, use 0.
     `
 
   try {
@@ -112,13 +143,38 @@ export async function extractExpenseInformationFromImage(
 }
 
 function normalizeResponse(data: z.infer<typeof recipeSchema>) {
+  const expandedItems = (data?.items || []).flatMap((item) => {
+    const qty = Math.max(1, Math.round(item.quantity ?? 1))
+    const unitPrice =
+      item.unitPrice ?? (qty > 1 ? item.price / qty : item.price)
+    if (qty <= 1) {
+      return [{ name: item.name, price: item.price }]
+    }
+    // Expand into individual line items, distributing rounding to the last item
+    const basePrice = Math.round(unitPrice * 100) / 100
+    const distributed = Array.from({ length: qty }, () => ({
+      name: item.name,
+      price: basePrice,
+    }))
+    // Fix any rounding difference on the last item
+    const sumDiff =
+      Math.round(item.price * 100) -
+      distributed.reduce((acc, i) => acc + Math.round(i.price * 100), 0)
+    if (sumDiff !== 0) {
+      distributed[distributed.length - 1].price =
+        Math.round(distributed[distributed.length - 1].price * 100 + sumDiff) /
+        100
+    }
+    return distributed
+  })
+
   return {
     amount: data?.amount,
     categoryId: data?.categoryId,
     date: data?.date,
     title: data?.title,
     currency: data?.currency,
-    items: data?.items || [],
+    items: expandedItems,
   }
 }
 

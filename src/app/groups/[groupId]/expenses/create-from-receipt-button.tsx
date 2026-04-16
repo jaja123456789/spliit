@@ -48,7 +48,7 @@ import { useRouter } from 'next/navigation'
 import { PropsWithChildren, ReactNode, useRef, useState } from 'react'
 import { useCurrentGroup } from '../current-group-context'
 
-const MAX_FILE_SIZE = 10 * 1024 ** 2
+const MAX_FILE_SIZE = 50 * 1024 ** 2
 
 export function CreateFromReceiptButton() {
   const t = useTranslations('CreateFromReceipt')
@@ -185,10 +185,23 @@ function ReceiptDialogContent() {
       }
       try {
         const blobUrl = URL.createObjectURL(file)
-        const { width, height } = await getImageData(file)
+        let width: number | undefined
+        let height: number | undefined
+        try {
+          const dims = await getImageData(file)
+          width = dims.width
+          height = dims.height
+        } catch (e) {
+          console.warn('Could not read image dimensions, proceeding anyway', e)
+        }
         newImages.push({ blobUrl, file, width, height })
       } catch (e) {
         console.error('Error reading image', e)
+        toast({
+          title: t('ErrorToast.title'),
+          description: t('ErrorToast.description'),
+          variant: 'destructive',
+        })
       }
     }
 
