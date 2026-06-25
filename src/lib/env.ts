@@ -39,6 +39,11 @@ const envSchema = z
       interpretEnvVarAsBool,
       z.boolean().default(false),
     ),
+    GEMINI_API_KEY: z.string().optional(),
+    GEMINI_RECEIPT_MODEL: z
+      .enum(['gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'])
+      .optional()
+      .default('gemini-3.1-flash-lite'),
     OPENROUTER_API_KEY: z.string().optional(),
     OPENROUTER_CATEGORY_MODEL: z.string().optional().default('openrouter/free'),
     OPENROUTER_RECEIPT_MODEL: z.string().optional().default('openrouter/free'),
@@ -59,14 +64,20 @@ const envSchema = z
       })
     }
     if (
-      (env.NEXT_PUBLIC_ENABLE_RECEIPT_EXTRACT ||
-        env.NEXT_PUBLIC_ENABLE_CATEGORY_EXTRACT) &&
-      !env.OPENROUTER_API_KEY
+      env.NEXT_PUBLIC_ENABLE_RECEIPT_EXTRACT &&
+      (!env.GEMINI_API_KEY || !env.OPENROUTER_API_KEY)
     ) {
       ctx.addIssue({
         code: ZodIssueCode.custom,
         message:
-          'If NEXT_PUBLIC_ENABLE_RECEIPT_EXTRACT or NEXT_PUBLIC_ENABLE_CATEGORY_EXTRACT is specified, then OPENROUTER_API_KEY must be specified',
+          'If NEXT_PUBLIC_ENABLE_RECEIPT_EXTRACT is specified, then GEMINI_API_KEY and OPENROUTER_API_KEY must be specified',
+      })
+    }
+    if (env.NEXT_PUBLIC_ENABLE_CATEGORY_EXTRACT && !env.OPENROUTER_API_KEY) {
+      ctx.addIssue({
+        code: ZodIssueCode.custom,
+        message:
+          'If NEXT_PUBLIC_ENABLE_CATEGORY_EXTRACT is specified, then OPENROUTER_API_KEY must be specified',
       })
     }
   })

@@ -9,7 +9,7 @@ This is a fork of [Spliit](https://github.com/spliit-app/spliit) (an open-source
 ## Added Features
 
 - **Cloud Sync:** Sync groups across devices using Magic Links (based on [PR #495](https://github.com/spliit-app/spliit/pull/495)).
-- **Receipt Scanning:** Upload a photo of a receipt to automatically extract items, prices, and dates using Google Gemini or OpenAI.
+- **Receipt Scanning:** Upload a photo of a receipt to automatically extract items, prices, and dates using Google Gemini with OpenRouter fallback.
 - **Itemized Splitting:** Assign specific items from a receipt to specific people, rather than just splitting the total.
 - **Multiple Payers:** Handle scenarios where multiple people contributed to a single bill (e.g., A paid deposit, B paid remainder).
 - **Payment Links:** Add Venmo, PayPal, CashApp, or Revolut handles to profiles so balances link directly to the payment app.
@@ -60,10 +60,13 @@ services:
       EMAIL_FROM: 'noreply@your-domain.com'
 
       # --- AI Features (Receipt Scanning) ---
-      # Get a free key at https://aistudio.google.com/
+      # Gemini is used first. Get a free key at https://aistudio.google.com/
       GEMINI_API_KEY: 'your_gemini_key'
-      # Or use OpenAI
-      # OPENAI_API_KEY=sk-...
+      GEMINI_RECEIPT_MODEL: 'gemini-3.1-flash-lite'
+      # OpenRouter is used as a fallback if Gemini returns a 429 rate-limit error.
+      OPENROUTER_API_KEY: 'your_openrouter_key'
+      OPENROUTER_RECEIPT_MODEL: 'openrouter/free'
+      OPENROUTER_CATEGORY_MODEL: 'openrouter/free'
 
       # --- Feature Flags ---
       NEXT_PUBLIC_ENABLE_RECEIPT_EXTRACT: true

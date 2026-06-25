@@ -216,7 +216,6 @@ export async function getGroups(groupIds: string[]) {
   return groups.map((group) => {
     const lastActiveAt = group.activities[0]?.time ?? group.createdAt
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { activities, ...rest } = group
 
     return {

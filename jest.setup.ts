@@ -1,0 +1,2 @@
+process.env.NEXT_PUBLIC_ENABLE_RECEIPT_EXTRACT = 'false'
+process.env.NEXT_PUBLIC_ENABLE_CATEGORY_EXTRACT = 'false'

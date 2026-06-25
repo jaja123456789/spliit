@@ -18,7 +18,8 @@ else
 fi
 
 find . -type f \( -name "*.gz" -o -name "*.br" \) -delete
-grep -rl "$PLACEHOLDER" .next public server.js 2>/dev/null | xargs -r sed -i "s|$PLACEHOLDER|$REPLACEMENT|g"
+
+grep -rl "$PLACEHOLDER" .next public server.js 2>/dev/null | xargs -r sed -i -e "s|$PLACEHOLDER|$REPLACEMENT|g" || true
 
 echo "Configuration applied. Starting server..."
 
