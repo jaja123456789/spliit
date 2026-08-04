@@ -101,6 +101,10 @@ interface FrankfurterAPIResponse {
   rates: Record<string, number>
 }
 
+// `api.frankfurter.app` only redirects here now, and browsers reject the redirect because the
+// 301 itself carries no CORS headers, so the request has to go to the current host directly.
+const FRANKFURTER_API_URL = 'https://api.frankfurter.dev/v1'
+
 const fetcher: Fetcher<FrankfurterAPIResponse> = (url: string) =>
   fetch(url).then(async (res) => {
     if (!res.ok)
@@ -113,7 +117,11 @@ export function useCurrencyRate(
   baseCurrency: string,
   targetCurrency: string,
 ) {
-  const dateString = dayjs(date).format('YYYY-MM-DD')
+  // Frankfurter answers 404 for dates it has no rates for, which includes any date in the
+  // future, so ask for the most recent ones instead.
+  const dateString = dayjs(date).isAfter(dayjs(), 'day')
+    ? 'latest'
+    : dayjs(date).format('YYYY-MM-DD')
 
   // Only send request if both currency codes are given and not the same
   const url =
@@ -121,7 +129,7 @@ export function useCurrencyRate(
     !!baseCurrency.length &&
     !!targetCurrency.length &&
     baseCurrency !== targetCurrency &&
-    `https://api.frankfurter.app/${dateString}?base=${baseCurrency}`
+    `${FRANKFURTER_API_URL}/${dateString}?base=${baseCurrency}`
   const { data, error, isLoading, mutate } = useSWR<FrankfurterAPIResponse>(
     url,
     fetcher,

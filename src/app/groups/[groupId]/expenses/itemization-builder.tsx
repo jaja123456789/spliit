@@ -22,6 +22,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { Currency } from '@/lib/currency'
 import { useMediaQuery, useMobilePopoverState } from '@/lib/hooks'
 import { cn, formatCurrency } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
@@ -34,7 +35,7 @@ type Group = NonNullable<AppRouterOutput['groups']['get']['group']>
 
 interface Props {
   group: Group
-  currency: any
+  currency: Currency
   totalAmount: number
   // Lifted state props
   fields: any[]
@@ -215,7 +216,7 @@ export function ItemizationBuilder({
                                 />
                               </FormControl>
                               <div className="absolute right-9 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                                {group.currency}
+                                {currency.symbol || group.currency}
                               </div>
                             </div>
                             <FormMessage className="text-[10px] text-right pr-1 mt-1" />

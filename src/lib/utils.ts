@@ -139,6 +139,77 @@ export function amountAsMinorUnits(amount: number, currency: Currency) {
 }
 
 /**
+ * Converts an amount in major units to major units of `targetCurrency`, rounded to its smallest
+ * unit.
+ */
+export function convertAmount(
+  amount: number,
+  rate: number,
+  targetCurrency: Currency,
+) {
+  return amountAsDecimal(
+    amountAsMinorUnits(amount * rate, targetCurrency),
+    targetCurrency,
+  )
+}
+
+/**
+ * Converts the parts an amount is made of (payer amounts, shares, item prices…) to
+ * `targetCurrency`, so that they still add up to the converted total exactly.
+ */
+export function convertAmountParts(
+  parts: number[],
+  total: number,
+  rate: number,
+  targetCurrency: Currency,
+) {
+  const scale = 10 ** targetCurrency.decimal_digits
+  return allocateMinorUnits(
+    parts.map((part) => part * rate * scale),
+    amountAsMinorUnits(total * rate, targetCurrency),
+  ).map((part) => part / scale)
+}
+
+/**
+ * Rounds a list of (possibly fractional) minor unit values to integers that add up to exactly
+ * `total`, using the largest remainder method: the units that rounding would lose or gain go to
+ * the values that were furthest away from a whole minor unit.
+ *
+ * Negative values are supported, so this also works for income.
+ */
+export function allocateMinorUnits(values: number[], total: number) {
+  const allocated = values.map((value) => Math.round(value))
+  let missing = total - allocated.reduce((sum, value) => sum + value, 0)
+  if (missing === 0 || allocated.length === 0) return allocated
+
+  const step = missing > 0 ? 1 : -1
+  const byRoundingError = values
+    .map((value, index) => ({ index, error: value - allocated[index] }))
+    .sort((a, b) => (missing > 0 ? b.error - a.error : a.error - b.error))
+
+  for (let i = 0; missing !== 0; i++) {
+    allocated[byRoundingError[i % byRoundingError.length].index] += step
+    missing -= step
+  }
+  return allocated
+}
+
+/**
+ * Spreads `total` (in minor units) over the given parts, keeping their relative weights and making
+ * sure the result adds up to `total` exactly. Parts that add up to zero are split evenly.
+ */
+export function distributeMinorUnits(parts: number[], total: number) {
+  if (parts.length === 0) return []
+  const sum = parts.reduce((sum, part) => sum + part, 0)
+  return allocateMinorUnits(
+    sum === 0
+      ? parts.map(() => total / parts.length)
+      : parts.map((part) => (part * total) / sum),
+    total,
+  )
+}
+
+/**
  * Formats monetary amounts in minor units to the corresponding amount in major units in the given currency,
  * as a string, with correct rounding.
  *

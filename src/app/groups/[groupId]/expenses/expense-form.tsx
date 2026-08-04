@@ -41,7 +41,12 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Locale } from '@/i18n/request'
-import { defaultCurrencyList, getCurrency } from '@/lib/currency'
+import {
+  Currency,
+  defaultCurrencyList,
+  getCurrency,
+  normalizeCurrencyCode,
+} from '@/lib/currency'
 import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { useActiveUser, useCurrencyRate } from '@/lib/hooks'
 import {
@@ -54,6 +59,9 @@ import {
   amountAsDecimal,
   amountAsMinorUnits,
   cn,
+  convertAmount,
+  convertAmountParts,
+  distributeMinorUnits,
   formatCurrency,
   getCurrencyFromGroup,
   randomId,
@@ -78,6 +86,28 @@ import { extractCategoryFromTitle } from '../../../../components/expense-form-ac
 import { ItemizationBuilder } from './itemization-builder' // Import new component
 
 // --- Helpers ---
+
+/**
+ * The amount an expense was originally entered for, in minor units of the currency it was entered
+ * in. `originalAmount` used to be written in major units, so a value that is inconsistent with the
+ * stored conversion rate is recomputed from the amount in the group currency instead.
+ */
+function getOriginalTotalInMinorUnits(
+  expense: { amount: number; originalAmount: number | null },
+  rate: number,
+  groupCurrency: Currency,
+  expenseCurrency: Currency,
+) {
+  const derived = amountAsMinorUnits(
+    amountAsDecimal(expense.amount, groupCurrency) / rate,
+    expenseCurrency,
+  )
+  const { originalAmount } = expense
+  return originalAmount &&
+    Math.abs(originalAmount - derived) <= Math.abs(derived) / 50
+    ? originalAmount
+    : derived
+}
 
 const enforceCurrencyPattern = (value: string) =>
   value
@@ -205,6 +235,55 @@ export function ExpenseForm({
   const defaultPayerId = getSelectedPayer() ?? group.participants[0].id
   const initialAmount = searchParams.get('amount') || '0'
 
+  // An expense can be entered in another currency than the group's, as long as the group uses a
+  // real currency code: a custom symbol has no exchange rate to convert from.
+  const conversionAvailable = !!group.currencyCode
+  const initialRate = expense?.conversionRate?.toNumber()
+  // Without a rate the stored amounts cannot be read back in the original currency, so such an
+  // expense opens in the group currency.
+  const isConvertedExpense =
+    conversionAvailable &&
+    !!initialRate &&
+    !!expense?.originalCurrency &&
+    expense.originalCurrency !== group.currencyCode
+  const initialCurrencyCode =
+    (isConvertedExpense ? expense?.originalCurrency : group.currencyCode) ?? ''
+  const initialExpenseCurrency =
+    conversionAvailable && initialCurrencyCode
+      ? getCurrency(initialCurrencyCode, locale)
+      : groupCurrency
+
+  // Amounts are stored in the group currency, but the form works entirely in the currency the
+  // expense was entered in, so every part is scaled back to it. They are distributed over the
+  // original total so that they keep adding up to it exactly.
+  const originalTotalInMinorUnits =
+    expense && isConvertedExpense
+      ? getOriginalTotalInMinorUnits(
+          expense,
+          initialRate!,
+          groupCurrency,
+          initialExpenseCurrency,
+        )
+      : 0
+  const toFormAmounts = (amountsInMinorUnits: number[]) =>
+    isConvertedExpense
+      ? distributeMinorUnits(
+          amountsInMinorUnits,
+          originalTotalInMinorUnits,
+        ).map((amount) => amountAsDecimal(amount, initialExpenseCurrency))
+      : amountsInMinorUnits.map((amount) =>
+          amountAsDecimal(amount, groupCurrency),
+        )
+
+  const paidByAmounts = toFormAmounts(
+    expense?.paidBy.map((pb) => pb.amount) ?? [],
+  )
+  const itemPrices = toFormAmounts(expense?.items.map((i) => i.price) ?? [])
+  const paidForAmounts =
+    expense?.splitMode === 'BY_AMOUNT'
+      ? toFormAmounts(expense.paidFor.map((pf) => pf.shares))
+      : []
+
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseFormSchema),
     mode: 'onChange',
@@ -212,18 +291,19 @@ export function ExpenseForm({
       ? {
           title: expense.title,
           expenseDate: expense.expenseDate ?? new Date(),
-          originalCurrency: expense.originalCurrency ?? group.currencyCode,
-          originalAmount: expense.originalAmount ?? undefined,
-          conversionRate: expense.conversionRate?.toNumber(),
+          originalCurrency: initialCurrencyCode,
+          // Derived from the amounts on submit, never entered directly.
+          originalAmount: undefined,
+          conversionRate: initialRate,
           category: expense.categoryId,
-          paidBy: expense.paidBy.map((pb) => ({
+          paidBy: expense.paidBy.map((pb, index) => ({
             participant: pb.participantId,
-            amount: amountAsDecimal(pb.amount, groupCurrency),
+            amount: paidByAmounts[index],
           })),
-          paidFor: expense.paidFor.map(({ participantId, shares }) => ({
+          paidFor: expense.paidFor.map(({ participantId, shares }, index) => ({
             participant: participantId,
             shares: (expense.splitMode === 'BY_AMOUNT'
-              ? amountAsDecimal(shares, groupCurrency)
+              ? paidForAmounts[index]
               : (shares / 100).toString()) as any,
           })),
           splitMode: expense.splitMode,
@@ -233,10 +313,10 @@ export function ExpenseForm({
           notes: expense.notes ?? '',
           recurrenceRule: expense.recurrenceRule ?? undefined,
           items:
-            expense?.items.map((i) => ({
+            expense?.items.map((i, index) => ({
               id: i.id,
               name: i.name,
-              price: amountAsDecimal(i.price, groupCurrency),
+              price: itemPrices[index],
               participantIds: i.participantIds,
             })) ?? [],
         }
@@ -348,21 +428,32 @@ export function ExpenseForm({
   const sExpense = isIncome ? 'Income' : 'Expense'
   const maxAmount = Math.max(...paidByValues.map((p) => Number(p.amount) || 0))
 
-  const originalCurrency = getCurrency(originalCurrencyVal, locale, 'Custom')
+  // Every amount in the form — payer amounts, shares, item prices — is in this currency. Only the
+  // total is converted to the group currency, on submit.
+  const expenseCurrency =
+    conversionAvailable && originalCurrencyVal
+      ? getCurrency(originalCurrencyVal, locale)
+      : groupCurrency
   const exchangeRate = useCurrencyRate(
     expenseDate,
     originalCurrencyVal ?? '',
     groupCurrency.code,
   )
   const conversionRequired =
-    group.currencyCode &&
-    group.currencyCode.length &&
-    originalCurrency.code.length &&
-    originalCurrency.code !== group.currencyCode
+    conversionAvailable &&
+    expenseCurrency.code.length > 0 &&
+    expenseCurrency.code !== group.currencyCode
+
+  const conversionRate = useWatch({
+    control: form.control,
+    name: 'conversionRate',
+  })
+  const effectiveRate = Number(conversionRate) || 0
 
   const [usingCustomConversionRate, setUsingCustomConversionRate] = useState(
     !!form.formState.defaultValues?.conversionRate,
   )
+  const [rateCurrency, setRateCurrency] = useState(initialCurrencyCode)
   const [isCategoryLoading, setCategoryLoading] = useState(false)
 
   // Track manual edits for BY_AMOUNT mode
@@ -441,7 +532,7 @@ export function ExpenseForm({
 
       if (count > 0) {
         // Calculate precision factor (e.g. 100 for 2 decimals)
-        const precision = Math.pow(10, groupCurrency.decimal_digits)
+        const precision = Math.pow(10, expenseCurrency.decimal_digits)
 
         // Convert remaining amount to integer units to handle distribution cleanly
         // We use round to avoid floating point artifacts before distribution
@@ -475,7 +566,7 @@ export function ExpenseForm({
             return {
               ...participant,
               shares: (currentUnits / precision).toFixed(
-                groupCurrency.decimal_digits,
+                expenseCurrency.decimal_digits,
               ) as any,
             }
           }
@@ -485,7 +576,7 @@ export function ExpenseForm({
 
       return newPaidFor
     },
-    [groupCurrency.decimal_digits],
+    [expenseCurrency.decimal_digits],
   )
 
   const handlePayerAmountChange = (index: number, newValue: string) => {
@@ -560,6 +651,12 @@ export function ExpenseForm({
 
           const currentValues = form.getValues()
 
+          // The receipt was paid in its own currency, so the whole expense is entered in it and
+          // only the total gets converted to the group currency.
+          const receiptCurrency = conversionAvailable
+            ? normalizeCurrencyCode(data.currency)
+            : undefined
+
           // Reset the WHOLE form at once
           form.reset({
             ...currentValues, // Keep current values
@@ -568,6 +665,8 @@ export function ExpenseForm({
             category: data.categoryId ? Number(data.categoryId) : undefined,
             documents: data.documents || [],
             items: formItems, // This replaces useFieldArray automatically
+            originalCurrency:
+              receiptCurrency ?? currentValues.originalCurrency ?? '',
             paidBy: [
               {
                 ...currentValues.paidBy?.[0], // Keep the userId or other props
@@ -582,11 +681,29 @@ export function ExpenseForm({
         console.error('Failed to load receipt data', e)
       }
     }
-  }, [isCreate, searchParams, itemReplace, group.participants, form])
+  }, [
+    isCreate,
+    searchParams,
+    itemReplace,
+    group.participants,
+    form,
+    conversionAvailable,
+  ])
 
   useEffect(() => {
     if (totalAmount < 0) form.setValue('isReimbursement', false)
   }, [totalAmount, form])
+
+  // A rate only makes sense for the currency it was obtained (or entered) for, so picking another
+  // currency drops it and goes back to the rate from the API.
+  useEffect(() => {
+    if ((originalCurrencyVal ?? '') !== rateCurrency) {
+      setRateCurrency(originalCurrencyVal ?? '')
+      setUsingCustomConversionRate(false)
+      form.setValue('conversionRate', undefined)
+      form.clearErrors('conversionRate')
+    }
+  }, [originalCurrencyVal, rateCurrency, form])
 
   // Conversion rate logic
   useEffect(() => {
@@ -594,36 +711,6 @@ export function ExpenseForm({
       form.setValue('conversionRate', exchangeRate.data)
     }
   }, [exchangeRate.data, usingCustomConversionRate, form])
-
-  // Auto-convert original amount (Single Payer)
-  useEffect(() => {
-    if (isMultiPayer) return
-    const originalAmount = form.getValues('originalAmount')
-    const conversionRate = form.getValues('conversionRate')
-
-    if (
-      form.getFieldState('originalAmount').isTouched &&
-      conversionRate &&
-      originalAmount
-    ) {
-      const rate = Number(conversionRate)
-      const converted = originalAmount * rate
-      if (!Number.isNaN(converted)) {
-        const formatted = enforceCurrencyPattern(
-          converted.toFixed(groupCurrency.decimal_digits),
-        )
-        form.setValue(`paidBy.0.amount`, Number(formatted), {
-          shouldValidate: true,
-        })
-      }
-    }
-  }, [
-    form.watch('originalAmount'),
-    form.watch('conversionRate'),
-    isMultiPayer,
-    groupCurrency.decimal_digits,
-    form,
-  ])
 
   // Recalculate BY_AMOUNT if total changes (e.g. Payer Added/Removed)
   useEffect(() => {
@@ -694,6 +781,44 @@ export function ExpenseForm({
     setTimeout(() => form.trigger('paidFor'), 0)
   }
 
+  /**
+   * The form works in the expense currency; the database stores every amount in the group
+   * currency. The total is converted, and the parts it is made of are distributed over it so they
+   * still add up to it exactly.
+   */
+  const convertToGroupCurrency = (values: ExpenseFormValues, rate: number) => {
+    const total = Number(values.amount)
+    const convert = (parts: number[]) =>
+      convertAmountParts(parts, total, rate, groupCurrency)
+
+    values.originalAmount = total
+    values.originalCurrency = expenseCurrency.code
+    values.conversionRate = rate
+    values.amount = convertAmount(total, rate, groupCurrency)
+
+    const paidByAmounts = convert(values.paidBy.map((pb) => Number(pb.amount)))
+    values.paidBy = values.paidBy.map((pb, index) => ({
+      ...pb,
+      amount: paidByAmounts[index],
+    }))
+
+    if (values.splitMode === 'BY_AMOUNT') {
+      const shares = convert(values.paidFor.map((pf) => Number(pf.shares)))
+      values.paidFor = values.paidFor.map((pf, index) => ({
+        ...pf,
+        shares: shares[index],
+      }))
+    }
+
+    if (values.items.length > 0) {
+      const prices = convert(values.items.map((item) => Number(item.price)))
+      values.items = values.items.map((item, index) => ({
+        ...item,
+        price: prices[index],
+      }))
+    }
+  }
+
   const submit = async (values: ExpenseFormValues) => {
     if (isItemized && values.items.length > 0) {
       values.splitMode = 'BY_AMOUNT'
@@ -701,7 +826,9 @@ export function ExpenseForm({
 
     await persistDefaultSplittingOptions(group.id, values)
 
-    const validPayers = values.paidBy.filter((pb) => Number(pb.amount) > 0)
+    // Keep negative amounts: an income has them, and dropping them would leave the payers adding
+    // up to something other than the total.
+    const validPayers = values.paidBy.filter((pb) => Number(pb.amount) !== 0)
     // Fallback if all are 0 (validation catches this, but to be safe)
     if (validPayers.length === 0 && values.paidBy.length > 0) {
       values.paidBy = [values.paidBy[0]]
@@ -712,6 +839,20 @@ export function ExpenseForm({
     if (!conversionRequired) {
       delete values.originalAmount
       delete values.originalCurrency
+      delete values.conversionRate
+    } else {
+      const rate = Number(values.conversionRate)
+      if (!rate || rate <= 0) {
+        // Without a rate the amounts would be stored as if they were already in the group
+        // currency, so ask for one instead of saving something wrong.
+        setUsingCustomConversionRate(true)
+        form.setError('conversionRate', {
+          type: 'manual',
+          message: 'rateRequired',
+        })
+        return
+      }
+      convertToGroupCurrency(values, rate)
     }
 
     return onSubmit(values, activeUserId ?? undefined)
@@ -823,56 +964,105 @@ export function ExpenseForm({
               )}
             />
 
-            {!isMultiPayer && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="originalCurrency"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        {t(`${sExpense}.currencyField.label`)}
-                      </FormLabel>
-                      <FormControl>
-                        {group.currencyCode ? (
-                          <CurrencySelector
-                            currencies={defaultCurrencyList(locale, '')}
-                            defaultValue={field.value ?? ''}
-                            isLoading={false}
-                            onValueChange={field.onChange}
-                          />
-                        ) : (
-                          <Input
-                            className="text-base"
-                            disabled
-                            {...field}
-                            value={field.value ?? ''}
-                            placeholder={group.currency}
-                          />
-                        )}
-                      </FormControl>
-                      <FormDescription>
-                        {t(`${sExpense}.currencyField.description`)}{' '}
-                        {!group.currencyCode && t('conversionUnavailable')}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
+            <FormField
+              control={form.control}
+              name="originalCurrency"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t(`${sExpense}.currencyField.label`)}</FormLabel>
+                  <FormControl>
+                    {group.currencyCode ? (
+                      <CurrencySelector
+                        currencies={defaultCurrencyList(locale, '')}
+                        defaultValue={field.value ?? ''}
+                        isLoading={false}
+                        onValueChange={field.onChange}
+                      />
+                    ) : (
+                      <Input
+                        className="text-base"
+                        disabled
+                        {...field}
+                        value={field.value ?? ''}
+                        placeholder={group.currency}
+                      />
+                    )}
+                  </FormControl>
+                  <FormDescription>
+                    {t(`${sExpense}.currencyField.description`)}{' '}
+                    {!group.currencyCode && t('conversionUnavailable')}
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <div
+              className={cn(
+                'col-span-2 sm:col-span-1 space-y-2',
+                !conversionRequired && 'hidden sm:block sm:invisible',
+              )}
+            >
+              <FormItem>
+                <FormLabel>
+                  {t('convertedTotalField.label', {
+                    currency: group.currencyCode ?? group.currency,
+                  })}
+                </FormLabel>
+                <div className="flex items-baseline gap-2 h-10">
+                  <span className="text-base font-medium">
+                    {formatCurrency(
+                      groupCurrency,
+                      effectiveRate ? effectiveTotal * effectiveRate : 0,
+                      locale,
+                      true,
+                    )}
+                  </span>
+                </div>
+                <FormDescription>
+                  {isNaN(form.getValues('expenseDate').getTime()) ? (
+                    t('conversionRateState.noDate')
+                  ) : form.getValues('expenseDate') &&
+                    !usingCustomConversionRate ? (
+                    <>
+                      {conversionRateMessage}
+                      {!exchangeRate.isLoading && (
+                        <Button
+                          className="h-auto py-0"
+                          variant="link"
+                          type="button"
+                          onClick={() => exchangeRate.refresh()}
+                        >
+                          {t('conversionRateState.refresh')}
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    t('conversionRateState.customRate')
                   )}
-                />
-                <div
-                  className={cn(
-                    'col-span-2 sm:col-span-1 space-y-2',
-                    !conversionRequired && 'hidden sm:block sm:invisible',
-                  )}
-                >
+                </FormDescription>
+              </FormItem>
+              <Collapsible
+                open={usingCustomConversionRate}
+                onOpenChange={setUsingCustomConversionRate}
+              >
+                <CollapsibleTrigger asChild>
+                  <Button variant="link" type="button" className="-mx-4">
+                    {usingCustomConversionRate
+                      ? t('conversionRateField.useApi')
+                      : t('conversionRateField.useCustom')}
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
                   <FormField
                     control={form.control}
-                    name="originalAmount"
+                    name="conversionRate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{t('originalAmountField.label')}</FormLabel>
+                        <FormLabel>{t('conversionRateField.label')}</FormLabel>
                         <div className="flex items-baseline gap-2">
-                          <span>{originalCurrency.symbol}</span>
+                          <span>
+                            {expenseCurrency.symbol} 1 = {group.currency}
+                          </span>
                           <FormControl>
                             <Input
                               className="text-base max-w-"
@@ -886,86 +1076,16 @@ export function ExpenseForm({
                                   enforceCurrencyPattern(e.target.value),
                                 )
                               }
-                              onFocus={(e) => {
-                                setTimeout(() => e.target.select(), 1)
-                              }}
                             />
                           </FormControl>
                         </div>
-                        <FormDescription>
-                          {isNaN(form.getValues('expenseDate').getTime()) ? (
-                            t('conversionRateState.noDate')
-                          ) : form.getValues('expenseDate') &&
-                            !usingCustomConversionRate ? (
-                            <>
-                              {conversionRateMessage}
-                              {!exchangeRate.isLoading && (
-                                <Button
-                                  className="h-auto py-0"
-                                  variant="link"
-                                  type="button"
-                                  onClick={() => exchangeRate.refresh()}
-                                >
-                                  {t('conversionRateState.refresh')}
-                                </Button>
-                              )}
-                            </>
-                          ) : (
-                            t('conversionRateState.customRate')
-                          )}
-                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Collapsible
-                    open={usingCustomConversionRate}
-                    onOpenChange={setUsingCustomConversionRate}
-                  >
-                    <CollapsibleTrigger asChild>
-                      <Button variant="link" type="button" className="-mx-4">
-                        {usingCustomConversionRate
-                          ? t('conversionRateField.useApi')
-                          : t('conversionRateField.useCustom')}
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <FormField
-                        control={form.control}
-                        name="conversionRate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>
-                              {t('conversionRateField.label')}
-                            </FormLabel>
-                            <div className="flex items-baseline gap-2">
-                              <span>
-                                {originalCurrency.symbol} 1 = {group.currency}
-                              </span>
-                              <FormControl>
-                                <Input
-                                  className="text-base max-w-"
-                                  type="text"
-                                  inputMode="decimal"
-                                  placeholder="0.00"
-                                  {...field}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      enforceCurrencyPattern(e.target.value),
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </CollapsibleContent>
-                  </Collapsible>
-                </div>
-              </>
-            )}
+                </CollapsibleContent>
+              </Collapsible>
+            </div>
 
             <FormField
               control={form.control}
@@ -1141,7 +1261,7 @@ export function ExpenseForm({
                                     : 'text-muted-foreground',
                                 )}
                               >
-                                {group.currency}
+                                {expenseCurrency.symbol || group.currency}
                               </span>
                               <FormControl>
                                 <CalculatorInput
@@ -1197,7 +1317,7 @@ export function ExpenseForm({
                     <div className="text-right text-[11px] text-amber-600 font-medium animate-in fade-in slide-in-from-right-1">
                       —{' '}
                       {formatCurrency(
-                        groupCurrency,
+                        expenseCurrency,
                         totalExcluded,
                         locale,
                         true,
@@ -1220,12 +1340,23 @@ export function ExpenseForm({
                       {t('groupExpense')}:
                     </span>
                     {formatCurrency(
-                      groupCurrency,
+                      expenseCurrency,
                       effectiveTotal,
                       locale,
                       true,
                     )}
                   </div>
+                  {conversionRequired && (
+                    <div className="text-right text-[11px] text-muted-foreground">
+                      ≈{' '}
+                      {formatCurrency(
+                        groupCurrency,
+                        effectiveRate ? effectiveTotal * effectiveRate : 0,
+                        locale,
+                        true,
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1242,7 +1373,7 @@ export function ExpenseForm({
             <CardContent>
               <ItemizationBuilder
                 group={group}
-                currency={groupCurrency}
+                currency={expenseCurrency}
                 totalAmount={totalAmount}
                 fields={itemFields}
                 append={itemAppend}
@@ -1311,7 +1442,7 @@ export function ExpenseForm({
                       <PaidForList
                         form={form}
                         group={group}
-                        groupCurrency={groupCurrency}
+                        expenseCurrency={expenseCurrency}
                         totalAmount={totalAmount}
                         splitMode={splitMode}
                         manuallyEditedParticipants={manuallyEditedParticipants}
@@ -1454,7 +1585,7 @@ export function ExpenseForm({
 function PaidForList({
   form,
   group,
-  groupCurrency,
+  expenseCurrency,
   totalAmount,
   splitMode,
   manuallyEditedParticipants,
@@ -1463,7 +1594,7 @@ function PaidForList({
 }: {
   form: UseFormReturn<ExpenseFormValues>
   group: NonNullable<AppRouterOutput['groups']['get']['group']>
-  groupCurrency: any
+  expenseCurrency: Currency
   totalAmount: number
   splitMode: string
   manuallyEditedParticipants: Set<string>
@@ -1482,7 +1613,7 @@ function PaidForList({
 
   const getCalculatedShare = (participantId: string) => {
     return calculateShare(participantId, {
-      amount: amountAsMinorUnits(totalAmount, groupCurrency),
+      amount: amountAsMinorUnits(totalAmount, expenseCurrency),
       expenseDate: expenseDate ?? new Date(),
       paidFor: paidForValues.map((pf: any) => ({
         participant: { id: pf.participant, name: '', groupId: '' },
@@ -1494,7 +1625,7 @@ function PaidForList({
           if (isNaN(numShares)) return 0
           if (splitMode === 'BY_PERCENTAGE') return numShares * 100
           if (splitMode === 'BY_AMOUNT')
-            return amountAsMinorUnits(numShares, groupCurrency)
+            return amountAsMinorUnits(numShares, expenseCurrency)
           return numShares
         })(),
       })),
@@ -1593,7 +1724,7 @@ function PaidForList({
                     <span className="text-muted-foreground ml-2">
                       (
                       {formatCurrency(
-                        groupCurrency,
+                        expenseCurrency,
                         getCalculatedShare(id),
                         locale,
                       )}
@@ -1609,14 +1740,14 @@ function PaidForList({
                   <div className="flex gap-1 items-center">
                     {splitMode === 'BY_AMOUNT' && (
                       <span className={cn('text-sm text-muted-foreground')}>
-                        {group.currency}
+                        {expenseCurrency.symbol || group.currency}
                       </span>
                     )}
                     <FormControl>
                       <CalculatorInput
                         inputClassName="text-base w-[80px] -my-2"
                         placeholder="0.00"
-                        decimalPlaces={groupCurrency.decimal_digits}
+                        decimalPlaces={expenseCurrency.decimal_digits}
                         value={currentShare}
                         onValueChange={(val) => handleShareChange(id, val)}
                         disallowEmpty={false}

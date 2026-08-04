@@ -7,6 +7,7 @@ import {
   RecurrenceRule,
   RecurringExpenseLink,
 } from '@prisma/client'
+import { getCurrency } from './currency'
 import { sendPushNotificationToGroup } from './push'
 import { calculateNextDate } from './recurring-expenses'
 import {
@@ -95,7 +96,13 @@ export async function createExpense(
         Number(expenseFormValues.amount),
         groupCurrency,
       ),
-      originalAmount: expenseFormValues.originalAmount,
+      // Stored in minor units of the currency the expense was entered in.
+      originalAmount: expenseFormValues.originalAmount
+        ? amountAsMinorUnits(
+            Number(expenseFormValues.originalAmount),
+            getCurrency(expenseFormValues.originalCurrency),
+          )
+        : null,
       originalCurrency: expenseFormValues.originalCurrency,
       conversionRate: expenseFormValues.conversionRate,
       title: expenseFormValues.title,
@@ -299,7 +306,13 @@ export async function updateExpense(
         Number(expenseFormValues.amount),
         groupCurrency,
       ),
-      originalAmount: expenseFormValues.originalAmount,
+      // Stored in minor units of the currency the expense was entered in.
+      originalAmount: expenseFormValues.originalAmount
+        ? amountAsMinorUnits(
+            Number(expenseFormValues.originalAmount),
+            getCurrency(expenseFormValues.originalCurrency),
+          )
+        : null,
       originalCurrency: expenseFormValues.originalCurrency,
       conversionRate: expenseFormValues.conversionRate,
       title: expenseFormValues.title,
@@ -475,6 +488,8 @@ export async function getGroupExpenses(
   return prisma.expense.findMany({
     select: {
       amount: true,
+      originalAmount: true,
+      originalCurrency: true,
       category: true,
       createdAt: true,
       expenseDate: true,

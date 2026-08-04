@@ -1,7 +1,11 @@
 import { Currency } from './currency'
 import {
+  allocateMinorUnits,
   cn,
+  convertAmount,
+  convertAmountParts,
   delay,
+  distributeMinorUnits,
   formatAmountAsDecimal,
   formatCategoryForAIPrompt,
   formatCurrency,
@@ -10,6 +14,92 @@ import {
   formatFileSize,
   normalizeString,
 } from './utils'
+
+const usd: Currency = {
+  name: 'US Dollar',
+  symbol_native: '$',
+  symbol: '$',
+  code: 'USD',
+  name_plural: 'US dollars',
+  rounding: 0,
+  decimal_digits: 2,
+}
+
+const jpy: Currency = {
+  name: 'Japanese Yen',
+  symbol_native: '￥',
+  symbol: '¥',
+  code: 'JPY',
+  name_plural: 'Japanese yen',
+  rounding: 0,
+  decimal_digits: 0,
+}
+
+const sum = (values: number[]) => values.reduce((sum, value) => sum + value, 0)
+
+describe('allocateMinorUnits', () => {
+  it('keeps values that already add up to the total', () => {
+    expect(allocateMinorUnits([100, 200, 300], 600)).toEqual([100, 200, 300])
+  })
+
+  it('gives the missing units to the largest rounding errors', () => {
+    // 10.00 split three ways: 333.33… each, so two of them get the extra cent.
+    const allocated = allocateMinorUnits([333.34, 333.33, 333.33], 1000)
+    expect(sum(allocated)).toBe(1000)
+    expect(allocated).toEqual([334, 333, 333])
+  })
+
+  it('takes units away when rounding overshoots', () => {
+    const allocated = allocateMinorUnits([50.5, 50.5, 50.5], 151)
+    expect(sum(allocated)).toBe(151)
+  })
+
+  it('works with negative values (income)', () => {
+    const allocated = allocateMinorUnits([-333.34, -333.33, -333.33], -1000)
+    expect(sum(allocated)).toBe(-1000)
+    expect(allocated).toEqual([-334, -333, -333])
+  })
+
+  it('handles an empty list', () => {
+    expect(allocateMinorUnits([], 0)).toEqual([])
+  })
+})
+
+describe('distributeMinorUnits', () => {
+  it('keeps the relative weights and the exact total', () => {
+    const distributed = distributeMinorUnits([100, 200], 301)
+    expect(sum(distributed)).toBe(301)
+    expect(distributed).toEqual([100, 201])
+  })
+
+  it('splits evenly when the parts add up to zero', () => {
+    const distributed = distributeMinorUnits([0, 0, 0], 100)
+    expect(sum(distributed)).toBe(100)
+  })
+})
+
+describe('convertAmount / convertAmountParts', () => {
+  it('rounds the converted total to the target currency', () => {
+    expect(convertAmount(10, 1.0854, usd)).toBe(10.85)
+    expect(convertAmount(10, 156.68, jpy)).toBe(1567)
+  })
+
+  it('keeps the parts adding up to the converted total', () => {
+    const parts = convertAmountParts([3.33, 3.33, 3.34], 10, 1.0854, usd)
+    expect(sum(parts)).toBeCloseTo(convertAmount(10, 1.0854, usd), 10)
+  })
+
+  it('keeps the parts adding up in a zero-decimal target currency', () => {
+    const parts = convertAmountParts([3.33, 3.33, 3.34], 10, 156.68, jpy)
+    expect(parts.every(Number.isInteger)).toBe(true)
+    expect(sum(parts)).toBe(convertAmount(10, 156.68, jpy))
+  })
+
+  it('converts income (negative amounts)', () => {
+    const parts = convertAmountParts([-10], -10, 1.0854, usd)
+    expect(sum(parts)).toBe(convertAmount(-10, 1.0854, usd))
+  })
+})
 
 describe('formatCurrency', () => {
   it('supports custom currency symbol when currency code is empty', () => {

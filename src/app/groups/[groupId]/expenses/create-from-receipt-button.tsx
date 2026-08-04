@@ -24,6 +24,8 @@ import {
 } from '@/components/ui/drawer'
 import { ToastAction } from '@/components/ui/toast'
 import { useToast } from '@/components/ui/use-toast'
+import { Locale } from '@/i18n/request'
+import { getCurrency, normalizeCurrencyCode } from '@/lib/currency'
 import { useMediaQuery } from '@/lib/hooks'
 import {
   formatCurrency,
@@ -288,6 +290,15 @@ function ReceiptDialogContent() {
       )) ||
     null
 
+  // Only worth showing when the group uses a real currency code, since that is also the only case
+  // where the expense form can convert it.
+  const receiptCurrencyCode = group?.currencyCode
+    ? normalizeCurrencyCode(receiptInfo?.currency)
+    : undefined
+  const receiptCurrency = receiptCurrencyCode
+    ? getCurrency(receiptCurrencyCode, locale as Locale)
+    : undefined
+
   return (
     <div className="prose prose-sm dark:prose-invert">
       {/* Hidden Inputs */}
@@ -427,7 +438,7 @@ function ReceiptDialogContent() {
                 <div className="text-2xl font-bold text-primary">
                   {group && receiptInfo.amount ? (
                     formatCurrency(
-                      getCurrencyFromGroup(group),
+                      receiptCurrency ?? getCurrencyFromGroup(group),
                       receiptInfo.amount,
                       locale,
                       true,
@@ -438,6 +449,11 @@ function ReceiptDialogContent() {
                     </span>
                   )}
                 </div>
+                {receiptCurrency && (
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {t('detectedCurrency', { currency: receiptCurrency.code })}
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">

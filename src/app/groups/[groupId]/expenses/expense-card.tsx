@@ -1,9 +1,10 @@
 'use client'
 import { CategoryIcon } from '@/app/groups/[groupId]/expenses/category-icon'
 import { DocumentsCount } from '@/app/groups/[groupId]/expenses/documents-count'
+import { Locale } from '@/i18n/request'
 import { getGroupExpenses } from '@/lib/api'
 import { getBalances } from '@/lib/balances'
-import { Currency } from '@/lib/currency'
+import { Currency, getCurrency } from '@/lib/currency'
 import { useActiveUser } from '@/lib/hooks'
 import { cn, formatCurrency, formatDateOnly } from '@/lib/utils'
 import { ChevronRight } from 'lucide-react'
@@ -123,6 +124,17 @@ export function ExpenseCard({
               >
                 {formatCurrency(currency, expense.amount, locale)}
               </div>
+              {expense.originalCurrency &&
+                expense.originalAmount !== null &&
+                expense.originalCurrency !== currency.code && (
+                  <div className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
+                    {formatCurrency(
+                      getCurrency(expense.originalCurrency, locale as Locale),
+                      expense.originalAmount,
+                      locale,
+                    )}
+                  </div>
+                )}
             </div>
           </div>
 

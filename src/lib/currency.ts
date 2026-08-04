@@ -45,6 +45,18 @@ export const supportedCurrencyCodes = [
 ] as const
 export type supportedCurrencyCodeType = (typeof supportedCurrencyCodes)[number]
 
+/**
+ * Turns a currency code coming from outside the app (a scanned receipt, an import…) into one of
+ * the codes the app supports, or `undefined` when it is unknown.
+ */
+export function normalizeCurrencyCode(code: string | null | undefined) {
+  const normalized = code?.trim().toUpperCase()
+  return normalized &&
+    (supportedCurrencyCodes as readonly string[]).includes(normalized)
+    ? normalized
+    : undefined
+}
+
 export function defaultCurrencyList(
   locale: Locale = 'en-US',
   customChoice: string | null = null,

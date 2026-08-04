@@ -117,7 +117,7 @@ export async function extractExpenseInformationFromImage(
       ### Other Fields
       - Date: format as YYYY-MM-DD. If not found, omit.
       - Merchant name: the store/restaurant name, usually at the top.
-      - Currency: ISO 4217 code (e.g. USD, EUR, GBP). Infer from symbols if not written ($ -> USD, EUR symbol -> EUR, GBP symbol -> GBP).
+      - Currency: ISO 4217 code (e.g. USD, EUR, GBP). Prefer a code printed on the receipt. Otherwise infer it from the symbol together with the language, address, and tax labels — "$" alone is ambiguous (USD, CAD, AUD, SGD, HKD, MXN…), so use the rest of the receipt to pick. Omit the field when you cannot tell.
       - Category: pick the best matching ID from this list: ${categoriesList}. If unsure, use 0.
     `
 
