@@ -6,8 +6,15 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useActiveUser } from '@/lib/hooks'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
+import dynamic from 'next/dynamic'
 import { useCurrentGroup } from '../current-group-context'
-import { Charts } from './charts' // Import the new component
+
+// Recharts is ~100 kB gzipped and only ever renders here, below the totals, so let the numbers
+// paint first and pull the charts in behind them.
+const Charts = dynamic(() => import('./charts').then((m) => m.Charts), {
+  ssr: false,
+  loading: () => <Skeleton className="h-64 w-full" />,
+})
 
 export function Totals() {
   const { groupId, group } = useCurrentGroup()

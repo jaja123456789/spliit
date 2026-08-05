@@ -1,5 +1,10 @@
 import { Locale } from '@/i18n/request'
-import currencyList from './currency-data.json'
+import currencyData from './currency-data.json'
+
+// The display name is the only field that differs between locales, so the shared fields are
+// stored once and the localised name is merged back in on read. Keeping all 23 locales inline
+// would otherwise put 140 kB of mostly duplicated JSON in the client bundle.
+const { currencies, names } = currencyData
 
 export type Currency = {
   name: string
@@ -57,25 +62,26 @@ export function normalizeCurrencyCode(code: string | null | undefined) {
     : undefined
 }
 
+function customCurrency(name: string): Currency {
+  return {
+    name,
+    symbol_native: '',
+    symbol: '',
+    code: '',
+    name_plural: name,
+    rounding: 0,
+    decimal_digits: 2,
+  }
+}
+
 export function defaultCurrencyList(
   locale: Locale = 'en-US',
   customChoice: string | null = null,
 ) {
-  const currencies = customChoice
-    ? [
-        {
-          name: customChoice,
-          symbol_native: '',
-          symbol: '',
-          code: '',
-          name_plural: customChoice,
-          rounding: 0,
-          decimal_digits: 2,
-        },
-      ]
-    : []
-  const allCurrencies = currencyList[locale]
-  return currencies.concat(Object.values(allCurrencies))
+  const list = customChoice ? [customCurrency(customChoice)] : []
+  return list.concat(
+    supportedCurrencyCodes.map((code) => getCurrency(code, locale)),
+  )
 }
 
 export function getCurrency(
@@ -83,19 +89,10 @@ export function getCurrency(
   locale: Locale = 'en-US',
   customChoice = 'Custom',
 ): Currency {
-  const defaultCurrency = {
-    name: customChoice,
-    symbol_native: '',
-    symbol: '',
-    code: '',
-    name_plural: customChoice,
-    rounding: 0,
-    decimal_digits: 2,
-  }
-  if (!currencyCode || currencyCode === '') return defaultCurrency
-  const currencyListInLocale = currencyList[locale] ?? currencyList['en-US']
-  return (
-    currencyListInLocale[currencyCode as supportedCurrencyCodeType] ??
-    defaultCurrency
-  )
+  if (!currencyCode) return customCurrency(customChoice)
+  const code = currencyCode as supportedCurrencyCodeType
+  const currency = currencies[code]
+  if (!currency) return customCurrency(customChoice)
+  const localeNames = names[locale] ?? names['en-US']
+  return { ...currency, name: localeNames[code] }
 }

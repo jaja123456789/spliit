@@ -484,7 +484,7 @@ export async function getGroupExpenses(
   groupId: string,
   options?: { offset?: number; length?: number; filter?: string },
 ) {
-  await createRecurringExpenses()
+  await createRecurringExpenses(groupId)
   return prisma.expense.findMany({
     select: {
       amount: true,
@@ -590,7 +590,13 @@ export async function logActivity(
 // Wait, createRecurringExpenses uses prisma.expense.create with paidBy.
 // I need to update createRecurringExpenses to use paidBy: { createMany: ... } as well.
 
-export async function createRecurringExpenses() {
+/**
+ * Materialises the recurring expenses that have come due. This runs on every read of a group's
+ * expenses, so pass the group being read: `RecurringExpenseLink` is indexed on
+ * `[groupId, nextExpenseCreatedAt, nextExpenseDate]` and without a group the leading column is
+ * unconstrained, which turns the lookup into a scan of every recurring expense in the database.
+ */
+export async function createRecurringExpenses(groupId?: string) {
   const localDate = new Date()
   const utcDateFromLocal = new Date(
     Date.UTC(
@@ -604,6 +610,7 @@ export async function createRecurringExpenses() {
   const recurringExpenseLinksWithExpensesToCreate =
     await prisma.recurringExpenseLink.findMany({
       where: {
+        groupId,
         nextExpenseCreatedAt: null,
         nextExpenseDate: {
           lte: utcDateFromLocal,

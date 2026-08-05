@@ -1,10 +1,62 @@
-import { Currency, defaultCurrencyList, getCurrency } from './currency'
+import {
+  Currency,
+  defaultCurrencyList,
+  getCurrency,
+  supportedCurrencyCodes,
+} from './currency'
+import currencyData from './currency-data.json'
 import {
   amountAsDecimal,
   amountAsMinorUnits,
   formatAmountAsDecimal,
   getCurrencyFromGroup,
 } from './utils'
+
+// currency-data.json stores the locale-independent fields once and only the display name per
+// locale. These check that reading it back reproduces a complete currency in every locale.
+describe('currency data', () => {
+  const locales = Object.keys(
+    currencyData.names,
+  ) as (keyof typeof currencyData.names)[]
+
+  it('translates names per locale', () => {
+    expect(getCurrency('USD', 'en-US').name).toBe('US Dollar')
+    expect(getCurrency('USD', 'de-DE').name).toBe('US-Dollar')
+    expect(getCurrency('JPY', 'de-DE').name).toBe('Japanischer Yen')
+  })
+
+  it('falls back to en-US names for an unknown locale', () => {
+    expect(getCurrency('USD', 'xx-XX' as any).name).toBe(
+      getCurrency('USD', 'en-US').name,
+    )
+  })
+
+  it('keeps the locale-independent fields the same in every locale', () => {
+    for (const locale of locales) {
+      const usd = getCurrency('USD', locale)
+      expect(usd.symbol).toBe('$')
+      expect(usd.decimal_digits).toBe(2)
+      expect(getCurrency('JPY', locale).decimal_digits).toBe(0)
+    }
+  })
+
+  it('resolves every supported currency in every locale', () => {
+    for (const locale of locales) {
+      for (const code of supportedCurrencyCodes) {
+        const currency = getCurrency(code, locale)
+        expect(currency.code).toBe(code)
+        expect(currency.name.length).toBeGreaterThan(0)
+        expect(Number.isFinite(currency.decimal_digits)).toBe(true)
+      }
+    }
+  })
+
+  it('lists every supported currency, in order', () => {
+    expect(defaultCurrencyList('en-US').map((c) => c.code)).toEqual([
+      ...supportedCurrencyCodes,
+    ])
+  })
+})
 
 describe('getCurrency', () => {
   it('returns currency by code', () => {

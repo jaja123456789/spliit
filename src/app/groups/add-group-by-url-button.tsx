@@ -1,4 +1,5 @@
-import { QrCodeScanner } from '@/components/qr-code-scanner'
+'use client'
+
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -11,7 +12,22 @@ import { useMediaQuery } from '@/lib/hooks'
 import { trpc } from '@/trpc/client'
 import { Link as LinkIcon, Loader2, Plus, QrCode } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import dynamic from 'next/dynamic'
 import { useState } from 'react'
+
+// The scanner pulls in html5-qrcode (~110 kB gzipped), which would otherwise sit in the bundle of
+// the page the app opens on. Load it when the user actually switches to scanning.
+const QrCodeScanner = dynamic(
+  () => import('@/components/qr-code-scanner').then((m) => m.QrCodeScanner),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="flex justify-center py-8">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    ),
+  },
+)
 
 type Props = {
   reload?: () => void
