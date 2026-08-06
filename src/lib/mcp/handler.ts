@@ -152,7 +152,28 @@ function buildServer(user: McpUser) {
           )
           .optional()
           .describe(
-            'Split by exact amounts instead of evenly. Must add up to the total.',
+            'Split by exact amounts instead of evenly. Must add up to the total. Cannot be ' +
+              'combined with items.',
+          ),
+        items: z
+          .array(
+            z.object({
+              name: z.string().min(1),
+              price: z.number(),
+              participants: z
+                .array(z.string())
+                .optional()
+                .describe(
+                  'Who shares this line. Omit for everyone. An empty list marks it as one ' +
+                    "person's own, so it counts toward the bill but not toward what the group splits.",
+                ),
+            }),
+          )
+          .optional()
+          .describe(
+            'The lines of the bill, when it should be split per item rather than as a whole. ' +
+              'Every line must be listed, including anything only one person is paying for, and ' +
+              'they must add up to the total.',
           ),
         notes: z.string().optional(),
         conversion_rate: z
@@ -185,6 +206,7 @@ function buildServer(user: McpUser) {
           paidBy: args.paid_by,
           paidFor: args.paid_for,
           amountsPerParticipant: args.amounts_per_participant,
+          items: args.items,
           notes: args.notes,
           conversionRate: args.conversion_rate,
           isReimbursement: args.is_reimbursement,

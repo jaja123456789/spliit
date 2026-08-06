@@ -267,6 +267,154 @@ describe('addExpense', () => {
     expect(api.createExpense).toHaveBeenCalled()
   })
 
+  describe('itemised expenses', () => {
+    it('derives the split from the items', async () => {
+      grantAccess()
+
+      await addExpense(user, {
+        groupId: 'g1',
+        title: 'Dinner',
+        amount: 54,
+        items: [
+          { name: 'Pizza', price: 24, participants: ['Ada', 'Grace'] },
+          { name: 'Pasta', price: 30, participants: ['Grace'] },
+        ],
+      })
+
+      const values = api.createExpense.mock.calls[0][0]
+      expect(values.splitMode).toBe('BY_AMOUNT')
+      expect(values.items.map((i: any) => i.name)).toEqual(['Pizza', 'Pasta'])
+      expect(values.paidFor).toEqual([
+        { participant: 'p1', shares: 12 },
+        { participant: 'p2', shares: 42 },
+      ])
+    })
+
+    it('defaults an item with no participants named to everyone', async () => {
+      grantAccess()
+
+      await addExpense(user, {
+        groupId: 'g1',
+        title: 'Dinner',
+        amount: 30,
+        items: [{ name: 'Shared', price: 30 }],
+      })
+
+      const values = api.createExpense.mock.calls[0][0]
+      expect(values.paidFor).toHaveLength(3)
+    })
+
+    // An empty participant list means the line is one person's own: part of the bill, but not of
+    // what the group splits.
+    it('excludes personal items from the group expense', async () => {
+      grantAccess()
+
+      const result = await addExpense(user, {
+        groupId: 'g1',
+        title: 'Dinner',
+        amount: 74,
+        items: [
+          { name: 'Pizza', price: 24, participants: ['Ada', 'Grace'] },
+          { name: 'Pasta', price: 30, participants: ['Ada', 'Grace'] },
+          { name: 'Wine', price: 20, participants: [] },
+        ],
+      })
+
+      const values = api.createExpense.mock.calls[0][0]
+      expect(values.amount).toBe(54)
+      expect(values.items).toHaveLength(2)
+      expect(values.paidBy[0].amount).toBeCloseTo(54, 10)
+      expect(result).toMatchObject({ created: true })
+    })
+
+    it('converts item prices so they still add up to the converted total', async () => {
+      grantAccess()
+      rates.getExchangeRate.mockResolvedValue(1.1)
+
+      await addExpense(user, {
+        groupId: 'g1',
+        title: 'Dinner',
+        amount: 74,
+        currency: 'EUR',
+        items: [
+          { name: 'Pizza', price: 24, participants: ['Ada', 'Grace'] },
+          { name: 'Pasta', price: 30, participants: ['Ada', 'Grace'] },
+          { name: 'Wine', price: 20, participants: [] },
+        ],
+      })
+
+      const values = api.createExpense.mock.calls[0][0]
+      // 54 shared of a 74 bill, converted at 1.1.
+      expect(values.amount).toBeCloseTo(59.4, 10)
+      expect(values.originalAmount).toBe(54)
+      expect(values.originalCurrency).toBe('EUR')
+      const itemTotal = values.items.reduce(
+        (s: number, i: any) => s + Number(i.price),
+        0,
+      )
+      expect(itemTotal).toBeCloseTo(values.amount, 10)
+      const shareTotal = values.paidFor.reduce(
+        (s: number, p: any) => s + Number(p.shares),
+        0,
+      )
+      expect(shareTotal).toBeCloseTo(values.amount, 10)
+    })
+
+    it('rejects items that do not add up to the total', async () => {
+      grantAccess()
+
+      await expect(
+        addExpense(user, {
+          groupId: 'g1',
+          title: 'Dinner',
+          amount: 74,
+          items: [{ name: 'Pizza', price: 24, participants: ['Ada'] }],
+        }),
+      ).rejects.toThrow(/add up to/)
+      expect(api.createExpense).not.toHaveBeenCalled()
+    })
+
+    it('rejects a bill where every item is personal', async () => {
+      grantAccess()
+
+      await expect(
+        addExpense(user, {
+          groupId: 'g1',
+          title: 'Dinner',
+          amount: 20,
+          items: [{ name: 'Wine', price: 20, participants: [] }],
+        }),
+      ).rejects.toThrow(/nothing for the group to split/)
+    })
+
+    it('refuses items combined with exact amounts', async () => {
+      grantAccess()
+
+      await expect(
+        addExpense(user, {
+          groupId: 'g1',
+          title: 'Dinner',
+          amount: 30,
+          items: [{ name: 'Pizza', price: 30 }],
+          amountsPerParticipant: [{ participant: 'Ada', amount: 30 }],
+        }),
+      ).rejects.toThrow(/not both/)
+    })
+
+    it('rejects an unknown participant on an item', async () => {
+      grantAccess()
+
+      await expect(
+        addExpense(user, {
+          groupId: 'g1',
+          title: 'Dinner',
+          amount: 30,
+          items: [{ name: 'Pizza', price: 30, participants: ['Nobody'] }],
+        }),
+      ).rejects.toThrow(/no participant matching/i)
+    })
+  })
+
   it('rejects a zero amount', async () => {
     grantAccess()
     await expect(

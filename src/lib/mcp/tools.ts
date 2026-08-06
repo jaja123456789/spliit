@@ -6,6 +6,7 @@ import {
 } from '@/lib/balances'
 import { getCurrency, normalizeCurrencyCode } from '@/lib/currency'
 import { ExchangeRateError, getExchangeRate } from '@/lib/currency-rates'
+import { distributeItems } from '@/lib/expense-items'
 import { prisma } from '@/lib/prisma'
 import { ExpenseFormValues } from '@/lib/schemas'
 import {
@@ -189,6 +190,11 @@ export type AddExpenseInput = {
   paidFor?: string[]
   splitEvenly?: boolean
   amountsPerParticipant?: { participant: string; amount: number }[]
+  /**
+   * Lines of the bill. They must add up to `amount`. An item with an empty `participants` list is
+   * personal: still part of the bill, but excluded from what the group splits.
+   */
+  items?: { name: string; price: number; participants?: string[] }[]
   notes?: string
   conversionRate?: number
   isReimbursement?: boolean
@@ -318,14 +324,69 @@ export async function addExpense(user: McpUser, input: AddExpenseInput) {
     }
   }
 
-  // --- Split --------------------------------------------------------------------------------
-  const splitByAmount =
-    !!input.amountsPerParticipant?.length && input.splitEvenly !== true
-  let splitMode: SplitMode = splitByAmount ? 'BY_AMOUNT' : 'EVENLY'
-  let paidFor: ExpenseFormValues['paidFor']
+  // --- Split ------------------------------------------------------------------------------
+  // Everything below is computed in the currency the amounts were given in; conversion happens
+  // once, afterwards, exactly as the expense form does it.
+  let splitMode: SplitMode = 'EVENLY'
+  let paidFor: { participant: string; shares: number }[]
+  let items: { name: string; price: number; participantIds: string[] }[] = []
+  // What the group splits, and what the payer put toward it. These differ when some items are
+  // personal: the bill was 74 but the group only splits 54 of it.
+  let groupTotal = input.amount
+  let payerAmount = input.amount
 
-  if (splitByAmount) {
-    const shares = input.amountsPerParticipant!.map((entry) => ({
+  if (input.items?.length) {
+    if (input.amountsPerParticipant?.length) {
+      throw new McpToolError(
+        'Pass either items or amounts_per_participant, not both: itemised expenses derive the split from the items.',
+      )
+    }
+
+    const resolvedItems = input.items.map((item) => {
+      if (!Number.isFinite(item.price)) {
+        throw new McpToolError(`items: "${item.name}" needs a numeric price.`)
+      }
+      return {
+        name: item.name,
+        price: item.price,
+        // Omitted means everyone (or paid_for, if given); an empty list means the item is
+        // personal — part of the bill, but not of what the group splits.
+        participantIds:
+          item.participants === undefined
+            ? beneficiaries.map((p) => p.id)
+            : item.participants.map(
+                (ref) => resolveParticipant(participants, ref, 'items').id,
+              ),
+      }
+    })
+
+    const itemsTotal = resolvedItems.reduce((sum, i) => sum + i.price, 0)
+    if (Math.abs(itemsTotal - input.amount) >= 0.01) {
+      throw new McpToolError(
+        `The items add up to ${itemsTotal}, but the expense total is ${input.amount}. Every line of the bill has to be listed, including anything only one person is paying for.`,
+      )
+    }
+
+    // Shared with the expense form's schema, so both split a bill the same way.
+    const distributed = distributeItems(resolvedItems, [
+      { participant: payer.id, amount: input.amount },
+    ])
+    if (Math.abs(distributed.amount) < 0.01) {
+      throw new McpToolError(
+        'Every item is marked as personal, so there is nothing for the group to split.',
+      )
+    }
+
+    groupTotal = distributed.amount
+    payerAmount = distributed.paidBy[0].amount
+    paidFor = distributed.paidFor
+    items = distributed.items
+    splitMode = 'BY_AMOUNT'
+  } else if (
+    input.amountsPerParticipant?.length &&
+    input.splitEvenly !== true
+  ) {
+    const shares = input.amountsPerParticipant.map((entry) => ({
       participant: resolveParticipant(
         participants,
         entry.participant,
@@ -340,47 +401,57 @@ export async function addExpense(user: McpUser, input: AddExpenseInput) {
       )
     }
     paidFor = shares
+    splitMode = 'BY_AMOUNT'
   } else {
     paidFor = beneficiaries.map((p) => ({ participant: p.id, shares: 1 }))
   }
+
+  // --- Convert -----------------------------------------------------------------------------
+  // Each set of parts already adds up to groupTotal, so distributing them over the converted
+  // total keeps them adding up to it exactly.
+  const convertParts = (parts: number[]) =>
+    convertAmountParts(parts, groupTotal, rate, groupCurrency)
+
+  const finalAmount = conversionRequired
+    ? convertAmount(groupTotal, rate, groupCurrency)
+    : groupTotal
+  const finalPayerAmount = conversionRequired
+    ? convertParts([payerAmount])[0]
+    : payerAmount
+  // Shares are money in BY_AMOUNT mode; in EVENLY they are unitless weights, so leave them be.
+  const finalPaidFor =
+    conversionRequired && splitMode === 'BY_AMOUNT'
+      ? (() => {
+          const converted = convertParts(paidFor.map((pf) => pf.shares))
+          return paidFor.map((pf, index) => ({
+            ...pf,
+            shares: converted[index],
+          }))
+        })()
+      : paidFor
+  const finalItems = conversionRequired
+    ? (() => {
+        const converted = convertParts(items.map((i) => i.price))
+        return items.map((item, index) => ({
+          ...item,
+          price: converted[index],
+        }))
+      })()
+    : items
 
   // --- Build the same value object the form submits -----------------------------------------
   const values: ExpenseFormValues = {
     expenseDate: expenseDate.startOf('day').toDate(),
     title: input.title,
     category: 0,
-    amount: conversionRequired
-      ? convertAmount(input.amount, rate, groupCurrency)
-      : input.amount,
-    originalAmount: conversionRequired ? input.amount : undefined,
+    amount: finalAmount,
+    // The original amount records what the group splits, matching `amount`, not the whole bill.
+    originalAmount: conversionRequired ? groupTotal : undefined,
     originalCurrency: conversionRequired ? expenseCurrency.code : undefined,
     conversionRate: conversionRequired ? rate : undefined,
-    paidBy: [
-      {
-        participant: payer.id,
-        amount: conversionRequired
-          ? convertAmount(input.amount, rate, groupCurrency)
-          : input.amount,
-      },
-    ],
-    paidFor:
-      conversionRequired && splitMode === 'BY_AMOUNT'
-        ? (() => {
-            // Shares are money in BY_AMOUNT mode, so they are distributed over the converted
-            // total to keep them adding up to it exactly.
-            const converted = convertAmountParts(
-              paidFor.map((pf) => Number(pf.shares)),
-              input.amount,
-              rate,
-              groupCurrency,
-            )
-            return paidFor.map((pf, index) => ({
-              ...pf,
-              shares: converted[index],
-            }))
-          })()
-        : paidFor,
-    items: [],
+    paidBy: [{ participant: payer.id, amount: finalPayerAmount }],
+    paidFor: finalPaidFor,
+    items: finalItems,
     splitMode,
     saveDefaultSplittingOptions: false,
     isReimbursement: input.isReimbursement ?? false,

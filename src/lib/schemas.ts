@@ -1,6 +1,7 @@
 import { RecurrenceRule, SplitMode } from '@prisma/client'
 import Decimal from 'decimal.js'
 import * as z from 'zod'
+import { distributeItems } from './expense-items'
 
 const paymentProfileSchema = z
   .object({
@@ -271,46 +272,14 @@ export const expenseFormSchema = z
     let items = expense.items
 
     if (expense.items && expense.items.length > 0) {
-      // 1. Separate included vs excluded items
-      const includedItems = expense.items.filter(
-        (i) => i.participantIds.length > 0,
-      )
+      // Shared with the MCP add_expense tool so the two cannot disagree about how a bill splits.
+      const distributed = distributeItems(expense.items, expense.paidBy)
 
-      // 2. Calculate the "Split Total" (the real expense)
-      const splitTotal = includedItems
-        .reduce(
-          (sum, item) => sum.add(new Decimal(item.price || 0)),
-          new Decimal(0),
-        )
-        .toNumber()
-
-      // 3. Determine the scaling ratio
-      // (If receipt was $100 and we split $80, we scale "paidBy" amounts by 0.8)
-      const ratio = inputTotal > 0 ? splitTotal / inputTotal : 0
-
-      finalAmount = splitTotal
-      items = includedItems
-
-      // 4. Adjust PaidBy amounts so (Sum PaidBy === Sum Included Items)
-      paidBy = expense.paidBy.map((pb) => ({
-        ...pb,
-        amount: new Decimal(pb.amount).mul(ratio).toNumber(),
-      }))
-
-      // 5. Generate distribution from items
-      const distribution: Record<string, number> = {}
-      includedItems.forEach((item) => {
-        const itemPrice = Number(item.price)
-        const partCount = item.participantIds.length
-        const share = itemPrice / partCount
-        item.participantIds.forEach((pid) => {
-          distribution[pid] = (distribution[pid] || 0) + share
-        })
-      })
-
-      paidFor = Object.entries(distribution).map(([participantId, amount]) => ({
-        participant: participantId,
-        shares: amount,
+      finalAmount = distributed.amount
+      items = distributed.items
+      paidBy = distributed.paidBy
+      paidFor = distributed.paidFor.map((pf) => ({
+        ...pf,
         originalAmount: undefined,
       }))
 
