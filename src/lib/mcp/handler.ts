@@ -243,15 +243,20 @@ export async function handleMcpRequest(
   }
   if (!user) return unauthorized()
 
-  // Stateless: no sessionIdGenerator, so each request stands alone. That suits a tools-only server
-  // and means nothing has to be held in memory between requests or shared between instances.
-  const transport = new WebStandardStreamableHTTPServerTransport()
+  const transport = new WebStandardStreamableHTTPServerTransport({
+    // Stateless: each request stands alone, so nothing is held between requests or shared between
+    // instances. Suits a tools-only server with no server-initiated messages.
+    sessionIdGenerator: undefined,
+    // Answer with a plain JSON body instead of opening an SSE stream. Every tool here is a simple
+    // request/response, so a stream buys nothing, and a long-lived one is the first thing a
+    // buffering reverse proxy breaks.
+    enableJsonResponse: true,
+  })
   const server = buildServer(user)
   await server.connect(transport)
 
-  try {
-    return await transport.handleRequest(request)
-  } finally {
-    await server.close().catch(() => {})
-  }
+  // Deliberately not closing the server here. handleRequest resolves with the Response as soon as
+  // its headers are ready, while the body may still be being written; closing at that point tore
+  // the transport down mid-response and the client waited for a body that never arrived.
+  return transport.handleRequest(request)
 }
