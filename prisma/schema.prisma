@@ -168,6 +168,21 @@ model User {
   syncProfile   SyncProfile?
   createdAt     DateTime        @default(now())
   pushSubscriptions PushSubscription[] // Add this relation
+  mcpTokens     McpToken[]
+}
+
+/// Personal access token letting an MCP client (e.g. ChatGPT) act as this user.
+/// Only the hash is stored; the token itself is shown once, at creation.
+model McpToken {
+  id         String    @id @default(cuid())
+  name       String
+  tokenHash  String    @unique
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
+  @@index([userId])
 }
 
 model PushSubscription {

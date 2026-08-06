@@ -46,6 +46,20 @@ RUN chown -R nextjs:nodejs /usr/app
 RUN npm install -g prisma@6 && \
     npm cache clean --force
 
+# Identifies which build this image contains: surfaced by /api/health at runtime and by
+# `docker inspect` through the labels. Both default to "unknown" so a plain `docker build` still
+# works; scripts/build-image.sh and the CD workflow pass the real values.
+#
+# Kept at the end of the stage on purpose: APP_COMMIT changes on every commit, and anything below
+# an instruction that changes is rebuilt, so placing it earlier would invalidate the cache for the
+# recursive chown and the global prisma install on every single build.
+ARG APP_VERSION=unknown
+ARG APP_COMMIT=unknown
+ENV APP_VERSION=$APP_VERSION
+ENV APP_COMMIT=$APP_COMMIT
+LABEL org.opencontainers.image.version=$APP_VERSION
+LABEL org.opencontainers.image.revision=$APP_COMMIT
+
 USER nextjs
 
 EXPOSE 3000

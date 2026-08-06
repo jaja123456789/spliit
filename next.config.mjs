@@ -35,8 +35,12 @@ const nextConfig = {
       bodySizeLimit: '10mb',
     },
   },
+  // `??` rather than `||` so an explicitly empty NEXT_PUBLIC_BASE_PATH means "serve at the root".
+  // With `||` an empty value collapsed back to the placeholder, so the app could only ever be
+  // reached under a sub-path unless the container entrypoint rewrote it — which left the e2e tests
+  // with nothing to connect to. Unset still yields the placeholder, so Docker builds are unchanged.
   basePath:
-    process.env.NEXT_PUBLIC_BASE_PATH || '/___SPLIIT_BASE_PATH_PLACEHOLDER___',
+    process.env.NEXT_PUBLIC_BASE_PATH ?? '/___SPLIIT_BASE_PATH_PLACEHOLDER___',
 }
 
 export default withNextIntl(nextConfig)

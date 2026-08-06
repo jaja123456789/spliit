@@ -13,6 +13,7 @@ import { useSession } from 'next-auth/react'
 import { useTranslations } from 'next-intl'
 import {
   AccountInfo,
+  McpTokens,
   SignInForm,
   SyncAllGroups,
   SyncPreferences,
@@ -83,6 +84,12 @@ export function SettingsContent({ vapidKey }: { vapidKey?: string }) {
               <div className="border-t pt-4">
                 <h3 className="text-sm font-medium mb-3">Notifications</h3>
                 <PushNotificationToggle vapidKey={vapidKey} />
+              </div>
+              <div className="border-t pt-4">
+                <h3 className="text-sm font-medium mb-3">
+                  {t('sections.mcpTokens')}
+                </h3>
+                <McpTokens />
               </div>
             </div>
           )}

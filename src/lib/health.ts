@@ -2,12 +2,22 @@ import { prisma } from '@/lib/prisma'
 
 export interface HealthCheckStatus {
   status: 'healthy' | 'unhealthy'
+  /** Build identity, so a running instance can be told apart from the image it came from. */
+  version: string
+  commit: string
   services?: {
     database?: {
       status: 'healthy' | 'unhealthy'
       error?: string
     }
   }
+}
+
+// Baked into the image by the Dockerfile. Read straight from the environment rather than through
+// lib/env.ts so a missing value degrades to "unknown" instead of failing env validation.
+const buildInfo = {
+  version: process.env.APP_VERSION || 'unknown',
+  commit: process.env.APP_COMMIT || 'unknown',
 }
 
 async function checkDatabase(): Promise<{
@@ -55,6 +65,7 @@ export async function checkReadiness(): Promise<Response> {
 
     const healthStatus: HealthCheckStatus = {
       status: isHealthy ? 'healthy' : 'unhealthy',
+      ...buildInfo,
       services,
     }
 
@@ -62,6 +73,7 @@ export async function checkReadiness(): Promise<Response> {
   } catch (error) {
     const errorStatus: HealthCheckStatus = {
       status: 'unhealthy',
+      ...buildInfo,
       services: {
         database: {
           status: 'unhealthy',
@@ -81,6 +93,7 @@ export async function checkLiveness(): Promise<Response> {
     // No database or external service checks - restarting won't fix those
     const healthStatus: HealthCheckStatus = {
       status: 'healthy',
+      ...buildInfo,
       // No services reported - we don't check them for liveness
     }
 
@@ -89,6 +102,7 @@ export async function checkLiveness(): Promise<Response> {
     // This should rarely happen, but if it does, the app needs restart
     const errorStatus: HealthCheckStatus = {
       status: 'unhealthy',
+      ...buildInfo,
     }
 
     return createHealthResponse(errorStatus, false)

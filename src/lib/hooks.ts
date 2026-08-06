@@ -1,7 +1,11 @@
 import { useEnv } from '@/components/env-provider'
-import dayjs from 'dayjs'
 import { useEffect, useState } from 'react'
 import useSWR, { Fetcher } from 'swr'
+import {
+  FrankfurterAPIResponse,
+  exchangeRateUrl,
+  isExchangeRateNeeded,
+} from './currency-rates'
 
 export function useMediaQuery(query: string): boolean {
   const getMatches = (query: string): boolean => {
@@ -95,16 +99,6 @@ export function useActiveUser(groupId?: string) {
   return activeUser
 }
 
-interface FrankfurterAPIResponse {
-  base: string
-  date: string
-  rates: Record<string, number>
-}
-
-// `api.frankfurter.app` only redirects here now, and browsers reject the redirect because the
-// 301 itself carries no CORS headers, so the request has to go to the current host directly.
-const FRANKFURTER_API_URL = 'https://api.frankfurter.dev/v1'
-
 const fetcher: Fetcher<FrankfurterAPIResponse> = (url: string) =>
   fetch(url).then(async (res) => {
     if (!res.ok)
@@ -117,19 +111,11 @@ export function useCurrencyRate(
   baseCurrency: string,
   targetCurrency: string,
 ) {
-  // Frankfurter answers 404 for dates it has no rates for, which includes any date in the
-  // future, so ask for the most recent ones instead.
-  const dateString = dayjs(date).isAfter(dayjs(), 'day')
-    ? 'latest'
-    : dayjs(date).format('YYYY-MM-DD')
-
-  // Only send request if both currency codes are given and not the same
+  // Only send request if both currency codes are given and not the same. The URL is built by the
+  // same helper the server uses, so both paths ask for the same rate.
   const url =
-    !isNaN(date.getTime()) &&
-    !!baseCurrency.length &&
-    !!targetCurrency.length &&
-    baseCurrency !== targetCurrency &&
-    `${FRANKFURTER_API_URL}/${dateString}?base=${baseCurrency}`
+    isExchangeRateNeeded(date, baseCurrency, targetCurrency) &&
+    exchangeRateUrl(date, baseCurrency)
   const { data, error, isLoading, mutate } = useSWR<FrankfurterAPIResponse>(
     url,
     fetcher,
