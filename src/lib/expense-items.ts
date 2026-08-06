@@ -49,7 +49,9 @@ export function distributeItems<I extends Item, P extends Payer>(
   for (const item of includedItems) {
     const share = Number(item.price) / item.participantIds.length
     for (const participantId of item.participantIds) {
-      distribution[participantId] = (distribution[participantId] ?? 0) + share
+      // `||` rather than `??` to match the expense form's long-standing behaviour exactly: they
+      // differ only for NaN, which neither caller can produce, but this is a pure extraction.
+      distribution[participantId] = (distribution[participantId] || 0) + share
     }
   }
 

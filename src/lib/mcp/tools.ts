@@ -488,12 +488,31 @@ export async function addExpense(user: McpUser, input: AddExpenseInput) {
     currency: groupCurrency.code || group.currency,
     ...(conversionRequired
       ? {
-          originalAmount: input.amount,
+          // What was stored, which is the shared total — not the whole bill, when some of it was
+          // personal. Reporting the bill here would contradict `amount`.
+          originalAmount: groupTotal,
           originalCurrency: expenseCurrency.code,
           conversionRate: rate,
         }
       : {}),
     paidBy: payer.name,
-    paidFor: beneficiaries.map((p) => p.name),
+    // Derived from the split that was actually stored. For an itemised bill this is whoever shares
+    // at least one item, which is not the same as the default set: reporting that instead would
+    // tell the user the expense was split with people who were never charged for it.
+    paidFor: values.paidFor
+      .map((pf) => resolveParticipant(participants, pf.participant, 'paid_for'))
+      .map((p) => p.name),
+    ...(items.length > 0
+      ? {
+          items: values.items.map((item) => ({
+            name: item.name,
+            price: Number(item.price),
+          })),
+          // Present when part of the bill was personal and excluded from the split.
+          ...(Math.abs(groupTotal - input.amount) >= 0.01
+            ? { billTotal: input.amount, excludedFromSplit: true }
+            : {}),
+        }
+      : {}),
   }
 }

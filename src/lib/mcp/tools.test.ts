@@ -360,6 +360,50 @@ describe('addExpense', () => {
       expect(shareTotal).toBeCloseTo(values.amount, 10)
     })
 
+    // The summary goes straight back to the user via the model, so it has to describe what was
+    // actually stored rather than what was asked for.
+    it('reports the people actually charged, not the default set', async () => {
+      grantAccess()
+
+      const result = await addExpense(user, {
+        groupId: 'g1',
+        title: 'Dinner',
+        amount: 54,
+        items: [
+          { name: 'Pizza', price: 24, participants: ['Ada'] },
+          { name: 'Pasta', price: 30, participants: ['Grace'] },
+        ],
+      })
+
+      // Alan is in the group and would be in the default set, but shares no item.
+      expect(result).toMatchObject({ paidFor: ['Ada', 'Grace'] })
+    })
+
+    it('reports the stored total, not the whole bill, when converting', async () => {
+      grantAccess()
+      rates.getExchangeRate.mockResolvedValue(1.1)
+
+      const result = await addExpense(user, {
+        groupId: 'g1',
+        title: 'Dinner',
+        amount: 74,
+        currency: 'EUR',
+        items: [
+          { name: 'Shared', price: 54, participants: ['Ada', 'Grace'] },
+          { name: 'Wine', price: 20, participants: [] },
+        ],
+      })
+
+      const values = api.createExpense.mock.calls[0][0]
+      expect(result).toMatchObject({
+        originalAmount: 54,
+        billTotal: 74,
+        excludedFromSplit: true,
+      })
+      // The reported original amount must match what was stored, or the two contradict.
+      expect((result as any).originalAmount).toBe(values.originalAmount)
+    })
+
     it('rejects items that do not add up to the total', async () => {
       grantAccess()
 
