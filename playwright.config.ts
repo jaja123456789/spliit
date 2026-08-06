@@ -48,6 +48,10 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:3000',
+    // The tests navigate to root-relative paths like `/groups`, so the app has to be served at the
+    // root. Without this it inherits NEXT_PUBLIC_BASE_PATH from .env (or the placeholder default),
+    // every request 404s, and Playwright times out waiting for the server to come up.
+    env: { NEXT_PUBLIC_BASE_PATH: '' },
     reuseExistingServer: !process.env.CI,
   },
 })
