@@ -456,7 +456,6 @@
     },
     "McpTokens": {
       "description": "Connect an AI assistant such as ChatGPT to your groups. A token acts as you: it can read the groups you have synced and add expenses to them.",
-      "serverUrl": "Server URL",
       "namePlaceholder": "Token name, e.g. ChatGPT",
       "create": "Create",
       "empty": "You have no tokens yet.",
@@ -465,9 +464,11 @@
       "neverUsed": "Never used",
       "copyFailed": "Could not copy to the clipboard.",
       "newToken": {
-        "title": "Copy your token now",
-        "description": "This is the only time it is shown. Paste it into your assistant as a bearer token, together with the server URL above.",
-        "dismiss": "Done"
+        "title": "Copy your connector URL now",
+        "description": "This is the only time it is shown. In ChatGPT, add a connector with this URL and choose \"No authentication\" — the URL contains the token, so treat it like a password. Clients that can send headers should use the plain /api/mcp URL with the token as a bearer token instead.",
+        "dismiss": "Done",
+        "urlLabel": "Connector URL (for ChatGPT)",
+        "tokenLabel": "Token on its own (for clients that send headers)"
       }
     }
   },

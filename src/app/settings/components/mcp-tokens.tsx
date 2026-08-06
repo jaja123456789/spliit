@@ -45,32 +45,6 @@ export function McpTokens() {
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">{t('description')}</p>
 
-      {baseUrl && (
-        <div className="space-y-1">
-          <p className="text-sm font-medium">{t('serverUrl')}</p>
-          <div className="flex gap-2">
-            <Input
-              readOnly
-              value={`${baseUrl}/api/mcp`}
-              className="font-mono text-xs"
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="shrink-0"
-              onClick={() => copy(`${baseUrl}/api/mcp`, 'url')}
-            >
-              {copied === 'url' ? (
-                <Check className="w-4 h-4" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Shown once, immediately after creation: only the hash is stored. */}
       {newToken && (
         <div className="rounded-md border border-amber-300 bg-amber-50 dark:bg-amber-950 dark:border-amber-800 p-3 space-y-2">
@@ -78,26 +52,56 @@ export function McpTokens() {
           <p className="text-xs text-muted-foreground">
             {t('newToken.description')}
           </p>
-          <div className="flex gap-2">
-            <Input
-              readOnly
-              value={newToken}
-              className="font-mono text-xs"
-              onFocus={(e) => e.target.select()}
-            />
-            <Button
-              type="button"
-              variant="outline"
-              size="icon"
-              className="shrink-0"
-              onClick={() => copy(newToken, 'token')}
-            >
-              {copied === 'token' ? (
-                <Check className="w-4 h-4" />
-              ) : (
-                <Copy className="w-4 h-4" />
-              )}
-            </Button>
+          {/* The connector URL carries the token, because ChatGPT cannot send it as a header. */}
+          <div className="space-y-1">
+            <p className="text-xs font-medium">{t('newToken.urlLabel')}</p>
+            <div className="flex gap-2">
+              <Input
+                readOnly
+                value={`${baseUrl ?? ''}/api/mcp/${newToken}`}
+                className="font-mono text-xs"
+                onFocus={(e) => e.target.select()}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                onClick={() =>
+                  copy(`${baseUrl ?? ''}/api/mcp/${newToken}`, 'url')
+                }
+              >
+                {copied === 'url' ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <p className="text-xs font-medium">{t('newToken.tokenLabel')}</p>
+            <div className="flex gap-2">
+              <Input
+                readOnly
+                value={newToken}
+                className="font-mono text-xs"
+                onFocus={(e) => e.target.select()}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="shrink-0"
+                onClick={() => copy(newToken, 'token')}
+              >
+                {copied === 'token' ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Copy className="w-4 h-4" />
+                )}
+              </Button>
+            </div>
           </div>
           <Button
             type="button"
