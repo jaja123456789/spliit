@@ -1,5 +1,6 @@
 import { categoriesRouter } from '@/trpc/routers/categories'
 import { groupsRouter } from '@/trpc/routers/groups'
+import { mcpRouter } from '@/trpc/routers/mcp'
 import { pushRouter } from '@/trpc/routers/push'
 import { syncRouter } from '@/trpc/routers/sync'
 import { inferRouterOutputs } from '@trpc/server'
@@ -10,6 +11,7 @@ export const appRouter = createTRPCRouter({
   categories: categoriesRouter,
   sync: syncRouter,
   push: pushRouter,
+  mcp: mcpRouter,
 })
 
 export type AppRouter = typeof appRouter

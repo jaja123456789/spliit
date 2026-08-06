@@ -220,7 +220,6 @@
       "recurrenceRule": {
         "label": "Expense Recurrence",
         "description": "Select how often the expense should repeat.",
-
         "none": "None",
         "daily": "Daily",
         "weekly": "Weekly",
@@ -398,7 +397,8 @@
       "account": "Account",
       "preferences": "Preferences",
       "actions": "Actions",
-      "syncedGroups": "Synced Groups"
+      "syncedGroups": "Synced Groups",
+      "mcpTokens": "AI assistant access"
     },
     "CloudSync": {
       "title": "Cloud Sync",
@@ -452,6 +452,22 @@
       "count": "{count} group(s) synced to the cloud",
       "actions": {
         "unsync": "Unsync"
+      }
+    },
+    "McpTokens": {
+      "description": "Connect an AI assistant such as ChatGPT to your groups. A token acts as you: it can read the groups you have synced and add expenses to them.",
+      "serverUrl": "Server URL",
+      "namePlaceholder": "Token name, e.g. ChatGPT",
+      "create": "Create",
+      "empty": "You have no tokens yet.",
+      "revoke": "Revoke this token",
+      "lastUsed": "Last used {date}",
+      "neverUsed": "Never used",
+      "copyFailed": "Could not copy to the clipboard.",
+      "newToken": {
+        "title": "Copy your token now",
+        "description": "This is the only time it is shown. Paste it into your assistant as a bearer token, together with the server URL above.",
+        "dismiss": "Done"
       }
     }
   },

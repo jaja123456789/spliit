@@ -27,14 +27,28 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Read version from package.json
+        id: pkg
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
+          # `latest` alone leaves no way to tell two builds apart, so every image also gets the
+          # package.json version and an immutable short-sha tag. Manually dispatched runs have no
+          # tag ref, and would otherwise publish `latest` and nothing else.
+          #
+          # The semver entries normalise a `v0.1.2` git tag to `0.1.2` so it does not duplicate the
+          # package.json tag, and add a rolling `0.1` to pin against. They only apply to tags that
+          # parse as semver; anything else still gets latest, the version and the sha.
           tags: |
-            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest
+            type=raw,value=${{ steps.pkg.outputs.version }}
+            type=sha,format=short
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -44,6 +58,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.pkg.outputs.version }}
+            APP_COMMIT=${{ github.sha }}
           provenance: false
           sbom: false
           # The magic caching part:
