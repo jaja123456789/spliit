@@ -24,11 +24,21 @@ assistant can list your groups, read expenses and balances, and record new expen
 **Setup**
 
 1. Sign in with a magic link, then open **Settings → AI assistant access**.
-2. Create a token and copy it — it is shown once and only its hash is stored.
-3. In ChatGPT, enable Developer Mode, then add a connector pointing at the server URL shown on that
-   settings page (`https://<your-host><base-path>/api/mcp`), authenticating with a **bearer token**.
-   Put the token in the auth field, not in the URL — a token in the URL is a common cause of a
-   connector that silently fails to connect.
+2. Create a token. The connector URL is shown once, and only the token's hash is stored.
+3. In ChatGPT, enable Developer Mode, then add a connector with that URL and choose
+   **No authentication**.
+
+There are two endpoints, and which one to use depends on the client:
+
+| Endpoint                                     | For                                                                                                                                           |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/mcp/<token>`                           | ChatGPT. Its connector settings offer only OAuth, no-auth or mixed, with no field for a static header, so the token has to travel in the URL. |
+| `/api/mcp` + `Authorization: Bearer <token>` | Claude Desktop, curl, scripts — anything that can set headers. Prefer this: the credential stays out of the URL.                              |
+
+The URL form makes the URL itself the credential, so it can appear in reverse-proxy access logs,
+browser history and screenshots. Treat it like a password. It stays revocable from the settings
+page, is scoped to the owner's synced groups, and is no broader than a Spliit group link — which is
+already a URL that grants access.
 
 **What it can do**
 
