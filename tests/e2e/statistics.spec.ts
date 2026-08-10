@@ -19,8 +19,8 @@ test('View statistics page', async ({ page }) => {
   // Verify the Totals heading is visible
   await expect(page.getByRole('heading', { name: 'Totals' })).toBeVisible()
 
-  // Verify "Total group spendings" label is present
-  await expect(page.getByText('Total group spendings')).toBeVisible()
+  // Verify the group total label is present
+  await expect(page.getByText('Group total')).toBeVisible()
 })
 
 test('Verify Group Total', async ({ page }) => {

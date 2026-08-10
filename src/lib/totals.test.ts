@@ -1,15 +1,30 @@
 import { SplitMode } from '@prisma/client'
-import { calculateShare, calculateShares } from './totals'
+import {
+  calculateShare,
+  calculateShares,
+  getTotalActiveUserShare,
+  getTotalGroupSpending,
+} from './totals'
 
 const p1 = { id: 'p1', name: 'Participant 1' }
 const p2 = { id: 'p2', name: 'Participant 2' }
 const p3 = { id: 'p3', name: 'Participant 3' }
 
+// `paidBy` is a list of ExpensePaidBy rows, not a participant. Passing a bare participant here
+// silently sends every test down the `paidFor[0]` fallback in calculateShares and leaves the real
+// multi-payer path untested, so build it the way the database hands it back.
+const paidBy = (participant: typeof p1, amount: number) => ({
+  expenseId: 'expense-1',
+  participantId: participant.id,
+  participant,
+  amount,
+})
+
 const expenseBase = {
   id: 'expense-1',
   amount: 10000,
   isReimbursement: false,
-  paidBy: p1,
+  paidBy: [paidBy(p1, 10000)],
   expenseDate: new Date('2024-01-01T00:00:00.000Z'),
 }
 
@@ -380,5 +395,97 @@ describe('calculateShares', () => {
     expect(shares['p2']).toBe(1)
     expect(shares['p3']).toBe(1)
     expect(Object.values(shares).reduce((s, v) => s + v, 0)).toBe(2)
+  })
+
+  it('should attribute a BY_AMOUNT shortfall to the first of several payers', () => {
+    const expense = {
+      ...expenseBase,
+      amount: 10000,
+      paidBy: [paidBy(p2, 6000), paidBy(p3, 4000)],
+      splitMode: SplitMode.BY_AMOUNT,
+      paidFor: [
+        { participant: p1, shares: 4000 },
+        { participant: p2, shares: 5000 },
+      ],
+    }
+    const shares = calculateShares(expense)
+    // 1000 minor units unaccounted for; p2 pays in first, so p2 absorbs it.
+    expect(shares['p2']).toBe(6000)
+    expect(shares['p1']).toBe(4000)
+    expect(Object.values(shares).reduce((s, v) => s + v, 0)).toBe(10000)
+  })
+
+  it('should fall back to the first payer when paidFor is empty', () => {
+    const expense = {
+      ...expenseBase,
+      paidBy: [paidBy(p2, 10000)],
+      splitMode: SplitMode.EVENLY,
+      paidFor: [],
+    }
+    expect(calculateShares(expense)).toEqual({ p2: 10000 })
+  })
+
+  it('should not loop per minor unit when percentages fall far short of 100%', () => {
+    const expense = {
+      ...expenseBase,
+      amount: 100_000_000,
+      splitMode: SplitMode.BY_PERCENTAGE,
+      paidFor: [
+        { participant: p1, shares: 1 }, // 0.01%
+        { participant: p2, shares: 1 },
+      ],
+    }
+    const shares = calculateShares(expense)
+    expect(Object.values(shares).reduce((s, v) => s + v, 0)).toBe(100_000_000)
+  })
+})
+
+describe('getTotalActiveUserShare', () => {
+  // Alice pays a 100.00 dinner split evenly with Bob, then Bob settles up 50.00.
+  const dinner = {
+    ...expenseBase,
+    amount: 10000,
+    paidBy: [paidBy(p1, 10000)],
+    splitMode: SplitMode.EVENLY,
+    paidFor: [
+      { participant: p1, shares: 1 },
+      { participant: p2, shares: 1 },
+    ],
+  }
+  const settleUp = {
+    ...expenseBase,
+    id: 'expense-2',
+    amount: 5000,
+    isReimbursement: true,
+    paidBy: [paidBy(p2, 5000)],
+    splitMode: SplitMode.EVENLY,
+    paidFor: [{ participant: p1, shares: 1 }],
+  }
+  const expenses = [dinner, settleUp] as any
+
+  it('should not count being paid back as consumption', () => {
+    expect(getTotalActiveUserShare('p1', expenses)).toBe(5000)
+    expect(getTotalActiveUserShare('p2', expenses)).toBe(5000)
+  })
+
+  it('should keep every share adding up to the group total', () => {
+    const total = getTotalGroupSpending(expenses)
+    const sumOfShares =
+      getTotalActiveUserShare('p1', expenses) +
+      getTotalActiveUserShare('p2', expenses)
+    expect(sumOfShares).toBe(total)
+  })
+
+  it('should agree with the per-participant totals the charts compute', () => {
+    // The stats procedure skips reimbursements and sums calculateShares; the tiles must match.
+    const perParticipant: Record<string, number> = {}
+    for (const expense of expenses) {
+      if (expense.isReimbursement) continue
+      for (const [id, amount] of Object.entries(calculateShares(expense))) {
+        perParticipant[id] = (perParticipant[id] ?? 0) + amount
+      }
+    }
+    expect(perParticipant['p1']).toBe(getTotalActiveUserShare('p1', expenses))
+    expect(perParticipant['p2']).toBe(getTotalActiveUserShare('p2', expenses))
   })
 })

@@ -44,6 +44,9 @@ export function calculateShares(
   )
   let sumRounded = new Decimal(0)
   const participantOrder: string[] = []
+  // How much each participant lost to truncation, kept from the same pass that computed it so the
+  // two can never drift apart.
+  const fractions: Array<{ id: string; frac: Decimal }> = []
   expense.paidFor.forEach((pf) => {
     const shares = new Decimal(pf.shares ?? 0)
     let part = new Decimal(0)
@@ -68,12 +71,17 @@ export function calculateShares(
         part = new Decimal(0)
     }
     const rounded = part.gte(0) ? part.floor() : part.ceil()
-    result[pf.participant.id] = rounded.toNumber()
+    // Accumulate rather than assign: the database can't produce a participant twice in one
+    // expense, but `sumRounded` counts every row, so overwriting would drop that row's share from
+    // the total and quietly lose the difference.
+    result[pf.participant.id] =
+      (result[pf.participant.id] ?? 0) + rounded.toNumber()
     sumRounded = sumRounded.add(rounded)
     participantOrder.push(pf.participant.id)
+    fractions.push({ id: pf.participant.id, frac: part.minus(rounded).abs() })
   })
 
-  let diff = amount.minus(sumRounded)
+  const diff = amount.minus(sumRounded)
   if (diff.isZero()) {
     return result
   }
@@ -99,37 +107,31 @@ export function calculateShares(
 
   if (!diff.isZero() && participantOrder.length > 0) {
     const direction = diff.gt(0) ? 1 : -1
-    let remaining = diff.abs().toNumber()
+    const remaining = diff.abs().toNumber()
 
-    // Simple string hash function
-    const getHash = (str: string) => {
-      let hash = 0
-      for (let i = 0; i < str.length; i++) {
-        hash = (hash << 5) - hash + str.charCodeAt(i)
-        hash |= 0
-      }
-      return Math.abs(hash)
-    }
+    // Largest-remainder method: whoever lost the most to truncation is first in line for the
+    // leftover minor units, so nobody is off by more than one. Ties go to the later participant,
+    // which keeps the allocation stable for a given expense without needing a random seed.
+    const orderIndex = new Map<string, number>(
+      participantOrder.map((id, idx) => [id, idx]),
+    )
+    fractions.sort((a, b) => {
+      const cmp = b.frac.comparedTo(a.frac)
+      if (cmp !== 0) return cmp
+      return (orderIndex.get(b.id) ?? 0) - (orderIndex.get(a.id) ?? 0)
+    })
 
-    // Seed based on amount + participant list.
-    // This ensures if the expense doesn't change, the "random" person stays the same.
-    const seed =
-      amount.toString() +
-      participantOrder.join('') +
-      (expense.expenseDate?.toISOString() || '')
-    let hash = getHash(seed)
-
-    while (remaining > 0) {
-      // Pick a participant based on the hash
-      const targetIndex = hash % participantOrder.length
-      const targetId = participantOrder[targetIndex]
-
-      result[targetId] = (result[targetId] ?? 0) + direction
-      remaining--
-
-      // Mutate hash for next iteration (in case remaining > 1)
-      hash = getHash(hash.toString())
-    }
+    // Hand out the leftover minor units round-robin down that sorted list, in closed form rather
+    // than one unit per iteration. Normally `remaining` is smaller than the participant count, but
+    // a BY_PERCENTAGE expense whose percentages don't add up to 100 makes it proportional to the
+    // amount, and counting to it one cent at a time would hang on a large enough expense.
+    const perParticipant = Math.floor(remaining / fractions.length)
+    const extra = remaining % fractions.length
+    fractions.forEach(({ id }, index) => {
+      const units = perParticipant + (index < extra ? 1 : 0)
+      if (units === 0) return
+      result[id] = (result[id] ?? 0) + direction * units
+    })
   }
 
   return result
@@ -143,12 +145,23 @@ export function calculateShare(
   return calculateShares(expense)[participantId] ?? 0
 }
 
+/**
+ * What the participant consumed, for the stats page.
+ *
+ * Settling up is not consumption: being paid back doesn't mean you ate another dinner. Skipping
+ * reimbursements here is what keeps everyone's share adding up to the group total, and matches
+ * `getTotalGroupSpending` and `getTotalActiveUserPaidFor` above. Balances deliberately go the other
+ * way and count reimbursements, because a settlement does move what people owe each other.
+ */
 export function getTotalActiveUserShare(
   activeUserId: string | null,
   expenses: NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>>,
 ): number {
   return expenses.reduce(
-    (sum, expense) => sum + calculateShare(activeUserId, expense),
+    (sum, expense) =>
+      expense.isReimbursement
+        ? sum
+        : sum + calculateShare(activeUserId, expense),
     0,
   )
 }

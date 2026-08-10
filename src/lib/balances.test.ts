@@ -1,9 +1,19 @@
 import { getBalances, getSuggestedReimbursements } from './balances'
 
 type BalancesExpense = Parameters<typeof getBalances>[0][number]
+type Participant = { id: string; name: string }
 
-const makeExpense = (overrides: Partial<BalancesExpense>): BalancesExpense =>
-  ({
+/**
+ * `payer` is a convenience for the common single-payer case: one person fronts the whole expense.
+ * It is expanded into the `ExpensePaidBy[]` row list the database actually returns, because
+ * `getBalances` iterates that list — handing it a bare participant makes every test throw.
+ * Pass `paidBy` directly to describe an expense split across several payers.
+ */
+const makeExpense = ({
+  payer,
+  ...overrides
+}: Partial<BalancesExpense> & { payer?: Participant }): BalancesExpense => {
+  const base = {
     id: 'e1',
     expenseDate: new Date('2025-01-01T00:00:00.000Z'),
     title: 'Dinner',
@@ -13,7 +23,6 @@ const makeExpense = (overrides: Partial<BalancesExpense>): BalancesExpense =>
     createdAt: new Date('2025-01-01T00:00:00.000Z'),
     recurrenceRule: null,
     category: null,
-    paidBy: { id: 'p0', name: 'P0' },
     paidFor: [
       {
         participant: { id: 'p0', name: 'P0' },
@@ -22,7 +31,21 @@ const makeExpense = (overrides: Partial<BalancesExpense>): BalancesExpense =>
     ],
     _count: { documents: 0 },
     ...overrides,
-  }) as BalancesExpense
+  } as BalancesExpense
+
+  if (base.paidBy === undefined) {
+    const participant = payer ?? { id: 'p0', name: 'P0' }
+    base.paidBy = [
+      {
+        expenseId: base.id,
+        participantId: participant.id,
+        participant,
+        amount: base.amount,
+      },
+    ] as BalancesExpense['paidBy']
+  }
+  return base
+}
 
 describe('getBalances', () => {
   it('avoids negative zeros', () => {
@@ -30,7 +53,7 @@ describe('getBalances', () => {
       makeExpense({
         id: 'e1',
         amount: 0,
-        paidBy: { id: 'p0', name: 'P0' },
+        payer: { id: 'p0', name: 'P0' },
         paidFor: [{ participant: { id: 'p0', name: 'P0' }, shares: 1 }],
       }),
     ]
@@ -51,7 +74,7 @@ describe('getBalances', () => {
       makeExpense({
         id: 'e1',
         amount: 123,
-        paidBy: { id: 'p0', name: 'P0' },
+        payer: { id: 'p0', name: 'P0' },
         paidFor: [{ participant: { id: 'p0', name: 'P0' }, shares: 1 }],
       }),
     ]
@@ -66,7 +89,7 @@ describe('getBalances', () => {
       makeExpense({
         id: 'e1',
         amount: 100,
-        paidBy: { id: 'p0', name: 'P0' },
+        payer: { id: 'p0', name: 'P0' },
         paidFor: [
           { participant: { id: 'p0', name: 'P0' }, shares: 1 },
           { participant: { id: 'p1', name: 'P1' }, shares: 1 },
@@ -77,12 +100,14 @@ describe('getBalances', () => {
 
     const balances = getBalances(expenses)
 
+    // 100 doesn't divide by 3, so the spare minor unit goes to the last participant of the tie.
     expect(balances.p0).toEqual({ paid: 100, paidFor: 33, total: 67 })
     expect(balances.p1).toEqual({ paid: 0, paidFor: 33, total: -33 })
-    expect(balances.p2).toEqual({ paid: 0, paidFor: 33, total: -33 })
+    expect(balances.p2).toEqual({ paid: 0, paidFor: 34, total: -34 })
 
+    // Nothing may go missing: the balances of an expense always net to zero.
     const net = Object.values(balances).reduce((sum, b) => sum + b.total, 0)
-    expect(net).toBe(expenses[0].amount % expenses[0].paidFor.length)
+    expect(net).toBe(0)
   })
 
   it('splits BY_SHARES proportionally', () => {
@@ -91,7 +116,7 @@ describe('getBalances', () => {
         id: 'e1',
         amount: 600,
         splitMode: 'BY_SHARES',
-        paidBy: { id: 'p0', name: 'P0' },
+        payer: { id: 'p0', name: 'P0' },
         paidFor: [
           { participant: { id: 'p0', name: 'P0' }, shares: 1 },
           { participant: { id: 'p1', name: 'P1' }, shares: 2 },
@@ -113,7 +138,7 @@ describe('getBalances', () => {
         id: 'e1',
         amount: 250,
         splitMode: 'BY_PERCENTAGE',
-        paidBy: { id: 'p0', name: 'P0' },
+        payer: { id: 'p0', name: 'P0' },
         paidFor: [
           { participant: { id: 'p0', name: 'P0' }, shares: 2000 },
           { participant: { id: 'p1', name: 'P1' }, shares: 3000 },
@@ -129,13 +154,13 @@ describe('getBalances', () => {
     expect(balances.p2).toEqual({ paid: 0, paidFor: 125, total: -125 })
   })
 
-  it('splits BY_AMOUNT and assigns remainder to last participant', () => {
+  it('gives a BY_AMOUNT shortfall to the payer', () => {
     const expenses: BalancesExpense[] = [
       makeExpense({
         id: 'e1',
         amount: 101,
         splitMode: 'BY_AMOUNT',
-        paidBy: { id: 'p0', name: 'P0' },
+        payer: { id: 'p0', name: 'P0' },
         paidFor: [
           { participant: { id: 'p0', name: 'P0' }, shares: 10 },
           { participant: { id: 'p1', name: 'P1' }, shares: 10 },
@@ -146,11 +171,12 @@ describe('getBalances', () => {
 
     const balances = getBalances(expenses)
 
-    // Note: implementation treats `shares` as weights (not absolute amounts)
-    // and assigns the remainder to the last participant.
-    expect(balances.p0).toEqual({ paid: 101, paidFor: 34, total: 67 })
-    expect(balances.p1).toEqual({ paid: 0, paidFor: 34, total: -34 })
-    expect(balances.p2).toEqual({ paid: 0, paidFor: 34, total: -34 })
+    // In BY_AMOUNT the shares are absolute minor units, not weights, so these three cover only 30
+    // of the 101. The form won't let you save that, but if it happens the payer carries the
+    // difference rather than it being silently spread over people who didn't agree to it.
+    expect(balances.p0).toEqual({ paid: 101, paidFor: 81, total: 20 })
+    expect(balances.p1).toEqual({ paid: 0, paidFor: 10, total: -10 })
+    expect(balances.p2).toEqual({ paid: 0, paidFor: 10, total: -10 })
   })
 
   it('handles rounding correctly', () => {
@@ -159,7 +185,7 @@ describe('getBalances', () => {
         id: 'e1',
         amount: 100, // 100 / 3 = 33.333...
         splitMode: 'EVENLY',
-        paidBy: { id: 'p0', name: 'P0' },
+        payer: { id: 'p0', name: 'P0' },
         paidFor: [
           { participant: { id: 'p0', name: 'P0' }, shares: 1 },
           { participant: { id: 'p1', name: 'P1' }, shares: 1 },
@@ -170,7 +196,7 @@ describe('getBalances', () => {
         id: 'e2',
         amount: 77, // 77 / 3 = 25.666...
         splitMode: 'EVENLY',
-        paidBy: { id: 'p1', name: 'P1' },
+        payer: { id: 'p1', name: 'P1' },
         paidFor: [
           { participant: { id: 'p0', name: 'P0' }, shares: 1 },
           { participant: { id: 'p1', name: 'P1' }, shares: 1 },
@@ -181,7 +207,7 @@ describe('getBalances', () => {
         id: 'e3',
         amount: 99, // 99 / 7 = 14.142857...
         splitMode: 'BY_SHARES',
-        paidBy: { id: 'p2', name: 'P2' },
+        payer: { id: 'p2', name: 'P2' },
         paidFor: [
           { participant: { id: 'p0', name: 'P0' }, shares: 2 },
           { participant: { id: 'p1', name: 'P1' }, shares: 3 },
@@ -222,7 +248,7 @@ describe('getBalances', () => {
         id: 'e1',
         amount: 120,
         splitMode: 'EVENLY',
-        paidBy: { id: 'p0', name: 'Alice' },
+        payer: { id: 'p0', name: 'Alice' },
         paidFor: [
           { participant: { id: 'p0', name: 'Alice' }, shares: 1 },
           { participant: { id: 'p1', name: 'Bob' }, shares: 1 },
@@ -233,7 +259,7 @@ describe('getBalances', () => {
         id: 'e2',
         amount: 600,
         splitMode: 'BY_SHARES',
-        paidBy: { id: 'p1', name: 'Bob' },
+        payer: { id: 'p1', name: 'Bob' },
         paidFor: [
           { participant: { id: 'p0', name: 'Alice' }, shares: 1 },
           { participant: { id: 'p1', name: 'Bob' }, shares: 2 },
@@ -244,7 +270,7 @@ describe('getBalances', () => {
         id: 'e3',
         amount: 200,
         splitMode: 'BY_PERCENTAGE',
-        paidBy: { id: 'p2', name: 'Carol' },
+        payer: { id: 'p2', name: 'Carol' },
         paidFor: [
           { participant: { id: 'p0', name: 'Alice' }, shares: 5000 }, // 50%
           { participant: { id: 'p1', name: 'Bob' }, shares: 3000 }, // 30%
@@ -284,7 +310,7 @@ describe('getBalances', () => {
         id: 'e1',
         amount: 100,
         splitMode: 'BY_AMOUNT',
-        paidBy: { id: 'p0', name: 'P0' },
+        payer: { id: 'p0', name: 'P0' },
         paidFor: [
           { participant: { id: 'p0', name: 'P0' }, shares: 0 },
           { participant: { id: 'p1', name: 'P1' }, shares: 10 },
@@ -295,37 +321,41 @@ describe('getBalances', () => {
 
     const balances = getBalances(expenses)
 
-    // p0 paid 100 but has 0 shares, so owes 0
-    expect(balances.p0).toEqual({ paid: 100, paidFor: 0, total: 100 })
-    // p1 and p2 split the remaining 100 (50 each)
-    expect(balances.p1).toEqual({ paid: 0, paidFor: 50, total: -50 })
-    expect(balances.p2).toEqual({ paid: 0, paidFor: 50, total: -50 })
+    // Again the listed amounts (0 + 10 + 10) fall short of the 100 total, so the payer absorbs
+    // the missing 80 even though their own line was 0.
+    expect(balances.p0).toEqual({ paid: 100, paidFor: 80, total: 20 })
+    expect(balances.p1).toEqual({ paid: 0, paidFor: 10, total: -10 })
+    expect(balances.p2).toEqual({ paid: 0, paidFor: 10, total: -10 })
   })
 
-  it('handles BY_PERCENTAGE where percentages do not sum to 10000 (remainder assigned to last)', () => {
+  it('spreads the gap when BY_PERCENTAGE percentages do not sum to 10000', () => {
     const expenses: BalancesExpense[] = [
       makeExpense({
         id: 'e1',
         amount: 10000,
         splitMode: 'BY_PERCENTAGE',
-        paidBy: { id: 'p0', name: 'P0' },
+        payer: { id: 'p0', name: 'P0' },
         paidFor: [
           { participant: { id: 'p0', name: 'P0' }, shares: 2000 }, // 20%
           { participant: { id: 'p1', name: 'P1' }, shares: 3000 }, // 30%
-          // Missing 5000 basis points - should be assigned to last participant
-          { participant: { id: 'p2', name: 'P2' }, shares: 3000 }, // Only 30% specified, gets remainder
+          // Only 80% of the expense is accounted for; the form rejects this, but the maths still
+          // has to balance if such a row exists.
+          { participant: { id: 'p2', name: 'P2' }, shares: 3000 }, // 30%
         ],
       }),
     ]
 
     const balances = getBalances(expenses)
 
-    // p0: paid 10000, owes (20/80)% = 2500 (remainder goes to last)
-    expect(balances.p0).toEqual({ paid: 10000, paidFor: 2500, total: 7500 })
-    // p1: paid 0, owes (30/80)% = 3750
-    expect(balances.p1).toEqual({ paid: 0, paidFor: 3750, total: -3750 })
-    // p2: paid 0, gets remainder = 3750 (30/80)% + remainder
-    expect(balances.p2).toEqual({ paid: 0, paidFor: 3750, total: -3750 })
+    // Percentages give 2000/3000/3000, leaving 2000 over. That goes round-robin down the
+    // largest-remainder order (ties broken towards later participants), so p2 and p1 take 667 and
+    // p0 takes 666 — rather than one person silently absorbing the whole 20%.
+    expect(balances.p0).toEqual({ paid: 10000, paidFor: 2666, total: 7334 })
+    expect(balances.p1).toEqual({ paid: 0, paidFor: 3667, total: -3667 })
+    expect(balances.p2).toEqual({ paid: 0, paidFor: 3667, total: -3667 })
+
+    const net = Object.values(balances).reduce((sum, b) => sum + b.total, 0)
+    expect(net).toBe(0)
   })
 
   it('handles expense where payer is not in paidFor', () => {
@@ -333,7 +363,7 @@ describe('getBalances', () => {
       makeExpense({
         id: 'e1',
         amount: 150,
-        paidBy: { id: 'p0', name: 'P0' },
+        payer: { id: 'p0', name: 'P0' },
         paidFor: [
           { participant: { id: 'p1', name: 'P1' }, shares: 1 },
           { participant: { id: 'p2', name: 'P2' }, shares: 1 },
@@ -357,7 +387,7 @@ describe('getBalances', () => {
         id: 'e1',
         amount: 33, // 33 / 3 = 11 exactly
         splitMode: 'EVENLY',
-        paidBy: { id: 'p0', name: 'P0' },
+        payer: { id: 'p0', name: 'P0' },
         paidFor: [
           { participant: { id: 'p0', name: 'P0' }, shares: 1 },
           { participant: { id: 'p1', name: 'P1' }, shares: 1 },
@@ -368,7 +398,7 @@ describe('getBalances', () => {
         id: 'e2',
         amount: 10, // 10 / 3 = 3.333...
         splitMode: 'EVENLY',
-        paidBy: { id: 'p0', name: 'P0' },
+        payer: { id: 'p0', name: 'P0' },
         paidFor: [
           { participant: { id: 'p0', name: 'P0' }, shares: 1 },
           { participant: { id: 'p1', name: 'P1' }, shares: 1 },
@@ -402,7 +432,7 @@ describe('getBalances', () => {
         id: 'e1',
         amount: 100,
         splitMode: 'EVENLY',
-        paidBy: { id: 'p0', name: 'P0' },
+        payer: { id: 'p0', name: 'P0' },
         paidFor: [
           { participant: { id: 'p0', name: 'P0' }, shares: 1 },
           { participant: { id: 'p1', name: 'P1' }, shares: 1 },

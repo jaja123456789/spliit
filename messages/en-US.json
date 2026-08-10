@@ -347,22 +347,24 @@
   "Stats": {
     "title": "Stats",
     "Charts": {
-      "categoryTitle": "Spending by Category",
+      "categoryTitle": "Spending by category",
       "categoryDesc": "Where the money went",
-      "participantTitle": "Spending by Member",
-      "participantDesc": "Value consumed per person",
-      "timeTitle": "Spending over Time",
-      "timeDesc": "Daily totals",
-      "noData": "Not enough data to display charts"
+      "participantTitle": "Spending by member",
+      "participantDesc": "What each person consumed, excluding settling up",
+      "timeTitle": "Spending over time",
+      "timeDescDaily": "Daily totals",
+      "timeDescMonthly": "Monthly totals",
+      "noData": "No expenses yet"
     },
     "Totals": {
       "title": "Totals",
       "description": "Spending summary of the entire group.",
-      "groupSpendings": "Total group spendings",
-      "groupEarnings": "Total group earnings",
-      "yourSpendings": "Your total spendings",
-      "yourEarnings": "Your total earnings",
-      "yourShare": "Your total share"
+      "groupTotal": "Group total",
+      "youPaid": "You paid",
+      "yourShare": "Your share",
+      "yourBalance": "You are owed",
+      "youOwe": "You owe",
+      "balanceHint": "Includes settling up, so it matches the Balances tab."
     }
   },
   "Activity": {

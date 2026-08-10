@@ -24,6 +24,10 @@
     --input: 240 5.9% 90%;
     --ring: 142.1 76.2% 36.3%;
     --radius: 0.5rem;
+    /* Chart marks. Deliberately a separate step from --primary: the dark --primary is tuned for
+       small UI accents and glares as a large area fill, so each mode gets a step chosen for its
+       own surface (both validated for lightness band, chroma and >=3:1 contrast). */
+    --chart-1: 163 94% 24%;
   }
 
   .dark {
@@ -47,6 +51,7 @@
     --border: 240 3.7% 15.9%;
     --input: 240 3.7% 15.9%;
     --ring: 142.4 71.8% 29.2%;
+    --chart-1: 161 93% 30%;
   }
 }
 

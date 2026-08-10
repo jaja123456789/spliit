@@ -1,32 +1,29 @@
 'use client'
-import { TotalsGroupSpending } from '@/app/groups/[groupId]/stats/totals-group-spending'
-import { TotalsYourShare } from '@/app/groups/[groupId]/stats/totals-your-share'
-import { TotalsYourSpendings } from '@/app/groups/[groupId]/stats/totals-your-spending'
+import { TotalsFigure } from '@/app/groups/[groupId]/stats/totals-figure'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useActiveUser } from '@/lib/hooks'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
-import dynamic from 'next/dynamic'
+import { useTranslations } from 'next-intl'
 import { useCurrentGroup } from '../current-group-context'
-
-// Recharts is ~100 kB gzipped and only ever renders here, below the totals, so let the numbers
-// paint first and pull the charts in behind them.
-const Charts = dynamic(() => import('./charts').then((m) => m.Charts), {
-  ssr: false,
-  loading: () => <Skeleton className="h-64 w-full" />,
-})
 
 export function Totals() {
   const { groupId, group } = useCurrentGroup()
   const activeUser = useActiveUser(groupId)
+  const t = useTranslations('Stats.Totals')
 
   const participantId =
     activeUser && activeUser !== 'None' ? activeUser : undefined
   const { data } = trpc.groups.stats.get.useQuery({ groupId, participantId })
+  // Read the balance from the same query the Balances tab renders, rather than recomputing it.
+  // Balances count reimbursements and these spending figures don't, so a locally derived
+  // `paid - share` would be the balance from before anyone settled up and the two tabs would
+  // disagree about who owes what.
+  const { data: balancesData } = trpc.groups.balances.list.useQuery({ groupId })
 
   if (!data || !group)
     return (
-      <div className="flex flex-col gap-7">
+      <div className="grid gap-4">
         {[0, 1, 2].map((index) => (
           <div key={index}>
             <Skeleton className="mt-1 h-3 w-48" />
@@ -36,41 +33,49 @@ export function Totals() {
       </div>
     )
 
-  const {
-    totalGroupSpendings,
-    totalParticipantShare,
-    totalParticipantSpendings,
-    categorySpending,
-    dailySpending,
-    participantSpending,
-  } = data
-
   const currency = getCurrencyFromGroup(group)
+  const balance = participantId
+    ? balancesData?.balances[participantId]?.total
+    : undefined
 
   return (
-    <div className="space-y-8">
-      {/* Existing Text Totals */}
-      <div className="grid gap-4">
-        <TotalsGroupSpending
-          totalGroupSpendings={totalGroupSpendings}
-          currency={currency}
-        />
-        {participantId && (
-          <>
-            <TotalsYourSpendings
-              totalParticipantSpendings={totalParticipantSpendings}
-              currency={currency}
-            />
-            <TotalsYourShare
-              totalParticipantShare={totalParticipantShare}
-              currency={currency}
-            />
-          </>
-        )}
-      </div>
-
-      {/* New Charts Section */}
-      <Charts data={data} currency={currency} />
+    <div className="grid gap-4">
+      <TotalsFigure
+        label={t('groupTotal')}
+        amount={data.totalGroupSpendings}
+        currency={currency}
+        testId="total-group-spendings"
+      />
+      {participantId && (
+        <>
+          <TotalsFigure
+            label={t('youPaid')}
+            amount={data.totalParticipantSpendings ?? 0}
+            currency={currency}
+            testId="your-total-spendings"
+          />
+          <TotalsFigure
+            label={t('yourShare')}
+            amount={data.totalParticipantShare ?? 0}
+            currency={currency}
+            testId="your-total-share"
+          />
+          {balance !== undefined && (
+            <div className="border-t pt-4">
+              <TotalsFigure
+                label={balance < 0 ? t('youOwe') : t('yourBalance')}
+                amount={balance}
+                currency={currency}
+                tone="balance"
+                testId="your-balance"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                {t('balanceHint')}
+              </p>
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }

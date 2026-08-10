@@ -36,13 +36,14 @@ export function formatDate(
  *
  * @param date - The date to format (typically from a database DATE field, e.g., 2025-10-17T00:00:00.000Z)
  * @param locale - The locale string (e.g., 'en-US', 'fr-FR')
- * @param options - Formatting options (dateStyle, timeStyle)
+ * @param options - Any Intl.DateTimeFormat options, e.g. `{ dateStyle: 'medium' }` for a full date
+ *   or `{ month: 'short', day: 'numeric' }` for a compact chart axis label
  * @returns Formatted date string in the specified locale
  */
 export function formatDateOnly(
   date: Date,
   locale: string,
-  options: { dateStyle?: DateTimeStyle; timeStyle?: DateTimeStyle } = {},
+  options: Intl.DateTimeFormatOptions = {},
 ) {
   // Extract UTC date components to avoid timezone shifts
   const year = date.getUTCFullYear()
