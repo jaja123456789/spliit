@@ -106,7 +106,14 @@ async function createRecurringExpenses() {
             data: {
               ...destructeredCurrentExpenseRecord,
               categoryId: currentExpenseRecord.categoryId,
-              paidById: currentExpenseRecord.paidById,
+              paidBy: {
+                createMany: {
+                  data: currentExpenseRecord.paidBy.map((payer) => ({
+                    participantId: payer.participantId,
+                    amount: payer.amount,
+                  })),
+                },
+              },
               paidFor: {
                 createMany: {
                   data: currentExpenseRecord.paidFor.map((paidFor) => ({
@@ -468,7 +475,11 @@ describe('Activity Logging', () => {
 
       expect(activity.time).toBeDefined()
       expect(activity.time).toBeInstanceOf(Date)
-      expect(activity.time.getTime()).toBeLessThanOrEqual(Date.now())
+      // `time` defaults to now() on the database server, whose clock is not the same clock as this
+      // process's. Comparing them exactly fails whenever the database is a millisecond ahead, so
+      // allow a small skew — the point of the assertion is that a real timestamp was recorded.
+      expect(activity.time.getTime()).toBeLessThanOrEqual(Date.now() + 60_000)
+      expect(activity.time.getTime()).toBeGreaterThan(Date.now() - 60_000)
     })
   })
 })
@@ -698,7 +709,11 @@ describe('createRecurringExpenses', () => {
           expenseDate: initialDate,
           title: 'Monthly Rent',
           amount: 1000,
-          paidById: participantIds[0],
+          paidBy: {
+            createMany: {
+              data: [{ participantId: participantIds[0], amount: 1000 }],
+            },
+          },
           splitMode: 'EVENLY',
           recurrenceRule: RecurrenceRule.MONTHLY,
           recurringExpenseLink: {
@@ -758,7 +773,11 @@ describe('createRecurringExpenses', () => {
           expenseDate: january31,
           title: 'Monthly Subscription',
           amount: 1500,
-          paidById: participantIds[0],
+          paidBy: {
+            createMany: {
+              data: [{ participantId: participantIds[0], amount: 1500 }],
+            },
+          },
           splitMode: 'EVENLY',
           recurrenceRule: RecurrenceRule.MONTHLY,
           recurringExpenseLink: {
@@ -807,7 +826,11 @@ describe('createRecurringExpenses', () => {
           expenseDate: november30,
           title: 'Monthly Service',
           amount: 5000,
-          paidById: participantIds[0],
+          paidBy: {
+            createMany: {
+              data: [{ participantId: participantIds[0], amount: 5000 }],
+            },
+          },
           splitMode: 'EVENLY',
           recurrenceRule: RecurrenceRule.MONTHLY,
           recurringExpenseLink: {
@@ -861,7 +884,11 @@ describe('createRecurringExpenses', () => {
           expenseDate: startDate,
           title: 'Monthly Fee',
           amount: 100,
-          paidById: participantIds[0],
+          paidBy: {
+            createMany: {
+              data: [{ participantId: participantIds[0], amount: 100 }],
+            },
+          },
           splitMode: 'EVENLY',
           recurrenceRule: RecurrenceRule.MONTHLY,
           recurringExpenseLink: {
@@ -903,7 +930,11 @@ describe('createRecurringExpenses', () => {
           expenseDate: initialDate,
           title: 'Office Supplies',
           amount: 250,
-          paidById: participantIds[0],
+          paidBy: {
+            createMany: {
+              data: [{ participantId: participantIds[0], amount: 250 }],
+            },
+          },
           splitMode: 'EVENLY',
           recurrenceRule: RecurrenceRule.MONTHLY,
           recurringExpenseLink: {
@@ -931,14 +962,16 @@ describe('createRecurringExpenses', () => {
           groupId,
           id: { not: expenseId },
         },
-        include: { paidFor: true },
+        include: { paidFor: true, paidBy: true },
         orderBy: { createdAt: 'desc' },
       })
 
       expect(newExpense).toBeDefined()
       expect(newExpense!.title).toBe('Office Supplies')
       expect(newExpense!.amount).toBe(250)
-      expect(newExpense!.paidById).toBe(participantIds[0])
+      expect(newExpense!.paidBy.map((p) => p.participantId)).toEqual([
+        participantIds[0],
+      ])
       expect(newExpense!.splitMode).toBe('EVENLY')
       expect(newExpense!.paidFor).toHaveLength(2)
     })
@@ -960,7 +993,11 @@ describe('createRecurringExpenses', () => {
           expenseDate: initialDate,
           title: 'Monthly Service',
           amount: 500,
-          paidById: participantIds[0],
+          paidBy: {
+            createMany: {
+              data: [{ participantId: participantIds[0], amount: 500 }],
+            },
+          },
           splitMode: 'EVENLY',
           recurrenceRule: RecurrenceRule.MONTHLY,
           recurringExpenseLink: {
