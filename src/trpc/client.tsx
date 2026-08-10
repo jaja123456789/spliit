@@ -35,12 +35,15 @@ function getQueryClient() {
 export const trpcClient = getQueryClient()
 
 function getUrl() {
-  const base = (() => {
-    if (typeof window !== 'undefined') return addBasePath('/')
-    if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
-    return 'http://localhost:3000'
-  })()
-  return `${base}/api/trpc`
+  // Let `addBasePath` prefix the whole path. Building it from `addBasePath('/')` and appending
+  // `/api/trpc` breaks when the app is served at the root: the base path is empty, `addBasePath('/')`
+  // returns `/`, and the result is the protocol-relative `//api/trpc` — which the browser reads as
+  // the host `api`, so every request fails to resolve. Prefixing the full path is correct for both
+  // an empty base path and a sub-path.
+  const path = addBasePath('/api/trpc')
+  if (typeof window !== 'undefined') return path
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}${path}`
+  return `http://localhost:3000${path}`
 }
 
 export function TRPCProvider(
