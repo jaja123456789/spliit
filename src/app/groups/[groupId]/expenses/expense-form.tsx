@@ -48,6 +48,13 @@ import {
   getCurrency,
   normalizeCurrencyCode,
 } from '@/lib/currency'
+import {
+  clearExpenseDraft,
+  createDraftScope,
+  editDraftScope,
+  readExpenseDraft,
+  saveExpenseDraft,
+} from '@/lib/expense-draft'
 import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { useActiveUser, useCurrencyRate } from '@/lib/hooks'
 import {
@@ -74,7 +81,7 @@ import { ChevronDown, Crown, Plus, Save, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   UseFormReturn,
   useFieldArray,
@@ -458,6 +465,18 @@ export function ExpenseForm({
   // non-group currency, and hiding those behind a collapsed section would look like data loss.
   const [showMoreOptions, setShowMoreOptions] = useState(!isCreate)
 
+  // A receipt import is a more specific intent than a leftover draft, so it wins: the effect below
+  // reads `pendingReceiptData` and resets the whole form, and restoring a draft over the top would
+  // undo the extraction the user just waited for.
+  const importingReceipt =
+    isCreate && searchParams.get('fromReceipt') === 'true'
+  const draftScope = isCreate
+    ? createDraftScope(group.id)
+    : editDraftScope(expense.id)
+  const [pendingDraft, setPendingDraft] = useState<ExpenseFormValues | null>(
+    null,
+  )
+
   // Track manual edits for BY_AMOUNT mode
   const [manuallyEditedParticipants, setManuallyEditedParticipants] = useState<
     Set<string>
@@ -670,6 +689,59 @@ export function ExpenseForm({
   ])
 
   useEffect(() => {
+    if (importingReceipt) return
+    setPendingDraft(readExpenseDraft(draftScope))
+  }, [draftScope, importingReceipt])
+
+  // Deciding when a draft is worth keeping is fiddlier than it looks. `formState.isDirty` is
+  // useless — the amount round-trips through a string, so the form reports itself dirty on mount
+  // with no input at all. The watch callback's `type === 'change'` is too strict in the other
+  // direction: the amount and the BY_AMOUNT shares are written with `setValue`, not through a
+  // registered change event, so filtering on it silently dropped every amount the user typed.
+  //
+  // Comparing against the values the form started with covers every input path. `conversionRate`
+  // is excluded because the exchange-rate effect fills it in on its own, which is not the user
+  // typing anything.
+  const initialValuesRef = useRef<string | null>(null)
+  const savedThisMountRef = useRef(false)
+  useEffect(() => {
+    const fingerprint = (values: unknown) => {
+      const { conversionRate, ...rest } = (values ?? {}) as Record<string, any>
+      return JSON.stringify(rest)
+    }
+    if (initialValuesRef.current === null) {
+      initialValuesRef.current = fingerprint(form.getValues())
+    }
+    const subscription = form.watch((values) => {
+      if (fingerprint(values) === initialValuesRef.current) {
+        // Only discard a draft this mount actually wrote. Clearing unconditionally would delete
+        // the draft being offered for restore, since a freshly opened form starts out equal to
+        // its own defaults.
+        if (savedThisMountRef.current) {
+          clearExpenseDraft(draftScope)
+          savedThisMountRef.current = false
+        }
+        return
+      }
+      savedThisMountRef.current = true
+      saveExpenseDraft(draftScope, values as ExpenseFormValues)
+    })
+    return () => subscription.unsubscribe()
+  }, [form, draftScope])
+
+  // Catches the cases a draft cannot: closing the tab, reloading, typing a new URL. In-app
+  // navigation does not fire this, which is precisely why the draft exists.
+  useEffect(() => {
+    const onBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!readExpenseDraft(draftScope)) return
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [draftScope])
+
+  useEffect(() => {
     if (totalAmount < 0) form.setValue('isReimbursement', false)
   }, [totalAmount, form])
 
@@ -834,7 +906,9 @@ export function ExpenseForm({
       convertToGroupCurrency(values, rate)
     }
 
-    return onSubmit(values, activeUserId ?? undefined)
+    // Only after a successful save: a draft that outlives its expense would haunt the next one.
+    await onSubmit(values, activeUserId ?? undefined)
+    clearExpenseDraft(draftScope)
   }
 
   // --- Rendering Helpers ---
@@ -857,6 +931,36 @@ export function ExpenseForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(submit)}>
+        {pendingDraft && (
+          <div className="mb-4 flex flex-col gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm sm:flex-row sm:items-center">
+            <span className="flex-1">{t('Draft.prompt')}</span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => {
+                  form.reset(pendingDraft)
+                  setPendingDraft(null)
+                  setShowMoreOptions(true)
+                }}
+              >
+                {t('Draft.restore')}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  clearExpenseDraft(draftScope)
+                  setPendingDraft(null)
+                }}
+              >
+                {t('Draft.discard')}
+              </Button>
+            </div>
+          </div>
+        )}
+
         <Card>
           <CardHeader>
             <CardTitle>

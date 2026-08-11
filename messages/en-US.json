@@ -112,11 +112,21 @@
         "actions": {
           "removeAndUnsync": "Remove and unsync"
         }
-      }
+      },
+      "settled": "settled up",
+      "owedToYou": "you are owed {amount}",
+      "youOwe": "you owe {amount}"
     },
     "NotFound": {
       "text": "This group does not exist.",
       "link": "Go to recently visited groups"
+    },
+    "Overall": {
+      "all": "Across all your groups",
+      "partial": "Across the groups where you have said who you are",
+      "settled": "You are settled up",
+      "owedToYou": "You are owed {amount}",
+      "youOwe": "You owe {amount}"
     }
   },
   "GroupForm": {
@@ -169,6 +179,18 @@
       "create": "Create",
       "creating": "Creating…",
       "cancel": "Cancel"
+    },
+    "DangerZone": {
+      "title": "Delete this group",
+      "description": "Removes the group and every expense, participant and activity in it, for everyone. This cannot be undone.",
+      "deleteGroup": "Delete group",
+      "confirmTitle": "Delete this group?",
+      "confirmDescription": "“{name}” and everything in it will be deleted for everyone who has the link, including anyone syncing it. There is no undo.",
+      "confirmLabel": "Type {name} to confirm",
+      "confirmDelete": "Delete permanently",
+      "cancel": "Cancel",
+      "deletedToast": "“{name}” was deleted.",
+      "errorToast": "The group could not be deleted."
     }
   },
   "ExpenseForm": {
@@ -308,6 +330,11 @@
       "proportionalUnavailable": "Assign at least one item to someone first.",
       "remainderName": "Tax & service",
       "remainderNameFor": "Tax & service · {name}"
+    },
+    "Draft": {
+      "prompt": "You have an unsaved expense from earlier.",
+      "restore": "Restore",
+      "discard": "Discard"
     }
   },
   "ExpenseDocumentsInput": {

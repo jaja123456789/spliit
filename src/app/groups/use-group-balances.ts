@@ -1,0 +1,48 @@
+'use client'
+
+import { readActiveUser } from '@/lib/active-user'
+import { trpc } from '@/trpc/client'
+import { useEffect, useState } from 'react'
+
+/**
+ * "What do I owe" across every group on this device.
+ *
+ * Which participant you are is stored per device, per group, so this can only cover groups where
+ * that choice has been made — the caller is expected to say so rather than presenting a total that
+ * quietly omits the rest.
+ */
+export function useGroupBalances(groupIds: string[]) {
+  const [pairs, setPairs] = useState<
+    { groupId: string; participantId: string }[]
+  >([])
+
+  // localStorage is not readable during render on the server, so the list is assembled after mount.
+  useEffect(() => {
+    setPairs(
+      groupIds
+        .map((groupId) => ({
+          groupId,
+          participantId: readActiveUser(groupId) ?? '',
+        }))
+        .filter((pair) => pair.participantId !== ''),
+    )
+  }, [groupIds.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const { data } = trpc.groups.balances.forGroups.useQuery(
+    { groups: pairs },
+    { enabled: pairs.length > 0 },
+  )
+
+  const byGroup = new Map(
+    (data?.balances ?? []).map((entry) => [entry.groupId, entry.balance]),
+  )
+
+  return {
+    /** Balance for one group, or undefined when you have not said who you are there. */
+    balanceFor: (groupId: string) => byGroup.get(groupId),
+    /** Sum over the groups that *do* have a balance — never over all of them. */
+    total: [...byGroup.values()].reduce((sum, amount) => sum + amount, 0),
+    coveredCount: byGroup.size,
+    isPartial: byGroup.size < groupIds.length,
+  }
+}

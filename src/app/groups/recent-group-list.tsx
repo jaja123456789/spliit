@@ -8,15 +8,17 @@ import { Button } from '@/components/ui/button'
 import { useGroups } from '@/contexts'
 import { getGroups } from '@/lib/api'
 import { readPendingShareImage } from '@/lib/share-target'
+import { cn, formatCurrency, getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { Loader2, Receipt } from 'lucide-react'
 import { useSession } from 'next-auth/react'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { PropsWithChildren, useEffect, useState } from 'react'
 import { RecentGroupListCard } from './recent-group-list-card'
+import { useGroupBalances } from './use-group-balances'
 
 export type RecentGroupsState =
   | { status: 'pending' }
@@ -105,10 +107,15 @@ function RecentGroupList_({
   hasPendingReceipt: boolean
 }) {
   const t = useTranslations('Groups')
+  const locale = useLocale()
   const { data: session } = useSession()
   const { data, isLoading } = trpc.groups.list.useQuery({
     groupIds: groups.map((group) => group.id),
   })
+  // Above the early returns below: hooks cannot be called conditionally.
+  const { balanceFor, total, coveredCount, isPartial } = useGroupBalances(
+    groups.map((group) => group.id),
+  )
 
   if (isLoading || !data) {
     return (
@@ -153,7 +160,15 @@ function RecentGroupList_({
     )
   }
 
-  const sortedGroups = [...groups].sort((a, b) => {
+  // Cards come from this device's local list, but a group can disappear from under it — someone
+  // else deletes it, or the link was stale to begin with. Only render what the server actually
+  // returned, so a deleted group stops advertising itself on every other device. The local entry
+  // is left alone rather than pruned: a transient failure to load should not wipe the list.
+  const existingGroups = groups.filter((group) =>
+    data.groups.some((serverGroup) => serverGroup.id === group.id),
+  )
+
+  const sortedGroups = [...existingGroups].sort((a, b) => {
     const detailsA = data.groups.find((g) => g.id === a.id)
     const detailsB = data.groups.find((g) => g.id === b.id)
 
@@ -178,19 +193,55 @@ function RecentGroupList_({
       isRefetching={isRefetching}
       hasPendingReceipt={hasPendingReceipt}
     >
+      {coveredCount > 0 && (
+        <div className="mb-4 rounded-lg border bg-card p-3">
+          <div className="text-xs text-muted-foreground">
+            {isPartial ? t('Overall.partial') : t('Overall.all')}
+          </div>
+          <div
+            className={cn(
+              'text-lg font-semibold tabular-nums',
+              Math.abs(total) < 1
+                ? 'text-muted-foreground'
+                : total > 0
+                ? 'text-credit'
+                : 'text-debt',
+            )}
+          >
+            {Math.abs(total) < 1
+              ? t('Overall.settled')
+              : t(total > 0 ? 'Overall.owedToYou' : 'Overall.youOwe', {
+                  amount: formatCurrency(
+                    getCurrencyFromGroup(data.groups[0]),
+                    Math.abs(total),
+                    locale,
+                  ),
+                })}
+          </div>
+        </div>
+      )}
+
       <SyncFeatureAnnouncement />
 
       {starredGroupInfo.length > 0 && (
         <>
           <h2 className="mb-2">{t('starred')}</h2>
-          <GroupList groups={starredGroupInfo} groupDetails={data.groups} />
+          <GroupList
+            groups={starredGroupInfo}
+            groupDetails={data.groups}
+            balanceFor={balanceFor}
+          />
         </>
       )}
 
       {groupInfo.length > 0 && (
         <>
           <h2 className="mt-6 mb-2">{t('recent')}</h2>
-          <GroupList groups={groupInfo} groupDetails={data.groups} />
+          <GroupList
+            groups={groupInfo}
+            groupDetails={data.groups}
+            balanceFor={balanceFor}
+          />
         </>
       )}
 
@@ -198,7 +249,11 @@ function RecentGroupList_({
         <>
           <h2 className="mt-6 mb-2 opacity-50">{t('archived')}</h2>
           <div className="opacity-50">
-            <GroupList groups={archivedGroupInfo} groupDetails={data.groups} />
+            <GroupList
+              groups={archivedGroupInfo}
+              groupDetails={data.groups}
+              balanceFor={balanceFor}
+            />
           </div>
         </>
       )}
@@ -209,21 +264,26 @@ function RecentGroupList_({
 function GroupList({
   groups,
   groupDetails,
+  balanceFor,
 }: {
   groups: RecentGroups
   groupDetails?: AppRouterOutput['groups']['list']['groups']
+  balanceFor: (groupId: string) => number | undefined
 }) {
   return (
     <ul className="grid gap-2 sm:grid-cols-2">
-      {groups.map((group) => (
-        <RecentGroupListCard
-          key={group.id}
-          group={group}
-          groupDetail={groupDetails?.find(
-            (groupDetail) => groupDetail.id === group.id,
-          )}
-        />
-      ))}
+      {groups.map((group) => {
+        const detail = groupDetails?.find((d) => d.id === group.id)
+        return (
+          <RecentGroupListCard
+            key={group.id}
+            group={group}
+            groupDetail={detail}
+            balance={balanceFor(group.id)}
+            currency={detail ? getCurrencyFromGroup(detail) : undefined}
+          />
+        )
+      })}
     </ul>
   )
 }

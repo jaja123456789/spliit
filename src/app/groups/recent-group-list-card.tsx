@@ -20,7 +20,9 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
 import { useGroupActions, useGroups, type RecentGroup } from '@/contexts'
+import { Currency } from '@/lib/currency'
 import { FROM_SHARE_PARAM, readPendingShareImage } from '@/lib/share-target'
+import { cn, formatCurrency } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { StarFilledIcon } from '@radix-ui/react-icons'
 import {
@@ -41,9 +43,13 @@ import { useState } from 'react'
 export function RecentGroupListCard({
   group,
   groupDetail,
+  balance,
+  currency,
 }: {
   group: RecentGroup
   groupDetail?: AppRouterOutput['groups']['list']['groups'][number]
+  balance?: number
+  currency?: Currency
 }) {
   const router = useRouter()
   const locale = useLocale()
@@ -236,6 +242,28 @@ export function RecentGroupListCard({
                     <Users className="w-3 h-3 inline mr-1" />
                     <span>{groupDetail._count.participants}</span>
                   </div>
+                  {balance !== undefined && currency && (
+                    <span
+                      className={cn(
+                        'font-semibold tabular-nums',
+                        Math.abs(balance) < 1
+                          ? 'text-muted-foreground'
+                          : balance > 0
+                          ? 'text-credit'
+                          : 'text-debt',
+                      )}
+                    >
+                      {Math.abs(balance) < 1
+                        ? t('Card.settled')
+                        : t(balance > 0 ? 'Card.owedToYou' : 'Card.youOwe', {
+                            amount: formatCurrency(
+                              currency,
+                              Math.abs(balance),
+                              locale,
+                            ),
+                          })}
+                    </span>
+                  )}
                   <div className="flex items-center">
                     <Calendar className="w-3 h-3 inline mx-1" />
                     <span>

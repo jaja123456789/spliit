@@ -2,6 +2,7 @@ import {
   describeExpenseChanges,
   encodeActivityData,
 } from '@/lib/activity-changes'
+import { getBalances } from '@/lib/balances'
 import { prisma } from '@/lib/prisma'
 import { ExpenseFormValues, GroupFormValues } from '@/lib/schemas'
 import {
@@ -560,6 +561,48 @@ export async function getGroupExpenses(
   })
 }
 
+/**
+ * Balances for several groups in one pass, for the group list's "what do I owe" figures.
+ *
+ * Deliberately *not* built on `getGroupExpenses`: that materialises due recurring expenses first,
+ * so reading it once per card would turn rendering the home screen into a write per group. This is
+ * a plain read, and any recurring expense not yet materialised simply is not counted yet — the
+ * group's own Balances tab still does that on open.
+ */
+export async function getBalancesForGroups(
+  requests: { groupId: string; participantId: string }[],
+) {
+  if (requests.length === 0) return []
+  const expenses = await prisma.expense.findMany({
+    select: {
+      groupId: true,
+      amount: true,
+      splitMode: true,
+      paidBy: { select: { amount: true, participantId: true } },
+      paidFor: {
+        select: { participant: { select: { id: true } }, shares: true },
+      },
+    },
+    where: { groupId: { in: requests.map((r) => r.groupId) } },
+  })
+
+  const byGroup = new Map<string, typeof expenses>()
+  for (const expense of expenses) {
+    const list = byGroup.get(expense.groupId) ?? []
+    list.push(expense)
+    byGroup.set(expense.groupId, list)
+  }
+
+  return requests.map(({ groupId, participantId }) => {
+    const balances = getBalances((byGroup.get(groupId) ?? []) as any)
+    return {
+      groupId,
+      participantId,
+      balance: balances[participantId]?.total ?? 0,
+    }
+  })
+}
+
 export async function getGroupExpenseCount(groupId: string) {
   return prisma.expense.count({ where: { groupId } })
 }
@@ -604,6 +647,18 @@ export async function getActivities(
         ? expenses.find((expense) => expense.id === activity.expenseId)
         : undefined,
   }))
+}
+
+/**
+ * Deletes a group and everything hanging off it.
+ *
+ * The schema does the cascade: Participant, Expense, Activity and SyncedGroup all declare
+ * `onDelete: Cascade` on their group relation, so no synced profile is left holding a row that
+ * points at a group that no longer exists. There is deliberately no soft delete — the app's promise
+ * is that data lives in your own database and leaves when you say so.
+ */
+export async function deleteGroup(groupId: string) {
+  await prisma.group.delete({ where: { id: groupId } })
 }
 
 export async function logActivity(
