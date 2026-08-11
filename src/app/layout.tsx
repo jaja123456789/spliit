@@ -13,10 +13,27 @@ import { TRPCProvider } from '@/trpc/client'
 import type { Metadata, Viewport } from 'next'
 import { NextIntlClientProvider, useTranslations } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
+import { Nunito_Sans } from 'next/font/google'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Suspense } from 'react'
 import './globals.css'
+
+/**
+ * The config used to carry a dead `fontFamily.rounded` stack (Quicksand, Comfortaa, Arial Rounded)
+ * that nothing referenced, so the app rendered in whatever the OS supplied. Nunito Sans honours the
+ * intent behind that stack — humanist, softly rounded terminals, approachable — without the cost of
+ * a display-rounded face: it is drawn for UI, holds up at the 12px captions this app is full of,
+ * and ships real tabular figures, which the amount columns depend on.
+ *
+ * Loaded through next/font, so it is self-hosted and subsetted at build time; no third-party
+ * request at runtime, which matters for an app with no offline story.
+ */
+const nunitoSans = Nunito_Sans({
+  subsets: ['latin', 'latin-ext'],
+  display: 'swap',
+  variable: '--font-sans',
+})
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.NEXT_PUBLIC_BASE_URL),
@@ -180,7 +197,11 @@ export default async function RootLayout({
   const basePath = env.NEXT_PUBLIC_BASE_PATH
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html
+      lang={locale}
+      className={nunitoSans.variable}
+      suppressHydrationWarning
+    >
       <ApplePwaSplash icon={`${basePath}/logo-with-text.png`} color="#027756" />
       <body className="min-h-[100dvh] flex flex-col items-stretch bg-muted/30 dark:bg-background">
         <NextIntlClientProvider messages={messages}>
