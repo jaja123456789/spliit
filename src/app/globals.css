@@ -4,33 +4,41 @@
 
 @layer base {
   :root {
+    /* Neutrals carry a slight bias toward --primary (hue 160) rather than the stock shadcn blue
+       (hue 240). At 5-8% saturation nobody names the colour; it just stops reading as a cool grey
+       ground under a warm green accent. --muted-foreground is also darkened: at the old value it
+       measured 4.39:1 on --muted, under AA, and it is used for secondary text on muted panels. */
     --background: 0 0% 100%;
-    --foreground: 240 10% 3.9%;
+    --foreground: 160 10% 4%;
     --card: 0 0% 100%;
-    --card-foreground: 240 10% 3.9%;
+    --card-foreground: 160 10% 4%;
     --popover: 0 0% 100%;
-    --popover-foreground: 240 10% 3.9%;
+    --popover-foreground: 160 10% 4%;
     --primary: 163 94% 24%;
     --primary-foreground: 0 100% 100%;
-    --secondary: 240 4.8% 95.9%;
-    --secondary-foreground: 240 5.9% 10%;
-    --muted: 240 4.8% 95.9%;
-    --muted-foreground: 240 3.8% 46.1%;
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --secondary: 160 8% 96%;
+    --secondary-foreground: 160 6% 10%;
+    --muted: 160 8% 96%;
+    --muted-foreground: 160 5% 42%;
+    --accent: 160 8% 96%;
+    --accent-foreground: 160 6% 10%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
+    --border: 160 8% 90%;
+    --input: 160 8% 90%;
     --ring: 142.1 76.2% 36.3%;
-    --radius: 0.5rem;
+    --radius: 0.75rem;
     /* Money direction. Semantic state, like --destructive, not decoration: "you are owed" and
        "you owe" were previously spelled with four different greens and two oranges taken straight
        from the Tailwind palette. Both are contrast-checked against --background (4.56:1 and
        4.99:1); the emerald-600 they replace measured 2.54:1, below even the large-text floor.
        --debt stays orange-red rather than folding into --destructive: owing money is a state,
-       deleting a record is a consequence. */
-    --credit: 162 88% 28%;
+       deleting a record is a consequence.
+       --credit is darker than the 28% first shipped: at 28% it measured 4.00:1 as text on its own
+       10% tint (the "All set" pill, the excluded-items panel), under AA. At 24% it clears AA on all
+       three surfaces it actually lands on — 5.85:1 on --background, 5.38:1 on --muted, 5.07:1 on
+       bg-credit/10. */
+    --credit: 162 88% 24%;
     --debt: 16 88% 42%;
     /* Chart marks. Deliberately a separate step from --primary: the dark --primary is tuned for
        small UI accents and glares as a large area fill, so each mode gets a step chosen for its
@@ -47,17 +55,20 @@
     --popover-foreground: 0 0% 95%;
     --primary: 161 90% 45%;
     --primary-foreground: 144.9 80.4% 10%;
-    --secondary: 240 3.7% 15.9%;
+    --secondary: 24 6% 16%;
     --secondary-foreground: 0 0% 98%;
     --muted: 0 0% 15%;
-    --muted-foreground: 240 5% 64.9%;
+    --muted-foreground: 24 5% 65%;
     --accent: 12 6.5% 15.1%;
     --accent-foreground: 0 0% 98%;
     /* --destructive: 0 62.8% 30.6%; */
     --destructive: 0 87% 47%;
     --destructive-foreground: 0 85.7% 97.3%;
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
+    /* These three were the only blue-leaning tokens in an otherwise warm dark palette
+       (--background 20, --card 24, --accent 12). Brought into line with that palette rather than
+       re-hued to 160: the dark theme's warm neutral is deliberate and is left as the author set it. */
+    --border: 24 6% 16%;
+    --input: 24 6% 16%;
     --ring: 142.4 71.8% 29.2%;
     --chart-1: 161 93% 30%;
     /* Checked against --card, the surface these actually sit on: 10.29:1 and 6.77:1. */
