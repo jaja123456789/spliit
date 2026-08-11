@@ -452,7 +452,7 @@ export function GroupForm({
               onClick={() => {
                 append({
                   name: '',
-                  id: '',
+                  id: undefined,
                   paymentProfile: {
                     venmo: '',
                     paypal: '',
