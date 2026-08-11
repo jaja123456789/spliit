@@ -1314,7 +1314,7 @@ export function ExpenseForm({
                 <div className="flex flex-col items-end gap-1">
                   {/* The Subtraction Message */}
                   {hasExcludedItems && (
-                    <div className="text-right text-[11px] text-amber-600 font-medium animate-in fade-in slide-in-from-right-1">
+                    <div className="text-right text-xs text-amber-600 font-medium animate-in fade-in slide-in-from-right-1">
                       —{' '}
                       {formatCurrency(
                         expenseCurrency,
@@ -1329,14 +1329,14 @@ export function ExpenseForm({
                   {/* The Final Group Amount (What hits the stats) */}
                   <div
                     className={cn(
-                      'text-right font-bold px-3 py-1 rounded-md transition-colors border',
+                      'text-right font-bold tabular-nums px-3 py-1 rounded-md transition-colors border',
                       hasExcludedItems
-                        ? 'bg-emerald-50 border-emerald-200 dark:bg-emerald-950 dark:border-emerald-800'
+                        ? 'bg-credit/10 border-credit/30'
                         : 'bg-muted/50 border-transparent text-foreground',
                       totalAmount <= 0 ? 'text-destructive' : '',
                     )}
                   >
-                    <span className="text-[10px] uppercase tracking-wider mr-2 align-middle">
+                    <span className="text-xs uppercase tracking-wider mr-2 align-middle">
                       {t('groupExpense')}:
                     </span>
                     {formatCurrency(
@@ -1347,7 +1347,7 @@ export function ExpenseForm({
                     )}
                   </div>
                   {conversionRequired && (
-                    <div className="text-right text-[11px] text-muted-foreground">
+                    <div className="text-right text-xs tabular-nums text-muted-foreground">
                       ≈{' '}
                       {formatCurrency(
                         groupCurrency,

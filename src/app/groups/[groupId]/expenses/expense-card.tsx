@@ -127,7 +127,7 @@ export function ExpenseCard({
               {expense.originalCurrency &&
                 expense.originalAmount !== null &&
                 expense.originalCurrency !== currency.code && (
-                  <div className="text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
+                  <div className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
                     {formatCurrency(
                       getCurrency(expense.originalCurrency, locale as Locale),
                       expense.originalAmount,
@@ -149,10 +149,8 @@ export function ExpenseCard({
               {userBalanceAmount !== 0 && (
                 <div
                   className={cn(
-                    'mt-1 font-medium',
-                    userBalanceAmount > 0
-                      ? 'text-emerald-600 dark:text-emerald-500'
-                      : 'text-orange-600 dark:text-orange-500',
+                    'mt-1 font-medium tabular-nums',
+                    userBalanceAmount > 0 ? 'text-credit' : 'text-debt',
                   )}
                 >
                   {userBalanceAmount > 0 ? 'You lent ' : 'You borrowed '}
@@ -167,7 +165,7 @@ export function ExpenseCard({
 
             <div className="flex flex-col items-end gap-1 ml-2">
               <div
-                className="text-[10px] uppercase tracking-wider text-muted-foreground/60 font-medium"
+                className="text-xs uppercase tracking-wider text-muted-foreground/60 font-medium"
                 data-testid="expense-date"
               >
                 {formatDateOnly(expense.expenseDate, locale, {

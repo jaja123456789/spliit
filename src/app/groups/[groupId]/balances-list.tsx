@@ -52,10 +52,10 @@ export function BalancesList({ balances, participants, currency }: Props) {
                   className={cn(
                     'text-sm font-semibold tabular-nums whitespace-nowrap',
                     isPositive
-                      ? 'text-emerald-600 dark:text-emerald-500'
+                      ? 'text-credit'
                       : isZero
                       ? 'text-muted-foreground'
-                      : 'text-orange-600 dark:text-orange-500',
+                      : 'text-debt',
                   )}
                 >
                   {formatCurrency(currency, balance, locale)}
@@ -79,11 +79,8 @@ export function BalancesList({ balances, participants, currency }: Props) {
                     <div
                       className={cn(
                         'absolute h-full rounded-full transition-all duration-500 ease-out',
-                        isPositive
-                          ? 'bg-emerald-500 right-0'
-                          : 'bg-orange-500 left-0', // Align right for positive? Or strictly left? Strictly left is easier to read usually.
+                        isPositive ? 'bg-credit' : 'bg-debt',
                       )}
-                      // Let's stick to left-aligned for mobile readability, but color coded
                       style={{ width: `${percentage}%`, left: 0 }}
                     />
                   </div>
@@ -91,7 +88,7 @@ export function BalancesList({ balances, participants, currency }: Props) {
               </div>
 
               {/* Optional: Text description below bar for context */}
-              <div className="text-[10px] text-muted-foreground">
+              <div className="text-xs text-muted-foreground">
                 {isPositive ? 'gets back' : isZero ? 'settled up' : 'owes'}
               </div>
             </div>

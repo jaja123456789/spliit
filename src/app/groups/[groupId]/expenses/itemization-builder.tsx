@@ -110,8 +110,8 @@ export function ItemizationBuilder({
           <div className="text-sm font-medium">Receipt Breakdown</div>
 
           <div className="flex items-center gap-2">
-            <div className="text-[10px] font-mono flex flex-col items-end">
-              <span className="text-emerald-600 font-bold">
+            <div className="text-xs font-mono tabular-nums flex flex-col items-end">
+              <span className="text-credit font-bold">
                 Shared Total:{' '}
                 {formatCurrency(currency, groupSplitSum, locale, true)}
               </span>
@@ -126,13 +126,13 @@ export function ItemizationBuilder({
             {Math.abs(unassignedRemainder) > 0.01 ? (
               <Badge
                 variant="destructive"
-                className="text-[10px] animate-pulse"
+                className="text-xs tabular-nums animate-pulse"
               >
                 Unassigned:{' '}
                 {formatCurrency(currency, unassignedRemainder, locale, true)}
               </Badge>
             ) : (
-              <div className="text-xs font-mono px-2 py-1 rounded-full border bg-green-50 text-green-700 border-green-200 flex items-center gap-1">
+              <div className="text-xs font-mono px-2 py-1 rounded-full border border-credit/30 bg-credit/10 text-credit flex items-center gap-1">
                 <Check className="w-3 h-3" /> All set
               </div>
             )}
@@ -184,7 +184,7 @@ export function ItemizationBuilder({
                               )}
                             />
                           </FormControl>
-                          <FormMessage className="text-[10px] pl-1 mt-1" />
+                          <FormMessage className="text-xs pl-1 mt-1" />
                         </FormItem>
                       )}
                     />
@@ -219,7 +219,7 @@ export function ItemizationBuilder({
                                 {currency.symbol || group.currency}
                               </div>
                             </div>
-                            <FormMessage className="text-[10px] text-right pr-1 mt-1" />
+                            <FormMessage className="text-xs text-right pr-1 mt-1" />
                           </FormItem>
                         )}
                       />
@@ -261,7 +261,7 @@ export function ItemizationBuilder({
                 </div>
 
                 {/* Status / Summary Row */}
-                <div className="flex items-center justify-between px-1 text-[11px] leading-tight min-h-[1.25rem]">
+                <div className="flex items-center justify-between px-1 text-xs leading-tight min-h-[1.25rem]">
                   {isExcluded ? (
                     <span className="text-muted-foreground/60 italic flex items-center gap-1">
                       Excluded (assign to include)
@@ -316,7 +316,7 @@ export function ItemizationBuilder({
               type="button"
               variant="outline"
               size="sm"
-              className="text-[10px] h-7 border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
+              className="text-xs h-7 border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
               onClick={() => {
                 append({
                   name: 'Adjustment',
@@ -406,7 +406,7 @@ function ParticipantSelector({
           <Users className="h-4 w-4" />
         )}
         {value.length > 0 && value.length < group.participants.length && (
-          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold shadow-sm">
+          <span className="absolute -top-1 -right-1 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-primary text-[10px] tabular-nums text-primary-foreground font-bold shadow-sm">
             {value.length}
           </span>
         )}
@@ -417,13 +417,13 @@ function ParticipantSelector({
   const SelectionList = (
     <div className="space-y-1">
       <div className="flex justify-between items-center px-2 pb-2 border-b mb-1">
-        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
           Split among
         </span>
         <Button
           variant="ghost"
           size="sm"
-          className="h-auto p-1 text-[10px] text-primary hover:bg-primary/10"
+          className="h-auto p-1 text-xs text-primary hover:bg-primary/10"
           onClick={() => {
             const allIds = group.participants.map((p) => p.id)
             const isAllSelected = value.length === group.participants.length

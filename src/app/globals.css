@@ -24,6 +24,14 @@
     --input: 240 5.9% 90%;
     --ring: 142.1 76.2% 36.3%;
     --radius: 0.5rem;
+    /* Money direction. Semantic state, like --destructive, not decoration: "you are owed" and
+       "you owe" were previously spelled with four different greens and two oranges taken straight
+       from the Tailwind palette. Both are contrast-checked against --background (4.56:1 and
+       4.99:1); the emerald-600 they replace measured 2.54:1, below even the large-text floor.
+       --debt stays orange-red rather than folding into --destructive: owing money is a state,
+       deleting a record is a consequence. */
+    --credit: 162 88% 28%;
+    --debt: 16 88% 42%;
     /* Chart marks. Deliberately a separate step from --primary: the dark --primary is tuned for
        small UI accents and glares as a large area fill, so each mode gets a step chosen for its
        own surface (both validated for lightness band, chroma and >=3:1 contrast). */
@@ -52,6 +60,9 @@
     --input: 240 3.7% 15.9%;
     --ring: 142.4 71.8% 29.2%;
     --chart-1: 161 93% 30%;
+    /* Checked against --card, the surface these actually sit on: 10.29:1 and 6.77:1. */
+    --credit: 158 72% 56%;
+    --debt: 20 90% 62%;
   }
 }
 

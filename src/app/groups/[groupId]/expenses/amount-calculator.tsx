@@ -180,7 +180,7 @@ export function AmountCalculator({
       )}
     >
       {/* Display Area */}
-      <div className="bg-muted/30 border rounded-xl p-4 mb-4 flex flex-col items-end justify-center h-24 overflow-hidden">
+      <div className="bg-muted/30 border rounded-lg p-4 mb-4 flex flex-col items-end justify-center h-24 overflow-hidden">
         <div className="text-sm text-muted-foreground font-mono h-5 uppercase tracking-wider mb-1">
           {formula}
         </div>
@@ -263,7 +263,7 @@ export function AmountCalculator({
 
         <Button
           variant="default"
-          className="h-[auto] row-span-2 bg-primary hover:bg-primary/90 text-primary-foreground text-2xl rounded-lg shadow-md"
+          className="h-[auto] row-span-2 bg-primary hover:bg-primary/90 text-primary-foreground text-2xl rounded-md"
           onClick={calculate}
         >
           <Equal className="h-8 w-8" />
@@ -271,7 +271,7 @@ export function AmountCalculator({
       </div>
 
       <Button
-        className="w-full mt-4 h-12 text-lg font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+        className="w-full mt-4 h-12 text-lg font-semibold"
         onClick={handleApply}
       >
         <Check className="h-5 w-5 mr-2" /> Apply Amount

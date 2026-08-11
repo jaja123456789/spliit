@@ -84,7 +84,7 @@ export function ReimbursementList({
                   </Link>
                 </Button>
               </div>
-              <div className="font-semibold ml-4">
+              <div className="font-semibold tabular-nums ml-4">
                 {formatCurrency(currency, reimbursement.amount, locale)}
               </div>
             </div>

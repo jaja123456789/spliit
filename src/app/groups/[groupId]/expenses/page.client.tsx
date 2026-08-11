@@ -82,7 +82,7 @@ export default function GroupExpensesPageClient({
           asChild
           size="icon"
           className={cn(
-            'h-14 w-14 rounded-full shadow-xl bg-primary hover:bg-primary/90 transition-transform active:scale-95',
+            'h-14 w-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 transition-transform active:scale-95',
             'border-2 border-background', // Contrast border
           )}
         >

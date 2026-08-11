@@ -74,7 +74,7 @@ function Content({ children }: { children: React.ReactNode }) {
     <TRPCProvider>
       <AuthProvider>
         <GroupsProvider>
-          <header className="fixed top-0 left-0 right-0 h-16 flex justify-between bg-white dark:bg-gray-950 bg-opacity-50 dark:bg-opacity-50 p-2 border-b backdrop-blur-sm z-50">
+          <header className="fixed top-0 left-0 right-0 h-16 flex justify-between bg-background/60 supports-[backdrop-filter]:bg-background/50 p-2 border-b backdrop-blur-sm z-50">
             <Link
               className="flex items-center gap-2 hover:scale-105 transition-transform"
               href="/"
@@ -123,7 +123,7 @@ function Content({ children }: { children: React.ReactNode }) {
 
           <div className="pt-16 flex-1 flex flex-col">{children}</div>
 
-          <footer className="sm:p-8 md:p-16 sm:mt-16 sm:text-sm md:text-base md:mt-32 bg-slate-50 dark:bg-card border-t p-6 mt-8 flex flex-col sm:flex-row sm:justify-between gap-4 text-xs [&_a]:underline">
+          <footer className="sm:p-8 md:p-16 sm:mt-16 sm:text-sm md:text-base md:mt-32 bg-muted/50 dark:bg-card border-t p-6 mt-8 flex flex-col sm:flex-row sm:justify-between gap-4 text-xs [&_a]:underline">
             <div className="flex flex-col space-y-2">
               <div className="sm:text-lg font-semibold text-base flex space-x-2 items-center">
                 <Link className="flex items-center gap-2" href="/">
@@ -182,7 +182,7 @@ export default async function RootLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <ApplePwaSplash icon={`${basePath}/logo-with-text.png`} color="#027756" />
-      <body className="min-h-[100dvh] flex flex-col items-stretch bg-slate-50 bg-opacity-30 dark:bg-background">
+      <body className="min-h-[100dvh] flex flex-col items-stretch bg-muted/30 dark:bg-background">
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider
             attribute="class"
