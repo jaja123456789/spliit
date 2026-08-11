@@ -20,11 +20,12 @@ export function Money({
   return (
     <span
       className={cn(
-        colored && amount <= 1
-          ? 'text-red-600'
-          : colored && amount >= 1
-          ? 'text-green-600'
-          : '',
+        'tabular-nums',
+        // Amounts are in minor units, so the boundary is 0, not 1. The previous thresholds were
+        // `<= 1` / `>= 1`, which painted a settled balance of exactly 0 as a debt and overlapped
+        // at 1 minor unit.
+        colored && amount < 0 && 'text-debt',
+        colored && amount > 0 && 'text-credit',
         bold && 'font-bold',
       )}
     >
