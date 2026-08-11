@@ -18,6 +18,10 @@
   "Expenses": {
     "title": "Expenses",
     "description": "Here are the expenses that you created for your group.",
+    "Totals": {
+      "group": "Group total",
+      "yourShare": "Your share"
+    },
     "create": "Create expense",
     "createFirst": "Create the first one",
     "noExpenses": "Your group doesn’t contain any expense yet.",
@@ -292,10 +296,19 @@
     "saving": "Saving…",
     "cancel": "Cancel",
     "reimbursement": "Reimbursement",
+    "moreOptions": "More options",
     "addPayer": "Add Payer",
     "total": "Total",
     "excludedItems": "excluded from group",
-    "groupExpense": "Final Group Split"
+    "groupExpense": "Final Group Split",
+    "Itemization": {
+      "remainderPrompt": "{amount} of the total is not covered by any item — usually tax and service.",
+      "splitProportionally": "Split in proportion to each share",
+      "splitEvenly": "Split evenly",
+      "proportionalUnavailable": "Assign at least one item to someone first.",
+      "remainderName": "Tax & service",
+      "remainderNameFor": "Tax & service · {name}"
+    }
   },
   "ExpenseDocumentsInput": {
     "TooBigToast": {
@@ -398,6 +411,14 @@
       "earlierThisYear": "Earlier this year",
       "lastYear": "Last year",
       "older": "Older"
+    },
+    "Changes": {
+      "title": "Title",
+      "amount": "Amount",
+      "date": "Date",
+      "category": "Category",
+      "paidBy": "Paid by",
+      "paidFor": "Paid for"
     }
   },
   "Information": {

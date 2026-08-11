@@ -24,10 +24,16 @@ import {
 } from '@/components/ui/popover'
 import { Currency } from '@/lib/currency'
 import { useMediaQuery, useMobilePopoverState } from '@/lib/hooks'
-import { cn, formatCurrency } from '@/lib/utils'
+import {
+  amountAsDecimal,
+  amountAsMinorUnits,
+  cn,
+  distributeMinorUnits,
+  formatCurrency,
+} from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { Check, EyeOff, Plus, Trash2, Users } from 'lucide-react'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { useFormContext } from 'react-hook-form'
 
@@ -55,6 +61,7 @@ export function ItemizationBuilder({
 }: Props) {
   const { control, watch, setValue, trigger } = useFormContext()
   const locale = useLocale()
+  const t = useTranslations('ExpenseForm.Itemization')
   const isDesktop = useMediaQuery('(min-width: 1024px)')
 
   // We use the 'items' from watch for calculating totals dynamically,
@@ -77,6 +84,47 @@ export function ItemizationBuilder({
   const totalExcluded = totalAmount - groupSplitSum
   const unassignedRemainder = totalAmount - allItemsEnteredSum
   const isBalanced = Math.abs(unassignedRemainder) < 0.01
+
+  // Each participant's share of the items entered so far. Proportional allocation is meaningless
+  // without it — and impossible if nobody has been assigned anything yet.
+  const subtotals = group.participants.map((participant) =>
+    watchedItems.reduce((sum: number, item: any) => {
+      const ids: string[] = item.participantIds || []
+      if (!ids.includes(participant.id)) return sum
+      return sum + (Number(item.price) || 0) / ids.length
+    }, 0),
+  )
+  const canSplitProportionally = subtotals.some((amount) => amount > 0)
+
+  const addRemainderEvenly = () => {
+    append({
+      name: t('remainderName'),
+      price: Number(unassignedRemainder.toFixed(2)),
+      participantIds: group.participants.map((p) => p.id),
+    })
+    setTimeout(() => trigger(['items', 'paidBy']), 0)
+  }
+
+  // An item is always split evenly between the people on it, so a pro-rata share can only be
+  // expressed as one single-participant item each. `distributeMinorUnits` does the allocation in
+  // minor units, which is what guarantees the parts add back up to the remainder exactly rather
+  // than leaving a stray cent to re-trigger the "unassigned" warning.
+  const addRemainderProportionally = () => {
+    const remainderMinor = amountAsMinorUnits(unassignedRemainder, currency)
+    const weights = subtotals.map((amount) =>
+      amountAsMinorUnits(amount, currency),
+    )
+    const allocated = distributeMinorUnits(weights, remainderMinor)
+    group.participants.forEach((participant, index) => {
+      if (weights[index] <= 0 || allocated[index] === 0) return
+      append({
+        name: t('remainderNameFor', { name: participant.name }),
+        price: amountAsDecimal(allocated[index], currency),
+        participantIds: [participant.id],
+      })
+    })
+    setTimeout(() => trigger(['items', 'paidBy']), 0)
+  }
 
   const getPayerSummary = (selectedIds: string[]) => {
     if (!selectedIds || selectedIds.length === 0) return 'No one'
@@ -306,26 +354,48 @@ export function ItemizationBuilder({
           })}
         </div>
 
-        {/* Adjustment Button */}
+        {/* What is left over after the items is almost always tax and service. Splitting that
+            evenly is wrong whenever people ordered different amounts: a 20% service charge on a
+            £60 order is not the same as on a £15 one. Both options are offered because a flat
+            cover charge genuinely is even. */}
         {!isBalanced && Math.abs(unassignedRemainder) > 0.01 && (
-          <div className="flex justify-center">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="text-xs h-7 border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100"
-              onClick={() => {
-                append({
-                  name: 'Adjustment',
-                  price: Number(unassignedRemainder.toFixed(2)),
-                  participantIds: group.participants.map((p) => p.id),
-                })
-                setTimeout(() => trigger(['items', 'paidBy']), 0)
-              }}
-            >
-              Add {formatCurrency(currency, unassignedRemainder, locale, true)}{' '}
-              as adjustment item
-            </Button>
+          <div className="flex flex-col items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {t('remainderPrompt', {
+                amount: formatCurrency(
+                  currency,
+                  unassignedRemainder,
+                  locale,
+                  true,
+                ),
+              })}
+            </span>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-xs h-7"
+                onClick={addRemainderProportionally}
+                disabled={!canSplitProportionally}
+                title={
+                  canSplitProportionally
+                    ? undefined
+                    : t('proportionalUnavailable')
+                }
+              >
+                {t('splitProportionally')}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="text-xs h-7"
+                onClick={addRemainderEvenly}
+              >
+                {t('splitEvenly')}
+              </Button>
+            </div>
           </div>
         )}
 

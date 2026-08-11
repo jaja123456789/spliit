@@ -4,6 +4,7 @@ import {
   ActivityItem,
 } from '@/app/groups/[groupId]/activity/activity-item'
 import { Skeleton } from '@/components/ui/skeleton'
+import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useTranslations } from 'next-intl'
@@ -141,6 +142,7 @@ export function ActivityList() {
                   activity={activity}
                   participant={participant}
                   dateStyle={dateStyle}
+                  currency={group ? getCurrencyFromGroup(group) : undefined}
                 />
               )
             })}

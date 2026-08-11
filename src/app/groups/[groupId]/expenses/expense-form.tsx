@@ -70,7 +70,7 @@ import {
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { RecurrenceRule } from '@prisma/client'
-import { Crown, Plus, Save, Trash2 } from 'lucide-react'
+import { ChevronDown, Crown, Plus, Save, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -454,6 +454,9 @@ export function ExpenseForm({
   )
   const [rateCurrency, setRateCurrency] = useState(initialCurrencyCode)
   const [isCategoryLoading, setCategoryLoading] = useState(false)
+  // Open by default when editing: an existing expense may already carry a note, a recurrence or a
+  // non-group currency, and hiding those behind a collapsed section would look like data loss.
+  const [showMoreOptions, setShowMoreOptions] = useState(!isCreate)
 
   // Track manual edits for BY_AMOUNT mode
   const [manuallyEditedParticipants, setManuallyEditedParticipants] = useState<
@@ -898,256 +901,6 @@ export function ExpenseForm({
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="expenseDate"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t(`${sExpense}.DateField.label`)}</FormLabel>
-                  <FormControl>
-                    <Input
-                      className="date-base"
-                      type="date"
-                      value={formatDate(field.value)}
-                      onChange={(e) => field.onChange(new Date(e.target.value))}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    {t(`${sExpense}.DateField.description`)}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="category"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('categoryField.label')}</FormLabel>
-                  <CategorySelector
-                    categories={categories}
-                    defaultValue={field.value}
-                    onValueChange={field.onChange}
-                    isLoading={isCategoryLoading}
-                  />
-                  <FormDescription>
-                    {t(`${sExpense}.categoryFieldDescription`)}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="originalCurrency"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t(`${sExpense}.currencyField.label`)}</FormLabel>
-                  <FormControl>
-                    {group.currencyCode ? (
-                      <CurrencySelector
-                        currencies={defaultCurrencyList(locale, '')}
-                        defaultValue={field.value ?? ''}
-                        isLoading={false}
-                        onValueChange={field.onChange}
-                      />
-                    ) : (
-                      <Input
-                        className="text-base"
-                        disabled
-                        {...field}
-                        value={field.value ?? ''}
-                        placeholder={group.currency}
-                      />
-                    )}
-                  </FormControl>
-                  <FormDescription>
-                    {t(`${sExpense}.currencyField.description`)}{' '}
-                    {!group.currencyCode && t('conversionUnavailable')}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div
-              className={cn(
-                'col-span-2 sm:col-span-1 space-y-2',
-                !conversionRequired && 'hidden sm:block sm:invisible',
-              )}
-            >
-              <FormItem>
-                <FormLabel>
-                  {t('convertedTotalField.label', {
-                    currency: group.currencyCode ?? group.currency,
-                  })}
-                </FormLabel>
-                <div className="flex items-baseline gap-2 h-10">
-                  <span className="text-base font-medium">
-                    {formatCurrency(
-                      groupCurrency,
-                      effectiveRate ? effectiveTotal * effectiveRate : 0,
-                      locale,
-                      true,
-                    )}
-                  </span>
-                </div>
-                <FormDescription>
-                  {isNaN(form.getValues('expenseDate').getTime()) ? (
-                    t('conversionRateState.noDate')
-                  ) : form.getValues('expenseDate') &&
-                    !usingCustomConversionRate ? (
-                    <>
-                      {conversionRateMessage}
-                      {!exchangeRate.isLoading && (
-                        <Button
-                          className="h-auto py-0"
-                          variant="link"
-                          type="button"
-                          onClick={() => exchangeRate.refresh()}
-                        >
-                          {t('conversionRateState.refresh')}
-                        </Button>
-                      )}
-                    </>
-                  ) : (
-                    t('conversionRateState.customRate')
-                  )}
-                </FormDescription>
-              </FormItem>
-              <Collapsible
-                open={usingCustomConversionRate}
-                onOpenChange={setUsingCustomConversionRate}
-              >
-                <CollapsibleTrigger asChild>
-                  <Button variant="link" type="button" className="-mx-4">
-                    {usingCustomConversionRate
-                      ? t('conversionRateField.useApi')
-                      : t('conversionRateField.useCustom')}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  <FormField
-                    control={form.control}
-                    name="conversionRate"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('conversionRateField.label')}</FormLabel>
-                        <div className="flex items-baseline gap-2">
-                          <span>
-                            {expenseCurrency.symbol} 1 = {group.currency}
-                          </span>
-                          <FormControl>
-                            <Input
-                              className="text-base max-w-"
-                              type="text"
-                              inputMode="decimal"
-                              placeholder="0.00"
-                              {...field}
-                              value={field.value ?? ''}
-                              onChange={(e) =>
-                                field.onChange(
-                                  enforceCurrencyPattern(e.target.value),
-                                )
-                              }
-                            />
-                          </FormControl>
-                        </div>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </CollapsibleContent>
-              </Collapsible>
-            </div>
-
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('notesField.label')}</FormLabel>
-                  <FormControl>
-                    <Textarea className="text-base" {...field} />
-                  </FormControl>
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="recurrenceRule"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t(`${sExpense}.recurrenceRule.label`)}</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="NONE" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="NONE">
-                        {t(`${sExpense}.recurrenceRule.none`)}
-                      </SelectItem>
-                      <SelectItem value="DAILY">
-                        {t(`${sExpense}.recurrenceRule.daily`)}
-                      </SelectItem>
-                      <SelectItem value="WEEKLY">
-                        {t(`${sExpense}.recurrenceRule.weekly`)}
-                      </SelectItem>
-                      <SelectItem value="MONTHLY">
-                        {t(`${sExpense}.recurrenceRule.monthly`)}
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    {t(`${sExpense}.recurrenceRule.description`)}
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {!isIncome && !isMultiPayer && (
-              <FormField
-                control={form.control}
-                name="isReimbursement"
-                render={({ field }) => (
-                  <FormItem className="col-span-2 flex flex-row gap-2 items-center space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                    <div>
-                      <FormLabel>{t('isReimbursementField.label')}</FormLabel>
-                    </div>
-                  </FormItem>
-                )}
-              />
-            )}
-
-            {!form.watch('isReimbursement') && (
-              <div className="col-span-2 flex items-center justify-end space-x-2 my-4">
-                <Label
-                  htmlFor="itemize-mode"
-                  className="text-sm text-muted-foreground"
-                >
-                  Itemize Mode
-                </Label>
-                <Switch
-                  id="itemize-mode"
-                  checked={isItemized}
-                  onCheckedChange={setIsItemized}
-                />
-              </div>
-            )}
-
             {/* Paid By Section */}
             <div className="col-span-2">
               <FormLabel className="flex items-center gap-2">
@@ -1309,7 +1062,17 @@ export function ExpenseForm({
                       hasExcludedItems
                         ? 'bg-credit/10 border-credit/30'
                         : 'bg-muted/50 border-transparent text-foreground',
-                      totalAmount <= 0 ? 'text-destructive' : '',
+                      // Red means "there is something to fix", so it follows validation rather
+                      // than the sign of the total. The previous `totalAmount <= 0` painted a
+                      // pristine form red before a single keystroke, and painted every legitimate
+                      // income expense red too — income is a supported case, not a mistake, and
+                      // `isIncome` elsewhere depends on exactly that negative total.
+                      // (`isDirty` is no good here either: the amount field round-trips through a
+                      // string, so the form reports itself dirty on mount without any input.)
+                      form.formState.errors.paidBy ||
+                        form.formState.errors.amount
+                        ? 'text-destructive'
+                        : '',
                     )}
                   >
                     <span className="text-xs uppercase tracking-wider mr-2 align-middle">
@@ -1336,6 +1099,294 @@ export function ExpenseForm({
                 </div>
               </div>
             </div>
+
+            {!form.watch('isReimbursement') && (
+              <div className="col-span-2 flex items-center justify-end space-x-2 my-4">
+                <Label
+                  htmlFor="itemize-mode"
+                  className="text-sm text-muted-foreground"
+                >
+                  Itemize Mode
+                </Label>
+                <Switch
+                  id="itemize-mode"
+                  checked={isItemized}
+                  onCheckedChange={setIsItemized}
+                />
+              </div>
+            )}
+
+            {/* Everything below is optional. The common case is a title, an amount and who
+                paid — those stay above the fold; date, category, currency, notes, recurrence
+                and the reimbursement flag used to sit between them, pushing the amount field
+                roughly 1,100px down a 1,900px page on a phone. */}
+            <Collapsible
+              open={showMoreOptions}
+              onOpenChange={setShowMoreOptions}
+              className="col-span-2"
+            >
+              <CollapsibleTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="-ml-2 text-muted-foreground"
+                >
+                  <ChevronDown
+                    className={cn(
+                      'w-4 h-4 mr-1 transition-transform',
+                      showMoreOptions && 'rotate-180',
+                    )}
+                  />
+                  {t('moreOptions')}
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="grid sm:grid-cols-2 gap-6 pt-4">
+                <FormField
+                  control={form.control}
+                  name="expenseDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t(`${sExpense}.DateField.label`)}</FormLabel>
+                      <FormControl>
+                        <Input
+                          className="date-base"
+                          type="date"
+                          value={formatDate(field.value)}
+                          onChange={(e) =>
+                            field.onChange(new Date(e.target.value))
+                          }
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {t(`${sExpense}.DateField.description`)}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="category"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('categoryField.label')}</FormLabel>
+                      <CategorySelector
+                        categories={categories}
+                        defaultValue={field.value}
+                        onValueChange={field.onChange}
+                        isLoading={isCategoryLoading}
+                      />
+                      <FormDescription>
+                        {t(`${sExpense}.categoryFieldDescription`)}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="originalCurrency"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {t(`${sExpense}.currencyField.label`)}
+                      </FormLabel>
+                      <FormControl>
+                        {group.currencyCode ? (
+                          <CurrencySelector
+                            currencies={defaultCurrencyList(locale, '')}
+                            defaultValue={field.value ?? ''}
+                            isLoading={false}
+                            onValueChange={field.onChange}
+                          />
+                        ) : (
+                          <Input
+                            className="text-base"
+                            disabled
+                            {...field}
+                            value={field.value ?? ''}
+                            placeholder={group.currency}
+                          />
+                        )}
+                      </FormControl>
+                      <FormDescription>
+                        {t(`${sExpense}.currencyField.description`)}{' '}
+                        {!group.currencyCode && t('conversionUnavailable')}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div
+                  className={cn(
+                    'col-span-2 sm:col-span-1 space-y-2',
+                    !conversionRequired && 'hidden sm:block sm:invisible',
+                  )}
+                >
+                  <FormItem>
+                    <FormLabel>
+                      {t('convertedTotalField.label', {
+                        currency: group.currencyCode ?? group.currency,
+                      })}
+                    </FormLabel>
+                    <div className="flex items-baseline gap-2 h-10">
+                      <span className="text-base font-medium">
+                        {formatCurrency(
+                          groupCurrency,
+                          effectiveRate ? effectiveTotal * effectiveRate : 0,
+                          locale,
+                          true,
+                        )}
+                      </span>
+                    </div>
+                    <FormDescription>
+                      {isNaN(form.getValues('expenseDate').getTime()) ? (
+                        t('conversionRateState.noDate')
+                      ) : form.getValues('expenseDate') &&
+                        !usingCustomConversionRate ? (
+                        <>
+                          {conversionRateMessage}
+                          {!exchangeRate.isLoading && (
+                            <Button
+                              className="h-auto py-0"
+                              variant="link"
+                              type="button"
+                              onClick={() => exchangeRate.refresh()}
+                            >
+                              {t('conversionRateState.refresh')}
+                            </Button>
+                          )}
+                        </>
+                      ) : (
+                        t('conversionRateState.customRate')
+                      )}
+                    </FormDescription>
+                  </FormItem>
+                  <Collapsible
+                    open={usingCustomConversionRate}
+                    onOpenChange={setUsingCustomConversionRate}
+                  >
+                    <CollapsibleTrigger asChild>
+                      <Button variant="link" type="button" className="-mx-4">
+                        {usingCustomConversionRate
+                          ? t('conversionRateField.useApi')
+                          : t('conversionRateField.useCustom')}
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <FormField
+                        control={form.control}
+                        name="conversionRate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>
+                              {t('conversionRateField.label')}
+                            </FormLabel>
+                            <div className="flex items-baseline gap-2">
+                              <span>
+                                {expenseCurrency.symbol} 1 = {group.currency}
+                              </span>
+                              <FormControl>
+                                <Input
+                                  className="text-base max-w-"
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder="0.00"
+                                  {...field}
+                                  value={field.value ?? ''}
+                                  onChange={(e) =>
+                                    field.onChange(
+                                      enforceCurrencyPattern(e.target.value),
+                                    )
+                                  }
+                                />
+                              </FormControl>
+                            </div>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </CollapsibleContent>
+                  </Collapsible>
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="notes"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('notesField.label')}</FormLabel>
+                      <FormControl>
+                        <Textarea className="text-base" {...field} />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="recurrenceRule"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>
+                        {t(`${sExpense}.recurrenceRule.label`)}
+                      </FormLabel>
+                      <Select
+                        onValueChange={field.onChange}
+                        defaultValue={field.value}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="NONE" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="NONE">
+                            {t(`${sExpense}.recurrenceRule.none`)}
+                          </SelectItem>
+                          <SelectItem value="DAILY">
+                            {t(`${sExpense}.recurrenceRule.daily`)}
+                          </SelectItem>
+                          <SelectItem value="WEEKLY">
+                            {t(`${sExpense}.recurrenceRule.weekly`)}
+                          </SelectItem>
+                          <SelectItem value="MONTHLY">
+                            {t(`${sExpense}.recurrenceRule.monthly`)}
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        {t(`${sExpense}.recurrenceRule.description`)}
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                {!isIncome && !isMultiPayer && (
+                  <FormField
+                    control={form.control}
+                    name="isReimbursement"
+                    render={({ field }) => (
+                      <FormItem className="col-span-2 flex flex-row gap-2 items-center space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div>
+                          <FormLabel>
+                            {t('isReimbursementField.label')}
+                          </FormLabel>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                )}
+              </CollapsibleContent>
+            </Collapsible>
           </CardContent>
         </Card>
         {isItemized ? (

@@ -1,3 +1,7 @@
+import {
+  describeExpenseChanges,
+  encodeActivityData,
+} from '@/lib/activity-changes'
 import { prisma } from '@/lib/prisma'
 import { ExpenseFormValues, GroupFormValues } from '@/lib/schemas'
 import {
@@ -258,10 +262,41 @@ export async function updateExpense(
       throw new Error(`Invalid participant ID: ${participant}`)
   }
 
+  // Record *what* changed, not merely that something did. `existingExpense` is already loaded
+  // above for validation, so this costs no extra query.
+  const nameOf = (id: string) =>
+    group.participants.find((p) => p.id === id)?.name ?? id
+  const nextCategoryId = Number(expenseFormValues.category)
+  const nextCategory =
+    nextCategoryId === existingExpense.categoryId
+      ? existingExpense.category
+      : await prisma.category.findUnique({ where: { id: nextCategoryId } })
+  const changes = describeExpenseChanges(
+    {
+      title: existingExpense.title,
+      amount: existingExpense.amount,
+      expenseDate: existingExpense.expenseDate,
+      categoryName: existingExpense.category?.name,
+      paidBy: existingExpense.paidBy.map((pb) => nameOf(pb.participantId)),
+      paidFor: existingExpense.paidFor.map((pf) => nameOf(pf.participantId)),
+    },
+    {
+      title: expenseFormValues.title,
+      amount: amountAsMinorUnits(
+        Number(expenseFormValues.amount),
+        groupCurrency,
+      ),
+      expenseDate: expenseFormValues.expenseDate,
+      categoryName: nextCategory?.name,
+      paidBy: expenseFormValues.paidBy.map((pb) => nameOf(pb.participant)),
+      paidFor: expenseFormValues.paidFor.map((pf) => nameOf(pf.participant)),
+    },
+  )
+
   await logActivity(groupId, ActivityType.UPDATE_EXPENSE, {
     participantId,
     expenseId,
-    data: expenseFormValues.title,
+    data: encodeActivityData(expenseFormValues.title, changes),
   })
 
   const isDeleteRecurrenceExpenseLink =

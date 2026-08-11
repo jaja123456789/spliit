@@ -1,6 +1,7 @@
 'use client'
 import { ExpenseCard } from '@/app/groups/[groupId]/expenses/expense-card'
 import { getGroupExpensesAction } from '@/app/groups/[groupId]/expenses/expense-list-fetch-action'
+import { ExpenseListTotal } from '@/app/groups/[groupId]/expenses/expense-list-total'
 import { Button } from '@/components/ui/button'
 import { SearchBar } from '@/components/ui/search-bar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -86,6 +87,7 @@ export function ExpenseList() {
 
   return (
     <>
+      <ExpenseListTotal />
       <SearchBar onValueChange={(value) => setSearchText(value)} />
       <ExpenseListForSearch
         groupId={groupId}
