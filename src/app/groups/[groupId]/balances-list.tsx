@@ -1,21 +1,37 @@
+'use client'
+
 import { ProfileAvatar } from '@/components/profile-avatar'
 import { Balances } from '@/lib/balances'
 import { Currency } from '@/lib/currency'
+import { useActiveUser } from '@/lib/hooks'
 import { cn, formatCurrency } from '@/lib/utils'
 import { Participant } from '@prisma/client'
-import { useLocale } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 
 type Props = {
   balances: Balances
   participants: Participant[]
   currency: Currency
+  groupId: string
 }
 
-export function BalancesList({ balances, participants, currency }: Props) {
+export function BalancesList({
+  balances,
+  participants,
+  currency,
+  groupId,
+}: Props) {
   const locale = useLocale()
-  const maxBalance = Math.max(
-    ...Object.values(balances).map((b) => Math.abs(b.total)),
-  )
+  const t = useTranslations('Balances')
+  const activeUserId = useActiveUser(groupId)
+  // `useActiveUser` returns null until its effect runs, and 'None' is the stored sentinel for
+  // "nobody", so neither should ever match a participant id.
+  const isActiveUser = (id: string) =>
+    !!activeUserId && activeUserId !== 'None' && activeUserId === id
+
+  // `Math.max()` of an empty list is -Infinity, which would turn every width into NaN.
+  const totals = Object.values(balances).map((b) => Math.abs(b.total))
+  const maxBalance = totals.length > 0 ? Math.max(...totals) : 0
 
   return (
     <div className="flex flex-col gap-4" data-testid="balances-list">
@@ -23,11 +39,12 @@ export function BalancesList({ balances, participants, currency }: Props) {
         const balance = balances[participant.id]?.total ?? 0
         const isPositive = balance > 0
         const isZero = Math.abs(balance) < 0.01 // Floating point safety
+        const isYou = isActiveUser(participant.id)
 
-        // Calculate bar width (percentage of max)
-        // Ensure at least a tiny sliver is visible if there's any balance
+        // The track is diverging: debts grow left from the centre, credits grow right. Each side
+        // is therefore only half the track, so the largest balance fills 50%, not 100%.
         const percentage =
-          maxBalance > 0 ? (Math.abs(balance) / maxBalance) * 100 : 0
+          maxBalance > 0 ? (Math.abs(balance) / maxBalance) * 50 : 0
 
         return (
           <div
@@ -35,7 +52,6 @@ export function BalancesList({ balances, participants, currency }: Props) {
             className="flex items-center gap-3"
             data-testid={`balance-row-${participant.name}`}
           >
-            {/* Avatar */}
             <ProfileAvatar
               name={participant.name}
               size={40}
@@ -44,9 +60,15 @@ export function BalancesList({ balances, participants, currency }: Props) {
 
             <div className="flex-1 min-w-0 flex flex-col gap-1">
               {/* Name & Amount Row */}
-              <div className="flex justify-between items-baseline">
+              <div className="flex justify-between items-baseline gap-2">
                 <span className="font-medium truncate pr-2 text-sm">
                   {participant.name}
+                  {/* Rendered inline so it doesn't reflow the row when it appears a frame late. */}
+                  {isYou && (
+                    <span className="ml-1.5 font-normal text-xs text-muted-foreground">
+                      ({t('you')})
+                    </span>
+                  )}
                 </span>
                 <span
                   className={cn(
@@ -62,34 +84,30 @@ export function BalancesList({ balances, participants, currency }: Props) {
                 </span>
               </div>
 
-              {/* Visual Bar Container */}
-              <div className="h-1.5 w-full bg-secondary/50 rounded-full overflow-hidden flex">
-                {/* 
-                  To visualize negative/positive:
-                  We can split the bar in half, or just show color.
-                  Standard splitwise style is simple colored bars. 
-                  Let's align them.
-                */}
-
-                {isZero ? (
-                  <div className="w-full h-full bg-transparent" />
-                ) : (
-                  // Bar wrapper
-                  <div className="w-full h-full relative">
-                    <div
-                      className={cn(
-                        'absolute h-full rounded-full transition-all duration-500 ease-out',
-                        isPositive ? 'bg-credit' : 'bg-debt',
-                      )}
-                      style={{ width: `${percentage}%`, left: 0 }}
-                    />
-                  </div>
+              {/* Diverging bar: direction is encoded in position as well as colour, so it still
+                  reads for someone who cannot separate the two hues. */}
+              <div className="relative h-1.5 w-full bg-secondary/50 rounded-full">
+                <div
+                  className="absolute inset-y-[-2px] left-1/2 w-px -translate-x-1/2 bg-border"
+                  aria-hidden="true"
+                />
+                {!isZero && (
+                  <div
+                    className={cn(
+                      'absolute inset-y-0 rounded-full transition-all duration-500 ease-out',
+                      isPositive ? 'left-1/2 bg-credit' : 'right-1/2 bg-debt',
+                    )}
+                    style={{ width: `${percentage}%` }}
+                  />
                 )}
               </div>
 
-              {/* Optional: Text description below bar for context */}
               <div className="text-xs text-muted-foreground">
-                {isPositive ? 'gets back' : isZero ? 'settled up' : 'owes'}
+                {isPositive
+                  ? t('getsBack')
+                  : isZero
+                  ? t('settledUp')
+                  : t('owes')}
               </div>
             </div>
           </div>

@@ -1,11 +1,35 @@
 'use client'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  BarChart3,
+  History,
+  Info,
+  Receipt,
+  Scale,
+  Settings,
+  type LucideIcon,
+} from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import { usePathname, useRouter } from 'next/navigation'
 
 type Props = {
   groupId: string
 }
+
+/**
+ * Six tabs did not fit a phone: the strip needed 483px in a 412px viewport, so Settings sat
+ * off-screen and the share button covered Activity, with nothing to indicate it scrolled.
+ * Stacking a glyph over the label fits all six and takes the touch target from 32px to ~44px.
+ * The icons are aria-hidden so each trigger's accessible name stays exactly the translated label.
+ */
+const TABS: { value: string; messageKey: string; Icon: LucideIcon }[] = [
+  { value: 'expenses', messageKey: 'Expenses.title', Icon: Receipt },
+  { value: 'balances', messageKey: 'Balances.title', Icon: Scale },
+  { value: 'stats', messageKey: 'Stats.title', Icon: BarChart3 },
+  { value: 'activity', messageKey: 'Activity.title', Icon: History },
+  { value: 'information', messageKey: 'Information.title', Icon: Info },
+  { value: 'edit', messageKey: 'Settings.title', Icon: Settings },
+]
 
 export function GroupTabs({ groupId }: Props) {
   const t = useTranslations()
@@ -17,18 +41,24 @@ export function GroupTabs({ groupId }: Props) {
   return (
     <Tabs
       value={value}
-      className="[&>*]:border overflow-x-auto"
+      className="[&>*]:border w-full min-w-0"
       onValueChange={(value) => {
         router.push(`/groups/${groupId}/${value}`)
       }}
     >
-      <TabsList>
-        <TabsTrigger value="expenses">{t('Expenses.title')}</TabsTrigger>
-        <TabsTrigger value="balances">{t('Balances.title')}</TabsTrigger>
-        <TabsTrigger value="information">{t('Information.title')}</TabsTrigger>
-        <TabsTrigger value="stats">{t('Stats.title')}</TabsTrigger>
-        <TabsTrigger value="activity">{t('Activity.title')}</TabsTrigger>
-        <TabsTrigger value="edit">{t('Settings.title')}</TabsTrigger>
+      <TabsList className="grid w-full grid-cols-6 h-auto sm:flex sm:h-10">
+        {TABS.map(({ value, messageKey, Icon }) => (
+          <TabsTrigger
+            key={value}
+            value={value}
+            className="flex-col gap-1 px-1 py-2 min-w-0 sm:flex-row sm:gap-1.5 sm:px-3 sm:py-1.5"
+          >
+            <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
+            <span className="text-[10px] leading-none truncate max-w-full sm:text-sm">
+              {t(messageKey as never)}
+            </span>
+          </TabsTrigger>
+        ))}
       </TabsList>
     </Tabs>
   )

@@ -336,6 +336,10 @@
   "Balances": {
     "title": "Balances",
     "description": "This is the amount that each participant paid or was paid for.",
+    "you": "You",
+    "getsBack": "gets back",
+    "settledUp": "settled up",
+    "owes": "owes",
     "Reimbursements": {
       "title": "Suggested reimbursements",
       "description": "Here are suggestions for optimized reimbursements between participants.",
