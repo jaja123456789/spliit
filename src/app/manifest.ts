@@ -56,30 +56,37 @@ export default function manifest(): MetadataRoute.Manifest {
         purpose: 'maskable',
       },
     ],
-    share_target: {
-      action: `${basePath}/api/share-target`,
-      method: 'POST',
-      enctype: 'multipart/form-data',
-      params: {
-        files: [
-          {
-            name: 'file',
-            accept: [
-              'image/png',
-              'image/jpeg',
-              'image/gif',
-              'image/webp',
-              'image/bmp',
-              '.png',
-              '.jpg',
-              '.jpeg',
-              '.gif',
-              '.webp',
-              '.bmp',
-            ],
+    // Only advertised when receipt extraction is on: with the scanner disabled there is nothing
+    // that can consume a shared image, and an OS share entry that silently drops the file is
+    // worse than no share entry at all.
+    ...(env.NEXT_PUBLIC_ENABLE_RECEIPT_EXTRACT
+      ? {
+          share_target: {
+            action: `${basePath}/api/share-target`,
+            method: 'POST',
+            enctype: 'multipart/form-data',
+            params: {
+              files: [
+                {
+                  name: 'file',
+                  accept: [
+                    'image/png',
+                    'image/jpeg',
+                    'image/gif',
+                    'image/webp',
+                    'image/bmp',
+                    '.png',
+                    '.jpg',
+                    '.jpeg',
+                    '.gif',
+                    '.webp',
+                    '.bmp',
+                  ],
+                },
+              ],
+            },
           },
-        ],
-      },
-    },
+        }
+      : {}),
   }
 }

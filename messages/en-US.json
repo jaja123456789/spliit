@@ -51,6 +51,7 @@
   },
   "Groups": {
     "myGroups": "My groups",
+    "sharedReceiptPending": "Receipt received. Choose the group it belongs to and the scanner will open.",
     "create": "Create",
     "loadingRecent": "Loading recent groups…",
     "NoRecent": {
@@ -321,6 +322,13 @@
       "editNext": "You’ll be able to edit the expense information next.",
       "continue": "Continue"
     },
+    "takePhoto": "Take photo",
+    "fromGallery": "Choose from gallery",
+    "addPagePhoto": "Add photo",
+    "addPageGallery": "Add from gallery",
+    "removePage": "Remove page {page}",
+    "analyze": "Analyze receipt ({count, plural, one {# page} other {# pages}})",
+    "analyzing": "Analyzing receipt…",
     "unknown": "Unknown",
     "detectedCurrency": "Detected currency: {currency}",
     "TooBigToast": {

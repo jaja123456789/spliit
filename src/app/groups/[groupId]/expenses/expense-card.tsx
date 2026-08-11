@@ -77,7 +77,7 @@ export function ExpenseCard({
 
   let userBalanceAmount = 0
 
-  if (activeUserId && activeUserId !== 'None') {
+  if (activeUserId) {
     const balances = getBalances([expense])
     if (balances[activeUserId]) {
       userBalanceAmount = balances[activeUserId].total

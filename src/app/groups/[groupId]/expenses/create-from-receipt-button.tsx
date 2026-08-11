@@ -28,6 +28,12 @@ import { Locale } from '@/i18n/request'
 import { getCurrency, normalizeCurrencyCode } from '@/lib/currency'
 import { useMediaQuery } from '@/lib/hooks'
 import {
+  FROM_SHARE_PARAM,
+  clearPendingShareImage,
+  dataUrlToFile,
+  readPendingShareImage,
+} from '@/lib/share-target'
+import {
   formatCurrency,
   formatDate,
   formatFileSize,
@@ -39,15 +45,20 @@ import {
   FileQuestion,
   ImagePlus,
   Loader2,
-  Plus,
   Receipt,
   Trash2,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { getImageData, usePresignedUpload } from 'next-s3-upload'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
-import { PropsWithChildren, ReactNode, useRef, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import {
+  PropsWithChildren,
+  ReactNode,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import { useCurrentGroup } from '../current-group-context'
 
 const MAX_FILE_SIZE = 50 * 1024 ** 2
@@ -55,12 +66,28 @@ const MAX_FILE_SIZE = 50 * 1024 ** 2
 export function CreateFromReceiptButton() {
   const t = useTranslations('CreateFromReceipt')
   const isDesktop = useMediaQuery('(min-width: 1024px)')
+  const searchParams = useSearchParams()
+  const [open, setOpen] = useState(false)
+  const [sharedImage, setSharedImage] = useState<string | null>(null)
   const DialogOrDrawer = isDesktop
     ? CreateFromReceiptDialog
     : CreateFromReceiptDrawer
 
+  // An image shared from the OS is parked in session storage and the user is asked to pick a
+  // group; arriving here with ?fromShare=true is that answer, so pick the image up and open.
+  useEffect(() => {
+    if (searchParams.get(FROM_SHARE_PARAM) !== 'true') return
+    const pending = readPendingShareImage()
+    if (!pending) return
+    clearPendingShareImage()
+    setSharedImage(pending)
+    setOpen(true)
+  }, [searchParams])
+
   return (
     <DialogOrDrawer
+      open={open}
+      onOpenChange={setOpen}
       trigger={
         <Button
           size="icon"
@@ -80,12 +107,16 @@ export function CreateFromReceiptButton() {
       }
       description={<>{t('Dialog.description')}</>}
     >
-      <ReceiptDialogContent />
+      <ReceiptDialogContent initialImageDataUrl={sharedImage} />
     </DialogOrDrawer>
   )
 }
 
-function ReceiptDialogContent() {
+function ReceiptDialogContent({
+  initialImageDataUrl,
+}: {
+  initialImageDataUrl?: string | null
+}) {
   const { group } = useCurrentGroup()
   const { data: categoriesData } = trpc.categories.list.useQuery()
   const categories = categoriesData?.categories
@@ -213,6 +244,41 @@ function ReceiptDialogContent() {
     if (galleryInputRef.current) galleryInputRef.current.value = ''
   }
 
+  // A shared image enters the same pipeline as a picked one, so everything downstream — multi-page,
+  // compression, upload, extraction — works on it unchanged.
+  useEffect(() => {
+    if (!initialImageDataUrl) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const file = await dataUrlToFile(initialImageDataUrl)
+        if (cancelled) return
+        setDraftImages((prev) =>
+          prev.length > 0
+            ? prev
+            : [
+                {
+                  blobUrl: URL.createObjectURL(file),
+                  file,
+                  width: undefined,
+                  height: undefined,
+                },
+              ],
+        )
+      } catch (e) {
+        console.error('Could not read the shared receipt', e)
+        toast({
+          title: t('ErrorToast.title'),
+          description: t('ErrorToast.description'),
+          variant: 'destructive',
+        })
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [initialImageDataUrl, t, toast])
+
   const removeDraftImage = (index: number) => {
     setDraftImages((prev) => prev.filter((_, i) => i !== index))
   }
@@ -333,7 +399,7 @@ function ReceiptDialogContent() {
                 onClick={() => cameraInputRef.current?.click()}
               >
                 <Camera className="w-8 h-8 mb-1" />
-                <span>Take Photo</span>
+                <span>{t('takePhoto')}</span>
               </Button>
               <Button
                 variant="outline"
@@ -341,7 +407,7 @@ function ReceiptDialogContent() {
                 onClick={() => galleryInputRef.current?.click()}
               >
                 <ImagePlus className="w-8 h-8 mb-1" />
-                <span>Gallery</span>
+                <span>{t('fromGallery')}</span>
               </Button>
             </div>
           ) : (
@@ -359,23 +425,43 @@ function ReceiptDialogContent() {
                       fill
                       className="object-cover"
                     />
+                    {/* Always visible: this dialog is used on a phone almost every time, and a
+                        hover-only control cannot be reached by touch at all. */}
                     <button
+                      type="button"
                       onClick={() => removeDraftImage(idx)}
-                      className="absolute top-1 right-1 bg-black/50 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                      aria-label={t('removePage', { page: idx + 1 })}
+                      title={t('removePage', { page: idx + 1 })}
+                      className="absolute top-1 right-1 grid h-7 w-7 place-items-center rounded-full bg-black/60 text-white transition-colors hover:bg-black/80"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
-                {/* Add More Button */}
+                {/* Add another page, from either source — starting in the gallery previously left
+                    no way to add a second page from the gallery. */}
                 <div className="flex flex-col gap-2">
                   <Button
                     variant="outline"
-                    className="h-full border-dashed flex flex-col gap-1"
+                    type="button"
+                    className="h-full border-dashed flex flex-col gap-1 py-2"
                     onClick={() => cameraInputRef.current?.click()}
                   >
-                    <Plus className="w-5 h-5" />
-                    <span className="text-xs">Add Page</span>
+                    <Camera className="w-4 h-4" />
+                    <span className="text-[10px] leading-tight">
+                      {t('addPagePhoto')}
+                    </span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    type="button"
+                    className="h-full border-dashed flex flex-col gap-1 py-2"
+                    onClick={() => galleryInputRef.current?.click()}
+                  >
+                    <ImagePlus className="w-4 h-4" />
+                    <span className="text-[10px] leading-tight">
+                      {t('addPageGallery')}
+                    </span>
                   </Button>
                 </div>
               </div>
@@ -389,10 +475,10 @@ function ReceiptDialogContent() {
                 {pending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Analyzing Receipt...
+                    {t('analyzing')}
                   </>
                 ) : (
-                  <>Analyze Receipt ({draftImages.length} pages)</>
+                  <>{t('analyze', { count: draftImages.length })}</>
                 )}
               </Button>
             </div>
@@ -560,13 +646,17 @@ function CreateFromReceiptDialog({
   title,
   description,
   children,
+  open,
+  onOpenChange,
 }: PropsWithChildren<{
   trigger: ReactNode
   title: ReactNode
   description: ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }>) {
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
@@ -586,13 +676,17 @@ function CreateFromReceiptDrawer({
   title,
   description,
   children,
+  open,
+  onOpenChange,
 }: PropsWithChildren<{
   trigger: ReactNode
   title: ReactNode
   description: ReactNode
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }>) {
   return (
-    <Drawer>
+    <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerTrigger asChild>{trigger}</DrawerTrigger>
       <DrawerContent>
         <DrawerHeader>

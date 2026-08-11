@@ -4,6 +4,7 @@ import { getGroupExpensesAction } from '@/app/groups/[groupId]/expenses/expense-
 import { Button } from '@/components/ui/button'
 import { SearchBar } from '@/components/ui/search-bar'
 import { Skeleton } from '@/components/ui/skeleton'
+import { NEW_GROUP_ACTIVE_USER_KEY, writeActiveUser } from '@/lib/active-user'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import dayjs, { type Dayjs } from 'dayjs'
@@ -68,21 +69,18 @@ export function ExpenseList() {
   useEffect(() => {
     if (!participants) return
 
-    const activeUser = localStorage.getItem('newGroup-activeUser')
+    // The choice made while creating the group travels as a name, because participants had no ids
+    // yet. Exchange it for an id now that they do, and clear the hand-off either way so a failed
+    // name match cannot leave the modal asking again on every visit.
+    const pendingName = localStorage.getItem(NEW_GROUP_ACTIVE_USER_KEY)
     const newUser = localStorage.getItem(`${groupId}-newUser`)
-    if (activeUser || newUser) {
-      localStorage.removeItem('newGroup-activeUser')
+    if (pendingName || newUser) {
+      localStorage.removeItem(NEW_GROUP_ACTIVE_USER_KEY)
       localStorage.removeItem(`${groupId}-newUser`)
-      if (activeUser === 'None') {
-        localStorage.setItem(`${groupId}-activeUser`, 'None')
-      } else {
-        const userId = participants.find(
-          (p) => p.name === (activeUser || newUser),
-        )?.id
-        if (userId) {
-          localStorage.setItem(`${groupId}-activeUser`, userId)
-        }
-      }
+      const matched = participants.find(
+        (p) => p.name === (pendingName || newUser),
+      )
+      writeActiveUser(groupId, matched?.id ?? null)
     }
   }, [groupId, participants])
 

@@ -88,8 +88,7 @@ export function ItemizationBuilder({
 
     let names = selectedIds
       .map((id) => {
-        if (activeUserId && id === activeUserId && activeUserId !== 'None')
-          return 'You'
+        if (activeUserId && id === activeUserId) return 'You'
         return group.participants.find((p) => p.id === id)?.name
       })
       .filter(Boolean) as string[]
@@ -152,9 +151,7 @@ export function ItemizationBuilder({
             const summaryText = getPayerSummary(participantIds)
 
             const isMeInvolved =
-              activeUserId &&
-              activeUserId !== 'None' &&
-              participantIds.includes(activeUserId)
+              !!activeUserId && participantIds.includes(activeUserId)
 
             return (
               <div
@@ -438,10 +435,7 @@ function ParticipantSelector({
       <div className="max-h-[300px] overflow-y-auto grid grid-cols-1 gap-1">
         {group.participants.map((participant) => {
           const isSelected = value.includes(participant.id)
-          const isMe =
-            activeUserId &&
-            participant.id === activeUserId &&
-            activeUserId !== 'None'
+          const isMe = !!activeUserId && participant.id === activeUserId
 
           return (
             <div

@@ -24,10 +24,8 @@ export function BalancesList({
   const locale = useLocale()
   const t = useTranslations('Balances')
   const activeUserId = useActiveUser(groupId)
-  // `useActiveUser` returns null until its effect runs, and 'None' is the stored sentinel for
-  // "nobody", so neither should ever match a participant id.
-  const isActiveUser = (id: string) =>
-    !!activeUserId && activeUserId !== 'None' && activeUserId === id
+  // `useActiveUser` is null both before its effect runs and when nobody is selected.
+  const isActiveUser = (id: string) => !!activeUserId && activeUserId === id
 
   // `Math.max()` of an empty list is -Infinity, which would turn every width into NaN.
   const totals = Object.values(balances).map((b) => Math.abs(b.total))

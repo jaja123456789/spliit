@@ -7,14 +7,15 @@ import { SyncIndicator } from '@/components/sync-indicator'
 import { Button } from '@/components/ui/button'
 import { useGroups } from '@/contexts'
 import { getGroups } from '@/lib/api'
+import { readPendingShareImage } from '@/lib/share-target'
 import { trpc } from '@/trpc/client'
 import { AppRouterOutput } from '@/trpc/routers/_app'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Receipt } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { PropsWithChildren, useEffect } from 'react'
+import { PropsWithChildren, useEffect, useState } from 'react'
 import { RecentGroupListCard } from './recent-group-list-card'
 
 export type RecentGroupsState =
@@ -71,25 +72,17 @@ export function RecentGroupList() {
     isPending,
   } = useGroups()
 
+  // Tell the user why they were dropped here, instead of leaving a shared receipt waiting silently.
+  const [hasPendingReceipt, setHasPendingReceipt] = useState(false)
   useEffect(() => {
-    // Check for pending shared receipt
-    const pendingReceipt = sessionStorage.getItem('pending-share-receipt')
-    if (pendingReceipt) {
-      // We found a receipt! We wait for the user to select a group.
-      // Alternatively, we could automatically use the most recent group:
-      /* 
-      const recentGroups = getRecentGroups()
-      if (recentGroups.length > 0) {
-         router.push(`/groups/${recentGroups[0].id}/expenses/create?fromShare=true`)
-      }
-      */
-    }
+    setHasPendingReceipt(!!readPendingShareImage())
   }, [])
 
   if (isPending && recentGroups.length === 0) return null
 
   return (
     <RecentGroupList_
+      hasPendingReceipt={hasPendingReceipt}
       groups={recentGroups}
       starredGroups={starredGroupIds}
       archivedGroups={archivedGroupIds}
@@ -103,11 +96,13 @@ function RecentGroupList_({
   starredGroups,
   archivedGroups,
   isRefetching,
+  hasPendingReceipt,
 }: {
   groups: RecentGroups
   starredGroups: Set<string>
   archivedGroups: Set<string>
   isRefetching: boolean
+  hasPendingReceipt: boolean
 }) {
   const t = useTranslations('Groups')
   const { data: session } = useSession()
@@ -117,7 +112,10 @@ function RecentGroupList_({
 
   if (isLoading || !data) {
     return (
-      <GroupsPage isRefetching={isRefetching}>
+      <GroupsPage
+        isRefetching={isRefetching}
+        hasPendingReceipt={hasPendingReceipt}
+      >
         <p>
           <Loader2 className="w-4 m-4 mr-2 inline animate-spin" />{' '}
           {t('loadingRecent')}
@@ -128,7 +126,10 @@ function RecentGroupList_({
 
   if (data.groups.length === 0) {
     return (
-      <GroupsPage isRefetching={isRefetching}>
+      <GroupsPage
+        isRefetching={isRefetching}
+        hasPendingReceipt={hasPendingReceipt}
+      >
         <div className="text-sm space-y-2">
           <p>{t('NoRecent.description')}</p>
           {!session && (
@@ -173,7 +174,10 @@ function RecentGroupList_({
   })
 
   return (
-    <GroupsPage isRefetching={isRefetching}>
+    <GroupsPage
+      isRefetching={isRefetching}
+      hasPendingReceipt={hasPendingReceipt}
+    >
       <SyncFeatureAnnouncement />
 
       {starredGroupInfo.length > 0 && (
@@ -227,7 +231,11 @@ function GroupList({
 function GroupsPage({
   children,
   isRefetching,
-}: PropsWithChildren<{ isRefetching?: boolean }>) {
+  hasPendingReceipt,
+}: PropsWithChildren<{
+  isRefetching?: boolean
+  hasPendingReceipt?: boolean
+}>) {
   const t = useTranslations('Groups')
   return (
     <>
@@ -243,6 +251,12 @@ function GroupsPage({
           </Button>
         </div>
       </div>
+      {hasPendingReceipt && (
+        <div className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
+          <Receipt className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+          <span>{t('sharedReceiptPending')}</span>
+        </div>
+      )}
       <div>{children}</div>
     </>
   )

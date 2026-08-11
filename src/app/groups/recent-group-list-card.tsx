@@ -20,6 +20,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/use-toast'
 import { useGroupActions, useGroups, type RecentGroup } from '@/contexts'
+import { FROM_SHARE_PARAM, readPendingShareImage } from '@/lib/share-target'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { StarFilledIcon } from '@radix-ui/react-icons'
 import {
@@ -69,14 +70,13 @@ export function RecentGroupListCard({
   const groupIsArchived = isArchived(group.id)
   const canSync = !!session
 
-  const handleClick = () => {
-    const pendingReceipt = sessionStorage.getItem('pending-share-receipt')
-    if (pendingReceipt) {
-      // Redirect to create expense with a special query param
-      router.push(`/groups/${group.id}/expenses/create?fromShare=true`)
-    } else {
-      router.push(`/groups/${group.id}`)
-    }
+  // A receipt shared from the OS lands on the group list, because the OS cannot know which group
+  // it belongs to. Opening a group is the answer to that question, so carry the flag through.
+  const openGroup = () => {
+    const href = readPendingShareImage()
+      ? `/groups/${group.id}/expenses?${FROM_SHARE_PARAM}=true`
+      : `/groups/${group.id}`
+    router.push(href)
   }
 
   const handleRemoveRecent = (event: React.MouseEvent) => {
@@ -124,16 +124,15 @@ export function RecentGroupListCard({
         variant="secondary"
         className="h-fit w-full py-3 rounded-lg border bg-card shadow-sm"
         asChild
-        onClick={handleClick}
       >
         <div
           className="text-base cursor-pointer"
-          onClick={() => router.push(`/groups/${group.id}`)}
+          onClick={openGroup}
           role="button"
           tabIndex={0}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
-              router.push(`/groups/${group.id}`)
+              openGroup()
             }
           }}
         >
@@ -141,6 +140,10 @@ export function RecentGroupListCard({
             <div className="text-base flex gap-2 justify-between">
               <Link
                 href={`/groups/${group.id}`}
+                onClick={(event) => {
+                  event.preventDefault()
+                  openGroup()
+                }}
                 className="flex-1 overflow-hidden text-ellipsis flex items-center gap-2"
               >
                 <span className="truncate">{group.name}</span>

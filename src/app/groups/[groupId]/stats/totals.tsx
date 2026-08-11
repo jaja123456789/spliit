@@ -12,8 +12,7 @@ export function Totals() {
   const activeUser = useActiveUser(groupId)
   const t = useTranslations('Stats.Totals')
 
-  const participantId =
-    activeUser && activeUser !== 'None' ? activeUser : undefined
+  const participantId = activeUser ?? undefined
   const { data } = trpc.groups.stats.get.useQuery({ groupId, participantId })
   // Read the balance from the same query the Balances tab renders, rather than recomputing it.
   // Balances count reimbursements and these spending figures don't, so a locally derived

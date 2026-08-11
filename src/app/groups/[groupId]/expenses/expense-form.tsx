@@ -41,6 +41,7 @@ import {
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Locale } from '@/i18n/request'
+import { readActiveUser } from '@/lib/active-user'
 import {
   Currency,
   defaultCurrencyList,
@@ -222,11 +223,9 @@ export function ExpenseForm({
   const activeUserId = useActiveUser(group.id)
 
   const getSelectedPayer = (field?: { value: string }) => {
-    if (isCreate && typeof window !== 'undefined') {
-      const activeUser = localStorage.getItem(`${group.id}-activeUser`)
-      if (activeUser && activeUser !== 'None' && field?.value === undefined) {
-        return activeUser
-      }
+    if (isCreate && field?.value === undefined) {
+      const activeUser = readActiveUser(group.id)
+      if (activeUser) return activeUser
     }
     return field?.value
   }
@@ -609,29 +608,6 @@ export function ExpenseForm({
   }
 
   // --- Effects ---
-
-  useEffect(() => {
-    const fromShare = searchParams.get('fromShare')
-    if (isCreate && fromShare) {
-      const stored = sessionStorage.getItem('pending-share-receipt')
-      if (stored) {
-        try {
-          const data = JSON.parse(stored)
-          // Convert Data URL back to Blob for the AI processor if needed,
-          // OR pass the dataUrl directly if your receipt component supports it.
-
-          // Trigger the receipt scanning logic here.
-          // This might require exposing the ReceiptDialog logic or
-          // creating a new "Initialize from DataURL" prop in your form.
-
-          // Clear it so it doesn't trigger again
-          sessionStorage.removeItem('pending-share-receipt')
-        } catch (e) {
-          console.error(e)
-        }
-      }
-    }
-  }, [isCreate, searchParams])
 
   useEffect(() => {
     if (isCreate && searchParams.get('fromReceipt') === 'true') {

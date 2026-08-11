@@ -17,11 +17,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from '@/components/ui/hover-card'
 import { Input } from '@/components/ui/input'
 import {
   Popover,
@@ -36,6 +31,12 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Locale } from '@/i18n/request'
+import {
+  NEW_GROUP_ACTIVE_USER_KEY,
+  NO_ACTIVE_USER,
+  readActiveUser,
+  writeActiveUser,
+} from '@/lib/active-user'
 import { getGroup } from '@/lib/api'
 import { defaultCurrencyList, getCurrency } from '@/lib/currency'
 import { GroupFormValues, groupFormSchema } from '@/lib/schemas'
@@ -101,28 +102,30 @@ export function GroupForm({
     keyName: 'key',
   })
 
+  // Keyed by participant id, not display name: two participants may share a name, and the
+  // previous name-keyed version also stored the *translated* "None" label, which no reader
+  // recognised outside English.
   const [activeUser, setActiveUser] = useState<string | null>(null)
   useEffect(() => {
-    if (activeUser === null) {
-      const currentActiveUser =
-        fields.find(
-          (f) => f.id === localStorage.getItem(`${group?.id}-activeUser`),
-        )?.name || t('Settings.ActiveUserField.none')
-      setActiveUser(currentActiveUser)
+    if (activeUser === null && group?.id) {
+      setActiveUser(readActiveUser(group.id) ?? NO_ACTIVE_USER)
+    } else if (activeUser === null && !group) {
+      setActiveUser(NO_ACTIVE_USER)
     }
-  }, [t, activeUser, fields, group?.id])
+  }, [activeUser, group])
+
+  const activeParticipantId = () =>
+    activeUser && activeUser !== NO_ACTIVE_USER ? activeUser : undefined
 
   const updateActiveUser = () => {
     if (!activeUser) return
     if (group?.id) {
-      const participant = group.participants.find((p) => p.name === activeUser)
-      if (participant?.id) {
-        localStorage.setItem(`${group.id}-activeUser`, participant.id)
-      } else {
-        localStorage.setItem(`${group.id}-activeUser`, activeUser)
-      }
+      writeActiveUser(group.id, activeParticipantId() ?? null)
     } else {
-      localStorage.setItem('newGroup-activeUser', activeUser)
+      // A group being created has no participant ids yet, so the choice travels as a name and is
+      // exchanged for an id on the first visit to the group.
+      const name = fields.find((f) => f.id === activeUser)?.name
+      localStorage.setItem(NEW_GROUP_ACTIVE_USER_KEY, name ?? NO_ACTIVE_USER)
     }
   }
 
@@ -130,11 +133,7 @@ export function GroupForm({
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(async (values) => {
-          await onSubmit(
-            values,
-            group?.participants.find((p) => p.name === activeUser)?.id ??
-              undefined,
-          )
+          await onSubmit(values, activeParticipantId())
         })}
       >
         <Card className="mb-4">
@@ -297,25 +296,29 @@ export function GroupForm({
                             />
                             {item.id &&
                             protectedParticipantIds.includes(item.id) ? (
-                              <HoverCard>
-                                <HoverCardTrigger>
+                              // A hover card was unreachable by touch, so on a phone this button
+                              // was simply dead with no explanation. A popover opens on tap, which
+                              // also means the button must stay enabled to receive the tap.
+                              <Popover>
+                                <PopoverTrigger asChild>
                                   <Button
                                     variant="ghost"
-                                    className="text-destructive-"
                                     type="button"
                                     size="icon"
-                                    disabled
+                                    aria-label={t(
+                                      'Participants.protectedParticipant',
+                                    )}
                                   >
                                     <Trash2 className="w-4 h-4 text-destructive opacity-50" />
                                   </Button>
-                                </HoverCardTrigger>
-                                <HoverCardContent
+                                </PopoverTrigger>
+                                <PopoverContent
                                   align="end"
-                                  className="text-sm"
+                                  className="w-64 text-sm"
                                 >
                                   {t('Participants.protectedParticipant')}
-                                </HoverCardContent>
-                              </HoverCard>
+                                </PopoverContent>
+                              </Popover>
                             ) : (
                               <Button
                                 variant="ghost"
@@ -495,12 +498,18 @@ export function GroupForm({
                       </SelectTrigger>
                       <SelectContent>
                         {[
-                          { name: t('Settings.ActiveUserField.none') },
-                          ...form.watch('participants'),
+                          {
+                            key: NO_ACTIVE_USER,
+                            name: t('Settings.ActiveUserField.none'),
+                          },
+                          ...fields.map((f, index) => ({
+                            key: f.id ?? `new-${index}`,
+                            name: form.watch(`participants.${index}.name`),
+                          })),
                         ]
-                          .filter((item) => item.name.length > 0)
-                          .map(({ name }) => (
-                            <SelectItem key={name} value={name}>
+                          .filter((item) => item.name?.length > 0)
+                          .map(({ key, name }) => (
+                            <SelectItem key={key} value={key}>
                               {name}
                             </SelectItem>
                           ))}

@@ -14,7 +14,7 @@ type Props = {
 export function ActiveUserBalance({ groupId, currency, expense }: Props) {
   const t = useTranslations('ExpenseCard')
   const activeUserId = useActiveUser(groupId)
-  if (activeUserId === null || activeUserId === '' || activeUserId === 'None') {
+  if (!activeUserId) {
     return null
   }
 

@@ -18,15 +18,23 @@ import {
 } from '@/components/ui/drawer'
 import { Label } from '@/components/ui/label'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import {
+  NO_ACTIVE_USER,
+  hasActiveUserChoice,
+  writeActiveUser,
+} from '@/lib/active-user'
 import { useMediaQuery, useMobilePopoverState } from '@/lib/hooks'
+import { FROM_SHARE_PARAM } from '@/lib/share-target'
 import { cn } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { useTranslations } from 'next-intl'
+import { useSearchParams } from 'next/navigation'
 import { ComponentProps, useEffect, useState } from 'react'
 
 export function ActiveUserModal({ groupId }: { groupId: string }) {
   const t = useTranslations('Expenses.ActiveUserModal')
+  const searchParams = useSearchParams()
   const [open, setOpen] = useState(false)
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   useMobilePopoverState(open, setOpen, isDesktop)
@@ -37,19 +45,18 @@ export function ActiveUserModal({ groupId }: { groupId: string }) {
   useEffect(() => {
     if (!group) return
 
-    const tempUser = localStorage.getItem(`newGroup-activeUser`)
-    const activeUser = localStorage.getItem(`${group.id}-activeUser`)
-    if (!tempUser && !activeUser) {
-      setOpen(true)
-    }
-  }, [group])
+    // A receipt arriving from the OS share sheet opens the scanner on this same page. Asking
+    // "who are you?" on top of it would bury the thing the user came here to do; the question
+    // keeps until their next visit.
+    if (searchParams.get(FROM_SHARE_PARAM) === 'true') return
+    if (!hasActiveUserChoice(group.id)) setOpen(true)
+  }, [group, searchParams])
 
   function updateOpen(open: boolean) {
     if (!group) return
 
-    if (!open && !localStorage.getItem(`${group.id}-activeUser`)) {
-      localStorage.setItem(`${group.id}-activeUser`, 'None')
-    }
+    // Dismissing without choosing still records a choice, so the modal does not reappear.
+    if (!open && !hasActiveUserChoice(group.id)) writeActiveUser(group.id, null)
     setOpen(open)
   }
 
@@ -103,7 +110,7 @@ function ActiveUserForm({
   close: () => void
 }) {
   const t = useTranslations('Expenses.ActiveUserModal')
-  const [selected, setSelected] = useState('None')
+  const [selected, setSelected] = useState(NO_ACTIVE_USER)
 
   return (
     <form
@@ -112,14 +119,14 @@ function ActiveUserForm({
         if (!group) return
 
         event.preventDefault()
-        localStorage.setItem(`${group.id}-activeUser`, selected)
+        writeActiveUser(group.id, selected === NO_ACTIVE_USER ? null : selected)
         close()
       }}
     >
-      <RadioGroup defaultValue="none" onValueChange={setSelected}>
+      <RadioGroup defaultValue={NO_ACTIVE_USER} onValueChange={setSelected}>
         <div className="flex flex-col gap-4 my-4">
           <div className="flex items-center space-x-2">
-            <RadioGroupItem value="none" id="none" />
+            <RadioGroupItem value={NO_ACTIVE_USER} id="none" />
             <Label htmlFor="none" className="italic font-normal flex-1">
               {t('nobody')}
             </Label>

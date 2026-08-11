@@ -37,8 +37,7 @@ export function TotalsPageClient() {
   const { groupId, group } = useCurrentGroup()
   const activeUser = useActiveUser(groupId)
 
-  const participantId =
-    activeUser && activeUser !== 'None' ? activeUser : undefined
+  const participantId = activeUser ?? undefined
   const { data } = trpc.groups.stats.get.useQuery({ groupId, participantId })
 
   return (

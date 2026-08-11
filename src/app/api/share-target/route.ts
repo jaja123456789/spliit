@@ -1,4 +1,5 @@
 import { env } from '@/lib/env'
+import { PENDING_SHARE_IMAGE_KEY } from '@/lib/share-target'
 import { NextRequest, NextResponse } from 'next/server'
 
 // Handle GET requests (validation pings from OS)
@@ -37,7 +38,9 @@ export async function POST(req: NextRequest) {
         <div class="loader"></div>
         <script>
           try {
-            sessionStorage.setItem('pending-receipt-image', "${dataUrl}");
+            sessionStorage.setItem(${JSON.stringify(
+              PENDING_SHARE_IMAGE_KEY,
+            )}, ${JSON.stringify(dataUrl)});
             window.location.href = '${env.NEXT_PUBLIC_BASE_PATH}/groups';
           } catch (e) {
             console.error(e);

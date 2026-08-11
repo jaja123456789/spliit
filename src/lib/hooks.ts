@@ -1,4 +1,5 @@
 import { useEnv } from '@/components/env-provider'
+import { readActiveUser } from '@/lib/active-user'
 import { useEffect, useState } from 'react'
 import useSWR, { Fetcher } from 'swr'
 import {
@@ -84,16 +85,15 @@ export function useBaseUrl() {
 }
 
 /**
- * @returns The active user, or `null` until it is fetched from local storage
+ * @returns The active participant's id, or `null` — which covers both "not read from local storage
+ * yet" and "nobody is selected". Callers no longer need to know the sentinel; see
+ * `@/lib/active-user`.
  */
 export function useActiveUser(groupId?: string) {
   const [activeUser, setActiveUser] = useState<string | null>(null)
 
   useEffect(() => {
-    if (groupId) {
-      const activeUser = localStorage.getItem(`${groupId}-activeUser`)
-      if (activeUser) setActiveUser(activeUser)
-    }
+    if (groupId) setActiveUser(readActiveUser(groupId))
   }, [groupId])
 
   return activeUser
