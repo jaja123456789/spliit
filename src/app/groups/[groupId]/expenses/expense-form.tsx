@@ -3,6 +3,7 @@
 import { CategorySelector } from '@/components/category-selector'
 import { CurrencySelector } from '@/components/currency-selector'
 import { ExpenseDocumentsInput } from '@/components/expense-documents-input'
+import { ProfileAvatar } from '@/components/profile-avatar'
 import { SubmitButton } from '@/components/submit-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -962,22 +963,65 @@ export function ExpenseForm({
         )}
 
         <Card>
-          <CardHeader>
-            <CardTitle>
-              {t(`${sExpense}.${isCreate ? 'create' : 'edit'}`)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="grid sm:grid-cols-2 gap-6">
+          <CardContent className="grid sm:grid-cols-2 gap-6 pt-6">
+            {/* The amount is what this screen exists for, so it is the thing you land on. It used
+                to be a 100px box wedged beside a select, at the same weight as the notes field. */}
+            <div className="col-span-2 flex flex-col items-center gap-2 pb-2">
+              <FormField
+                control={form.control}
+                name="paidBy.0.amount"
+                render={({ field }) => (
+                  <FormItem className="w-full space-y-0">
+                    <FormLabel className="sr-only">
+                      {t(`${sExpense}.amountLabel`)}
+                    </FormLabel>
+                    <div className="flex items-baseline justify-center gap-1">
+                      <span className="text-3xl font-medium text-muted-foreground">
+                        {expenseCurrency.symbol || group.currency}
+                      </span>
+                      {isMultiPayer || isItemized ? (
+                        // With several payers or an itemised bill the total is derived, so it is
+                        // shown rather than typed — the parts are edited below.
+                        <span className="text-5xl font-semibold tabular-nums tracking-tight">
+                          {formatCurrency(
+                            expenseCurrency,
+                            effectiveTotal,
+                            locale,
+                            true,
+                          ).replace(/^[^\d-]+/, '')}
+                        </span>
+                      ) : (
+                        <FormControl>
+                          <CalculatorInput
+                            placeholder="0.00"
+                            className="w-auto max-w-[10rem] border-0 bg-transparent shadow-none"
+                            inputClassName="h-auto w-full border-0 bg-transparent p-0 text-center text-5xl font-semibold leading-none tabular-nums tracking-tight shadow-none focus-visible:ring-0"
+                            {...field}
+                            onValueChange={(val) =>
+                              handlePayerAmountChange(0, val)
+                            }
+                          />
+                        </FormControl>
+                      )}
+                    </div>
+                    <FormMessage className="text-center" />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             <FormField
               control={form.control}
               name="title"
               render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t(`${sExpense}.TitleField.label`)}</FormLabel>
+                <FormItem className="col-span-2 -mt-4">
+                  <FormLabel className="sr-only">
+                    {t(`${sExpense}.TitleField.label`)}
+                  </FormLabel>
                   <FormControl>
                     <Input
                       placeholder={t(`${sExpense}.TitleField.placeholder`)}
-                      className="text-base"
+                      className="h-auto border-0 bg-transparent p-0 text-center text-base shadow-none focus-visible:ring-0"
                       {...field}
                       onBlur={async () => {
                         field.onBlur()
@@ -997,10 +1041,7 @@ export function ExpenseForm({
                       }}
                     />
                   </FormControl>
-                  <FormDescription>
-                    {t(`${sExpense}.TitleField.description`)}
-                  </FormDescription>
-                  <FormMessage />
+                  <FormMessage className="text-center" />
                 </FormItem>
               )}
             />
@@ -1080,42 +1121,47 @@ export function ExpenseForm({
                         )}
                       />
 
-                      <FormField
-                        control={form.control}
-                        name={`paidBy.${index}.amount`}
-                        render={({ field }) => (
-                          <FormItem className="w-32 space-y-0">
-                            <div className="flex items-center">
-                              <span
-                                className={cn(
-                                  'mr-2 text-sm transition-colors',
-                                  isHighest
-                                    ? 'text-primary font-bold'
-                                    : 'text-muted-foreground',
-                                )}
-                              >
-                                {expenseCurrency.symbol || group.currency}
-                              </span>
-                              <FormControl>
-                                <CalculatorInput
+                      {/* Only shown once there is more than one payer: with a single payer the
+                          hero above is this field, and rendering both meant typing into one and
+                          watching the other update. */}
+                      {isMultiPayer && (
+                        <FormField
+                          control={form.control}
+                          name={`paidBy.${index}.amount`}
+                          render={({ field }) => (
+                            <FormItem className="w-32 space-y-0">
+                              <div className="flex items-center">
+                                <span
                                   className={cn(
-                                    'text-base',
-                                    isHighest &&
-                                      'border-primary/30 font-medium',
+                                    'mr-2 text-sm transition-colors',
+                                    isHighest
+                                      ? 'text-primary font-bold'
+                                      : 'text-muted-foreground',
                                   )}
-                                  placeholder="0.00"
-                                  {...field}
-                                  onValueChange={(val) => {
-                                    // Use the synchronized handler we discussed in the previous step
-                                    handlePayerAmountChange(index, val)
-                                  }}
-                                />
-                              </FormControl>
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                                >
+                                  {expenseCurrency.symbol || group.currency}
+                                </span>
+                                <FormControl>
+                                  <CalculatorInput
+                                    className={cn(
+                                      'text-base',
+                                      isHighest &&
+                                        'border-primary/30 font-medium',
+                                    )}
+                                    placeholder="0.00"
+                                    {...field}
+                                    onValueChange={(val) => {
+                                      // Use the synchronized handler we discussed in the previous step
+                                      handlePayerAmountChange(index, val)
+                                    }}
+                                  />
+                                </FormControl>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
 
                       {payerFields.length > 1 && (
                         <Button
@@ -1159,9 +1205,11 @@ export function ExpenseForm({
                     </div>
                   )}
 
-                  {/* The Final Group Amount (What hits the stats) */}
+                  {/* Only worth showing when it differs from the hero: several payers summing to
+                      a total, or an itemised bill with something excluded from the split. */}
                   <div
                     className={cn(
+                      !isMultiPayer && !hasExcludedItems && 'hidden',
                       'text-right font-bold tabular-nums px-3 py-1 rounded-md transition-colors border',
                       hasExcludedItems
                         ? 'bg-credit/10 border-credit/30'
@@ -1205,13 +1253,15 @@ export function ExpenseForm({
             </div>
 
             {!form.watch('isReimbursement') && (
-              <div className="col-span-2 flex items-center justify-end space-x-2 my-4">
-                <Label
-                  htmlFor="itemize-mode"
-                  className="text-sm text-muted-foreground"
-                >
-                  Itemize Mode
-                </Label>
+              <div className="col-span-2 flex items-center justify-between gap-4 rounded-lg border p-3">
+                <div>
+                  <Label htmlFor="itemize-mode" className="text-sm">
+                    {t('itemizeField.label')}
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    {t('itemizeField.description')}
+                  </p>
+                </div>
                 <Switch
                   id="itemize-mode"
                   checked={isItemized}
@@ -1556,11 +1606,8 @@ export function ExpenseForm({
                   )}
                 </Button>
               </CardTitle>
-              <CardDescription>
-                {t(`${sExpense}.paidFor.description`)}
-              </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="flex flex-col gap-2">
               {/* 
                 We bind the FormField to "paidFor" (the array root).
               */}
@@ -1694,8 +1741,13 @@ export function ExpenseForm({
           </div>
         )}
 
-        <div className="flex mt-4 gap-2">
-          <SubmitButton loadingContent={t(isCreate ? 'creating' : 'saving')}>
+        {/* Sticky on a phone: the form is still a couple of screens tall once the split is open,
+            and hunting for Save at the bottom was the last thing left of the old scroll. */}
+        <div className="sticky bottom-0 z-30 -mx-4 mt-4 flex gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:backdrop-blur-none">
+          <SubmitButton
+            className="flex-1 sm:flex-none"
+            loadingContent={t(isCreate ? 'creating' : 'saving')}
+          >
             <Save className="w-4 h-4 mr-2" />
             {t(isCreate ? 'create' : 'save')}
           </SubmitButton>
@@ -1812,9 +1864,12 @@ function PaidForList({
           <div
             key={id}
             data-id={`${id}/${splitMode}/${group.currency}`}
-            className="flex flex-wrap gap-y-4 items-center border-t last-of-type:border-b last-of-type:!mb-4 -mx-6 px-6 py-3"
+            className={cn(
+              'flex flex-wrap gap-y-3 items-center rounded-lg border p-3 transition-colors',
+              isSelected ? 'border-primary/40 bg-primary/5' : 'bg-transparent',
+            )}
           >
-            <FormItem className="flex-1 flex flex-row items-start space-x-3 space-y-0">
+            <FormItem className="flex-1 flex flex-row items-center space-x-3 space-y-0">
               <FormControl>
                 <Checkbox
                   checked={isSelected}
@@ -1847,19 +1902,18 @@ function PaidForList({
                   }}
                 />
               </FormControl>
-              <FormLabel className="text-sm font-normal flex-1">
-                {name}
+              <FormLabel className="flex flex-1 items-center gap-3 text-sm font-normal">
+                <ProfileAvatar name={name} size={28} fontSize="text-[11px]" />
+                <span className="flex-1">{name}</span>
                 {isSelected &&
                   !isReimbursement &&
                   splitMode !== 'BY_AMOUNT' && (
-                    <span className="text-muted-foreground ml-2">
-                      (
+                    <span className="tabular-nums text-muted-foreground">
                       {formatCurrency(
                         expenseCurrency,
                         getCalculatedShare(id),
                         locale,
                       )}
-                      )
                     </span>
                   )}
               </FormLabel>

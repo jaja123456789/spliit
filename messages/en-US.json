@@ -220,7 +220,8 @@
         "description": "Select who the income was received for."
       },
       "splitModeDescription": "Select how to split the income.",
-      "attachDescription": "See and attach receipts to the income."
+      "attachDescription": "See and attach receipts to the income.",
+      "amountLabel": "Amount"
     },
     "Expense": {
       "create": "Create expense",
@@ -257,7 +258,8 @@
         "description": "Select who the expense was paid for."
       },
       "splitModeDescription": "Select how to split the expense.",
-      "attachDescription": "See and attach receipts to the expense."
+      "attachDescription": "See and attach receipts to the expense.",
+      "amountLabel": "Amount"
     },
     "amountField": {
       "label": "Amount"
@@ -335,6 +337,10 @@
       "prompt": "You have an unsaved expense from earlier.",
       "restore": "Restore",
       "discard": "Discard"
+    },
+    "itemizeField": {
+      "label": "Split by item",
+      "description": "Enter each line of the receipt and choose who shared it."
     }
   },
   "ExpenseDocumentsInput": {
