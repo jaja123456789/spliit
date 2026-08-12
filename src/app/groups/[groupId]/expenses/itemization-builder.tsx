@@ -29,7 +29,7 @@ import {
   amountAsMinorUnits,
   cn,
   distributeMinorUnits,
-  formatAmountBare,
+  formatCurrency,
 } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { Check, Plus, Trash2, Users } from 'lucide-react'
@@ -293,16 +293,49 @@ export function ItemizationBuilder({
             figures competing above the lines they described. They are all one question, asked
             once, in the strip at the foot of this sheet. */}
 
-        {isSelecting && (
-          <p className="-mt-1 text-xs text-muted-foreground">
-            {t('selectHint')}
-          </p>
-        )}
-
         {/* The lines, as one run of ruled rows spanning the sheet rather than a stack of cards.
             `-mx-6` with each row paying it back: a rule that stops at the card's padding reads as
             another box, which is the shape the concept trades away. */}
         <div className="-mx-6">
+          {/* Selection mode announces itself in one bar at the head of the run — the count, the
+              money it adds up to, and the action. It was a floating rounded slab wedged between
+              the last line and "Add a line", which is the one place on the sheet nothing else
+              sits. The money is there because "assign these to Bob" is a decision about an
+              amount, not about a row count. */}
+          {isSelecting && (
+            <div
+              data-testid="selection-bar"
+              className="flex min-h-[52px] items-center justify-between gap-3 border-b bg-primary/5 px-6 py-2"
+            >
+              {selectedIndexes.length > 0 ? (
+                <>
+                  <span className="flex items-baseline gap-2 text-sm">
+                    <span className="font-medium">
+                      {t('selectedCount', { count: selectedIndexes.length })}
+                    </span>
+                    <Money
+                      currency={currency}
+                      amount={selectedTotal}
+                      fractions
+                      className="text-xs text-muted-foreground"
+                    />
+                  </span>
+                  <BulkAssign
+                    group={group}
+                    isDesktop={isDesktop}
+                    activeUserId={activeUserId}
+                    onApply={assignToSelected}
+                    label={t('assignSelected')}
+                  />
+                </>
+              ) : (
+                <span className="text-xs text-muted-foreground">
+                  {t('selectHint')}
+                </span>
+              )}
+            </div>
+          )}
+
           {fields.map((field, index) => {
             // Safe access to watched values for summary calculations
             const currentItem = watchedItems[index] || {}
@@ -332,236 +365,231 @@ export function ItemizationBuilder({
                   isExcluded && !isOpen && 'opacity-60',
                 )}
               >
-                <div
-                  className={cn(
-                    'flex items-center gap-2.5 pt-2.5',
-                    inlineMarks ? 'pb-2.5' : 'pb-0',
-                  )}
-                >
+                <div className="flex items-center gap-3">
                   {isSelecting && (
-                    <label className="flex shrink-0 items-center">
-                      <input
-                        type="checkbox"
-                        className="h-5 w-5 accent-[hsl(var(--primary))]"
-                        data-testid={`select-line-${index}`}
-                        checked={isRowSelected}
-                        onChange={() => toggleRow(field.id)}
-                      />
-                      <span className="sr-only">
-                        {currentItem.name || t('itemNamePlaceholder')}
-                      </span>
-                    </label>
+                    <Tick
+                      checked={isRowSelected}
+                      onChange={() => toggleRow(field.id)}
+                      testId={`select-line-${index}`}
+                      label={currentItem.name || t('itemNamePlaceholder')}
+                    />
                   )}
-
-                  {/* Name and price are the receipt line. Borderless: a bordered box around each
+                  <div className="min-w-0 flex-1">
+                    <div
+                      className={cn(
+                        'flex items-center gap-2.5 pt-2.5',
+                        inlineMarks ? 'pb-2.5' : 'pb-0',
+                      )}
+                    >
+                      {/* Name and price are the receipt line. Borderless: a bordered box around each
                       is the "control array" the concept trades away — four lines of a bill became
                       eight bordered inputs stacked in four bordered cards. */}
-                  <FormField
-                    control={control}
-                    name={`items.${index}.name`}
-                    render={({ field }) => (
-                      <FormItem className="min-w-0 flex-1 space-y-0">
-                        <FormControl>
-                          <Input
-                            {...field}
-                            placeholder={t('itemNamePlaceholder')}
-                            className={cn(
-                              'h-8 border-0 bg-transparent px-0 text-sm font-medium shadow-none focus-visible:ring-0',
-                              isExcluded && 'line-through',
-                            )}
-                          />
-                        </FormControl>
-                        <FormMessage className="text-xs" />
-                      </FormItem>
-                    )}
-                  />
+                      <FormField
+                        control={control}
+                        name={`items.${index}.name`}
+                        render={({ field }) => (
+                          <FormItem className="min-w-0 flex-1 space-y-0">
+                            {/* Borderless was a step too far: with no box, no rule and no fill,
+                                the two things on this row you are meant to type into looked like
+                                printed text. A soft fill is the lightest thing that still says
+                                "field" without putting a bordered control back in every row —
+                                the box is the shape, the border is what made it a slab. */}
+                            <div className="rounded-md bg-muted/50 transition-colors focus-within:bg-muted focus-within:ring-1 focus-within:ring-ring">
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  placeholder={t('itemNamePlaceholder')}
+                                  className={cn(
+                                    'h-8 border-0 bg-transparent px-2.5 text-sm font-medium shadow-none focus-visible:ring-0',
+                                    isExcluded && 'line-through',
+                                  )}
+                                />
+                              </FormControl>
+                            </div>
+                            <FormMessage className="text-xs" />
+                          </FormItem>
+                        )}
+                      />
 
-                  {/* Desktop, small group: the marks are individual targets in the row itself, as
+                      {/* Desktop, small group: the marks are individual targets in the row itself, as
                       the concept has them — "desktop rows are wide enough for individual targets
                       again". Past six people they stop fitting and the row falls back to the
                       stack-and-open form below. */}
-                  {inlineMarks && (
-                    <FormField
-                      control={control}
-                      name={`items.${index}.participantIds`}
-                      render={({ field }) => (
-                        <FormItem className="space-y-0">
-                          <MarkRow
-                            value={field.value || []}
-                            onChange={(val) => {
-                              field.onChange(val)
-                              trigger('items')
-                            }}
-                            group={group}
-                            activeUserId={activeUserId}
-                            rowIndex={index}
-                          />
-                        </FormItem>
+                      {inlineMarks && (
+                        <FormField
+                          control={control}
+                          name={`items.${index}.participantIds`}
+                          render={({ field }) => (
+                            <FormItem className="space-y-0">
+                              <MarkRow
+                                value={field.value || []}
+                                onChange={(val) => {
+                                  field.onChange(val)
+                                  trigger('items')
+                                }}
+                                group={group}
+                                activeUserId={activeUserId}
+                                rowIndex={index}
+                              />
+                            </FormItem>
+                          )}
+                        />
                       )}
-                    />
-                  )}
 
-                  {/* A plain input, not a CalculatorInput. The concept's line is a name and a
+                      {/* A plain input, not a CalculatorInput. The concept's line is a name and a
                       price and nothing else, and the calculator's addon put a second icon in
                       every row — 24 icons on a six-line receipt — for arithmetic you do once, on
                       the total, where the hero still offers it. */}
-                  <FormField
-                    control={control}
-                    name={`items.${index}.price`}
-                    render={({ field }) => (
-                      <FormItem className="w-[84px] shrink-0 space-y-0">
-                        <FormControl>
-                          <Input
-                            {...field}
-                            type="text"
-                            inputMode="decimal"
-                            placeholder="0.00"
-                            className="h-8 border-0 bg-transparent px-0 text-right font-mono text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
-                            onChange={(e) => {
-                              field.onChange(e.target.value)
-                              trigger('items')
-                              trigger('paidBy')
-                            }}
-                          />
-                        </FormControl>
-                        <FormMessage className="mt-1 text-right text-xs" />
-                      </FormItem>
-                    )}
-                  />
-
-                  {inlineMarks && (
-                    <span className="w-14 shrink-0 text-right">
-                      <YourShare
-                        currency={currency}
-                        amount={perPersonAmount}
-                        show={itemPrice > 0}
-                        isMine={isMeInvolved}
-                        withLabel={false}
+                      <FormField
+                        control={control}
+                        name={`items.${index}.price`}
+                        render={({ field }) => (
+                          <FormItem className="shrink-0 space-y-0">
+                            {/* The box tracks the value rather than reserving room for the
+                                longest one, so the symbol sits against its own digits instead of
+                                26px away. The figures still line up: right-aligned and tabular,
+                                so the decimal point lands in the same column whatever the
+                                value's length — only the symbol moves, which is what it does on
+                                a printed statement too. */}
+                            <div className="flex items-baseline justify-end gap-0.5 rounded-md bg-muted/50 pl-2 pr-2.5 transition-colors focus-within:bg-muted focus-within:ring-1 focus-within:ring-ring">
+                              <span className="font-mono text-xs text-subtle-foreground">
+                                {currency.symbol || group.currency}
+                              </span>
+                              <FormControl>
+                                <Input
+                                  {...field}
+                                  type="text"
+                                  inputMode="decimal"
+                                  placeholder="0.00"
+                                  style={{
+                                    width: `${Math.max(
+                                      4,
+                                      String(currentItem.price ?? '').length,
+                                    )}ch`,
+                                  }}
+                                  className="h-8 max-w-[7rem] border-0 bg-transparent px-0 text-right font-mono text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                                  onChange={(e) => {
+                                    field.onChange(e.target.value)
+                                    trigger('items')
+                                    trigger('paidBy')
+                                  }}
+                                />
+                              </FormControl>
+                            </div>
+                            <FormMessage className="mt-1 text-right text-xs" />
+                          </FormItem>
+                        )}
                       />
-                    </span>
-                  )}
 
-                  {/* The bin is not part of the line, so it is not in the line at rest — it
+                      {inlineMarks && (
+                        <span className="w-14 shrink-0 text-right">
+                          <YourShare
+                            currency={currency}
+                            amount={perPersonAmount}
+                            show={itemPrice > 0}
+                            isMine={isMeInvolved}
+                            withLabel={false}
+                          />
+                        </span>
+                      )}
+
+                      {/* The bin is not part of the line, so it is not in the line at rest — it
                       appears once you are working on that row (hover, or focus, which is what a
                       tap into either field gives you on a phone). Deleting several at once lives
                       in the selection bar, which needs no pointer at all. */}
-                  {!isSelecting && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="hidden h-8 w-8 shrink-0 text-subtle-foreground hover:bg-destructive/10 hover:text-destructive group-focus-within/row:inline-flex group-hover/row:inline-flex"
-                      onClick={() => removeRow(index)}
-                      type="button"
-                      title={t('removeLine')}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
+                      {!isSelecting && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="hidden h-8 w-8 shrink-0 text-subtle-foreground hover:bg-destructive/10 hover:text-destructive group-focus-within/row:inline-flex group-hover/row:inline-flex"
+                          onClick={() => removeRow(index)}
+                          type="button"
+                          title={t('removeLine')}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
 
-                {/* The second line is the whole target. "Tap a row to change who" — one place to
+                    {/* The second line is the whole target. "Tap a row to change who" — one place to
                     aim at instead of a 36px icon button in the row's most crowded corner, and it
                     is the same strip that tells you who shares the line and what it costs you. */}
-                {!inlineMarks && (
-                  <button
-                    type="button"
-                    data-testid={`assign-row-${index}`}
-                    aria-expanded={isOpen}
-                    disabled={isSelecting}
-                    onClick={() => setOpenRowId(isOpen ? null : field.id)}
-                    className="flex w-full items-center gap-2 pb-2.5 pt-1.5 text-left disabled:opacity-100"
-                  >
-                    {/* The stack goes when the row is open: the grid below is the same set of
+                    {!inlineMarks && (
+                      <button
+                        type="button"
+                        data-testid={`assign-row-${index}`}
+                        aria-expanded={isOpen}
+                        disabled={isSelecting}
+                        onClick={() => setOpenRowId(isOpen ? null : field.id)}
+                        className="flex w-full items-center gap-2 pb-2.5 pt-1.5 text-left disabled:opacity-100"
+                      >
+                        {/* The stack goes when the row is open: the grid below is the same set of
                         people at four times the size, and the concept's open row drops it too. */}
-                    {!isOpen && (
-                      <ParticipantStack
-                        participantIds={participantIds}
-                        group={group}
-                        activeUserId={activeUserId}
+                        {!isOpen && (
+                          <ParticipantStack
+                            participantIds={participantIds}
+                            group={group}
+                            activeUserId={activeUserId}
+                          />
+                        )}
+                        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                          {summaryText}
+                          {isOpen &&
+                            participantIds.length > 1 &&
+                            itemPrice > 0 && (
+                              <>
+                                {' · '}
+                                {t('perHeadEach', {
+                                  amount: formatCurrency(
+                                    currency,
+                                    perPersonAmount,
+                                    locale,
+                                    true,
+                                  ),
+                                })}
+                              </>
+                            )}
+                        </span>
+                        <YourShare
+                          currency={currency}
+                          amount={perPersonAmount}
+                          show={itemPrice > 0}
+                          isMine={isMeInvolved}
+                          withLabel
+                        />
+                      </button>
+                    )}
+
+                    {isOpen && (
+                      <FormField
+                        control={control}
+                        name={`items.${index}.participantIds`}
+                        render={({ field }) => (
+                          <FormItem className="space-y-0 pb-3">
+                            <RowPicker
+                              value={field.value || []}
+                              onChange={(val) => {
+                                field.onChange(val)
+                                trigger('items')
+                              }}
+                              group={group}
+                              activeUserId={activeUserId}
+                              previousIds={
+                                watchedItems[index - 1]?.participantIds ?? null
+                              }
+                              previousName={watchedItems[index - 1]?.name ?? ''}
+                              rowIndex={index}
+                            />
+                          </FormItem>
+                        )}
                       />
                     )}
-                    <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
-                      {summaryText}
-                      {isOpen && participantIds.length > 1 && itemPrice > 0 && (
-                        <>
-                          {' · '}
-                          {t('perHeadEach', {
-                            amount: formatAmountBare(
-                              currency,
-                              perPersonAmount,
-                              locale,
-                              true,
-                            ),
-                          })}
-                        </>
-                      )}
-                    </span>
-                    <YourShare
-                      currency={currency}
-                      amount={perPersonAmount}
-                      show={itemPrice > 0}
-                      isMine={isMeInvolved}
-                      withLabel
-                    />
-                  </button>
-                )}
-
-                {isOpen && (
-                  <FormField
-                    control={control}
-                    name={`items.${index}.participantIds`}
-                    render={({ field }) => (
-                      <FormItem className="space-y-0 pb-3">
-                        <RowPicker
-                          value={field.value || []}
-                          onChange={(val) => {
-                            field.onChange(val)
-                            trigger('items')
-                          }}
-                          group={group}
-                          activeUserId={activeUserId}
-                          previousIds={
-                            watchedItems[index - 1]?.participantIds ?? null
-                          }
-                          previousName={watchedItems[index - 1]?.name ?? ''}
-                          rowIndex={index}
-                        />
-                      </FormItem>
-                    )}
-                  />
-                )}
+                  </div>
+                </div>
               </div>
             )
           })}
         </div>
-
-        {/* The bar carries what is selected — how many lines and how much money — because "assign
-            these to Bob" is a decision about an amount, not about a row count. */}
-        {isSelecting && selectedIndexes.length > 0 && (
-          <div
-            data-testid="selection-bar"
-            className="sticky bottom-2 z-20 flex items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 shadow-lg"
-          >
-            <span className="flex items-baseline gap-2 text-sm">
-              <span className="font-medium">
-                {t('selectedCount', { count: selectedIndexes.length })}
-              </span>
-              <Money
-                currency={currency}
-                amount={selectedTotal}
-                fractions
-                className="text-xs text-muted-foreground"
-              />
-            </span>
-            <BulkAssign
-              group={group}
-              isDesktop={isDesktop}
-              activeUserId={activeUserId}
-              onApply={assignToSelected}
-              label={t('assignSelected')}
-            />
-          </div>
-        )}
 
         {/* A row, not an 80px dashed slab. Typing a receipt in means using this repeatedly, and
             each press used to push the line you had just filled in further off screen. The new
@@ -598,9 +626,13 @@ export function ItemizationBuilder({
               variant="ghost"
               className="h-10 shrink-0 text-xs text-muted-foreground hover:text-foreground"
               data-testid="select-lines"
-              onClick={() =>
-                isSelecting ? leaveSelection() : setIsSelecting(true)
-              }
+              onClick={() => {
+                if (isSelecting) return leaveSelection()
+                // A centred tick beside a 200px-tall open row reads as a stray control, and a
+                // row cannot be opened once selection has started anyway.
+                setOpenRowId(null)
+                setIsSelecting(true)
+              }}
             >
               {isSelecting ? t('selectDone') : t('select')}
             </Button>
@@ -621,9 +653,13 @@ export function ItemizationBuilder({
               <span className="text-xs text-muted-foreground">
                 {t('remainderLabel')}
               </span>
-              <span className="font-mono text-sm font-bold tabular-nums">
-                {formatAmountBare(currency, unassignedRemainder, locale, true)}
-              </span>
+              <Money
+                currency={currency}
+                amount={unassignedRemainder}
+                fractions
+                bold
+                className="text-sm"
+              />
             </span>
             <span className="flex justify-end gap-2">
               <Button
@@ -894,10 +930,50 @@ function YourShare({
   return (
     <span className="flex shrink-0 items-baseline justify-end gap-1 font-mono text-xs font-semibold text-credit">
       {withLabel && <span>{t('yourShareShort')}</span>}
-      <span className="tabular-nums">
-        {formatAmountBare(currency, amount, locale, true)}
-      </span>
+      <Money
+        currency={currency}
+        amount={amount}
+        fractions
+        bold
+        className="text-xs text-credit"
+      />
     </span>
+  )
+}
+
+/**
+ * A selected line's tick.
+ *
+ * The native control is drawn by the platform, so it took none of the sheet's radius, ink or
+ * accent, and at 20px square it was the only hard-cornered thing in a section of soft ones. The
+ * input is still the input — kept at full size under a transparent layer rather than hidden — so
+ * it stays reachable by keyboard, by assistive tech and by a test that aims at it.
+ */
+function Tick({
+  checked,
+  onChange,
+  testId,
+  label,
+}: {
+  checked: boolean
+  onChange: () => void
+  testId: string
+  label: string
+}) {
+  return (
+    <label className="relative flex h-[22px] w-[22px] shrink-0 cursor-pointer items-center">
+      <input
+        type="checkbox"
+        className="peer absolute inset-0 z-10 m-0 h-full w-full cursor-pointer opacity-0"
+        data-testid={testId}
+        checked={checked}
+        onChange={onChange}
+      />
+      <span className="sr-only">{label}</span>
+      <span className="pointer-events-none grid h-full w-full place-items-center rounded-[6px] border border-input text-transparent transition-colors peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-1">
+        <Check className="h-3.5 w-3.5 stroke-[3]" />
+      </span>
+    </label>
   )
 }
 
