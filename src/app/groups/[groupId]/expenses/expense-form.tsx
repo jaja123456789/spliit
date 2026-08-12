@@ -1029,7 +1029,11 @@ export function ExpenseForm({
           <CardContent className="grid sm:grid-cols-2 gap-6 pt-6">
             {/* The amount is what this screen exists for, so it is the thing you land on. It used
                 to be a 100px box wedged beside a select, at the same weight as the notes field. */}
-            <div className="col-span-2 flex flex-col items-center gap-2 pb-2">
+            {/* `min-w-0`: a grid item's min-content contribution sizes its track, so without it
+                `max-w-full` on the amount below resolves against a track the amount itself just
+                widened, and a long enough figure scrolls the whole page sideways instead of
+                scrolling inside its own box. */}
+            <div className="col-span-2 flex min-w-0 flex-col items-center gap-2 pb-2">
               <FormField
                 control={form.control}
                 name="paidBy.0.amount"
@@ -1102,11 +1106,16 @@ export function ExpenseForm({
                               calculator floated off to the right, so the three read as three
                               scattered controls rather than one figure. Mono + `tabular-nums`
                               makes `1ch` exactly one glyph; `tracking-tight` is -0.025em per
-                              character, subtracted back out so the box ends where the digits do. */}
+                              character, subtracted back out so the box ends where the digits do.
+                              `max-w-full` because a width that tracks the value has no ceiling of
+                              its own: measured at 412px, fourteen characters pushed the card to
+                              449px and scrolled the whole page sideways. Past that it goes back to
+                              scrolling inside its own box, which is the right trade at an amount
+                              nobody splits a bill for. */}
                           <CalculatorInput
                             placeholder="0.00"
-                            className="h-auto w-auto border-0 bg-transparent dark:bg-transparent shadow-none"
-                            inputClassName="h-auto border-0 bg-transparent p-0 text-left font-mono text-5xl font-semibold leading-none tabular-nums tracking-tight shadow-none focus-visible:ring-0"
+                            className="h-auto w-auto max-w-full border-0 bg-transparent dark:bg-transparent shadow-none"
+                            inputClassName="h-auto min-w-0 max-w-full border-0 bg-transparent p-0 text-left font-mono text-5xl font-semibold leading-none tabular-nums tracking-tight shadow-none focus-visible:ring-0"
                             {...field}
                             style={{
                               width: `calc(${amountGlyphs}ch - ${
