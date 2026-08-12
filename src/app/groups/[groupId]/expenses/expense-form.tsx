@@ -1695,7 +1695,7 @@ export function ExpenseForm({
             directly above it already shows. */}
         {isItemized ? (
           <Card className="mt-4">
-            <CardContent className="pt-4">
+            <CardContent className="pt-0">
               <ItemizationBuilder
                 group={group}
                 currency={expenseCurrency}

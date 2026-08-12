@@ -3,7 +3,6 @@
 import { Money } from '@/components/money'
 import { ProfileAvatar } from '@/components/profile-avatar'
 import { Button } from '@/components/ui/button'
-import { CalculatorInput } from '@/components/ui/calculator-input'
 import {
   Drawer,
   DrawerContent,
@@ -30,7 +29,7 @@ import {
   amountAsMinorUnits,
   cn,
   distributeMinorUnits,
-  formatCurrency,
+  formatAmountBare,
 } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { Check, Plus, Trash2, Users } from 'lucide-react'
@@ -73,11 +72,13 @@ function ParticipantStack({
       {shown.map((id, index) => (
         <span
           key={id}
-          // -3px, not -6px. A 20px plate centres two 8px mono letters across its middle 9.6px,
-          // so the covering mark's 2px ring reached into the previous mark's second letter and
-          // every mark in the stack but the last read as one and a half characters.
+          // Round here and only here. Everywhere else a mark is a rounded square, but a square
+          // overlapped by another square reads as a mis-rendered box; a circle overlapped by a
+          // circle reads as a stack. The concept draws the same distinction — `.mark` is 6px,
+          // `.stack .av` is a full circle — and the 1.5px ring in the sheet's own colour is what
+          // separates them. `!` beats ProfileAvatar's proportional inline `borderRadius`.
           className={cn(
-            'rounded-[5px] ring-2 ring-card',
+            'rounded-full ring-[1.5px] ring-card',
             index > 0 && '-ml-[3px]',
           )}
         >
@@ -85,11 +86,13 @@ function ParticipantStack({
             name={group.participants.find((p) => p.id === id)?.name ?? '?'}
             isActiveUser={!!activeUserId && id === activeUserId}
             size={20}
+            className="!rounded-full"
           />
         </span>
       ))}
+      {/* Bare, not a plate: the count is a label about the stack, not another member of it. */}
       {extra > 0 && (
-        <span className="-ml-[3px] grid h-5 min-w-5 place-items-center rounded-[5px] bg-muted px-1 font-mono text-[10px] font-semibold text-muted-foreground ring-2 ring-card">
+        <span className="ml-1 font-mono text-[10px] font-semibold text-subtle-foreground">
           +{extra}
         </span>
       )}
@@ -284,36 +287,22 @@ export function ItemizationBuilder({
 
   return (
     <div>
-      <div className="space-y-4">
+      <div className="space-y-3">
         {/* The running totals used to live in a sticky header — "Receipt Breakdown" over a
             Shared Total, a struck-through Excluded and a pulsing red "Unassigned" badge, three
             figures competing above the lines they described. They are all one question, asked
             once, in the strip at the foot of this sheet. */}
 
-        {fields.length > 1 && (
-          <div className="-mt-2 flex items-center justify-between gap-3">
-            <span className="text-xs text-muted-foreground">
-              {isSelecting ? t('selectHint') : ''}
-            </span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8"
-              data-testid="select-lines"
-              onClick={() =>
-                isSelecting ? leaveSelection() : setIsSelecting(true)
-              }
-            >
-              {isSelecting ? t('selectDone') : t('select')}
-            </Button>
-          </div>
+        {isSelecting && (
+          <p className="-mt-1 text-xs text-muted-foreground">
+            {t('selectHint')}
+          </p>
         )}
 
         {/* The lines, as one run of ruled rows spanning the sheet rather than a stack of cards.
             `-mx-6` with each row paying it back: a rule that stops at the card's padding reads as
             another box, which is the shape the concept trades away. */}
-        <div className="-mx-6 border-t">
+        <div className="-mx-6">
           {fields.map((field, index) => {
             // Safe access to watched values for summary calculations
             const currentItem = watchedItems[index] || {}
@@ -334,16 +323,21 @@ export function ItemizationBuilder({
               <div
                 key={field.id}
                 className={cn(
-                  'border-b px-6 transition-colors',
+                  'group/row border-b px-6 transition-colors',
                   isRowSelected && 'bg-primary/5',
-                  isOpen && 'bg-muted/40',
+                  isOpen && 'bg-muted/30',
                   // The excluded line stays legible — it is still a line on the receipt, and its
                   // own strip already says "not shared". A dashed border and a tinted card said it
                   // three more times.
                   isExcluded && !isOpen && 'opacity-60',
                 )}
               >
-                <div className="flex items-center gap-2 py-2">
+                <div
+                  className={cn(
+                    'flex items-center gap-2.5 pt-2.5',
+                    inlineMarks ? 'pb-2.5' : 'pb-0',
+                  )}
+                >
                   {isSelecting && (
                     <label className="flex shrink-0 items-center">
                       <input
@@ -407,25 +401,30 @@ export function ItemizationBuilder({
                     />
                   )}
 
+                  {/* A plain input, not a CalculatorInput. The concept's line is a name and a
+                      price and nothing else, and the calculator's addon put a second icon in
+                      every row — 24 icons on a six-line receipt — for arithmetic you do once, on
+                      the total, where the hero still offers it. */}
                   <FormField
                     control={control}
                     name={`items.${index}.price`}
                     render={({ field }) => (
-                      <FormItem className="w-[104px] shrink-0 space-y-0">
+                      <FormItem className="w-[84px] shrink-0 space-y-0">
                         <FormControl>
-                          <CalculatorInput
+                          <Input
                             {...field}
+                            type="text"
+                            inputMode="decimal"
                             placeholder="0.00"
-                            className="h-8 w-full border-0 bg-transparent dark:bg-transparent shadow-none"
-                            inputClassName="h-8 border-0 bg-transparent px-0 text-right font-mono text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
-                            onValueChange={(val) => {
-                              field.onChange(val)
+                            className="h-8 border-0 bg-transparent px-0 text-right font-mono text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                            onChange={(e) => {
+                              field.onChange(e.target.value)
                               trigger('items')
                               trigger('paidBy')
                             }}
                           />
                         </FormControl>
-                        <FormMessage className="mt-1 pr-1 text-right text-xs" />
+                        <FormMessage className="mt-1 text-right text-xs" />
                       </FormItem>
                     )}
                   />
@@ -442,16 +441,22 @@ export function ItemizationBuilder({
                     </span>
                   )}
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0 text-subtle-foreground hover:bg-destructive/10 hover:text-destructive"
-                    onClick={() => removeRow(index)}
-                    type="button"
-                    title={t('removeLine')}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  {/* The bin is not part of the line, so it is not in the line at rest — it
+                      appears once you are working on that row (hover, or focus, which is what a
+                      tap into either field gives you on a phone). Deleting several at once lives
+                      in the selection bar, which needs no pointer at all. */}
+                  {!isSelecting && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="hidden h-8 w-8 shrink-0 text-subtle-foreground hover:bg-destructive/10 hover:text-destructive group-focus-within/row:inline-flex group-hover/row:inline-flex"
+                      onClick={() => removeRow(index)}
+                      type="button"
+                      title={t('removeLine')}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
 
                 {/* The second line is the whole target. "Tap a row to change who" — one place to
@@ -464,20 +469,24 @@ export function ItemizationBuilder({
                     aria-expanded={isOpen}
                     disabled={isSelecting}
                     onClick={() => setOpenRowId(isOpen ? null : field.id)}
-                    className="flex w-full items-center gap-2 pb-2.5 pt-0.5 text-left disabled:opacity-100"
+                    className="flex w-full items-center gap-2 pb-2.5 pt-1.5 text-left disabled:opacity-100"
                   >
-                    <ParticipantStack
-                      participantIds={participantIds}
-                      group={group}
-                      activeUserId={activeUserId}
-                    />
+                    {/* The stack goes when the row is open: the grid below is the same set of
+                        people at four times the size, and the concept's open row drops it too. */}
+                    {!isOpen && (
+                      <ParticipantStack
+                        participantIds={participantIds}
+                        group={group}
+                        activeUserId={activeUserId}
+                      />
+                    )}
                     <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
                       {summaryText}
                       {isOpen && participantIds.length > 1 && itemPrice > 0 && (
                         <>
                           {' · '}
                           {t('perHeadEach', {
-                            amount: formatCurrency(
+                            amount: formatAmountBare(
                               currency,
                               perPersonAmount,
                               locale,
@@ -558,30 +567,45 @@ export function ItemizationBuilder({
             each press used to push the line you had just filled in further off screen. The new
             line inherits the previous line's people, because consecutive lines on a receipt are
             usually shared by the same people — the exception is what needs the tap, not the rule. */}
-        <Button
-          type="button"
-          variant="outline"
-          data-testid="add-item"
-          className="w-full justify-center gap-2 border-dashed"
-          onClick={() => {
-            const nextAmount =
-              unassignedRemainder > 0
-                ? Number(unassignedRemainder.toFixed(2))
-                : 0
-            const previous = watchedItems[watchedItems.length - 1]
-            const inherited = previous?.participantIds?.length
-              ? previous.participantIds
-              : group.participants.map((p) => p.id)
-            append({
-              name: '',
-              price: nextAmount,
-              participantIds: inherited,
-            })
-          }}
-        >
-          <Plus className="w-4 h-4" />
-          {t('addLine')}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            data-testid="add-item"
+            className="flex-1 justify-center gap-2 border-dashed"
+            onClick={() => {
+              const nextAmount =
+                unassignedRemainder > 0
+                  ? Number(unassignedRemainder.toFixed(2))
+                  : 0
+              const previous = watchedItems[watchedItems.length - 1]
+              const inherited = previous?.participantIds?.length
+                ? previous.participantIds
+                : group.participants.map((p) => p.id)
+              append({
+                name: '',
+                price: nextAmount,
+                participantIds: inherited,
+              })
+            }}
+          >
+            <Plus className="w-4 h-4" />
+            {t('addLine')}
+          </Button>
+          {fields.length > 1 && (
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-10 shrink-0 text-xs text-muted-foreground hover:text-foreground"
+              data-testid="select-lines"
+              onClick={() =>
+                isSelecting ? leaveSelection() : setIsSelecting(true)
+              }
+            >
+              {isSelecting ? t('selectDone') : t('select')}
+            </Button>
+          )}
+        </div>
 
         {/* The strip: one sunken bar at the foot carrying whatever is left to decide.
             What is left over after the lines is almost always tax and service. Splitting that
@@ -591,26 +615,22 @@ export function ItemizationBuilder({
         {Math.abs(unassignedRemainder) > 0.01 ? (
           <div
             data-testid="remainder-strip"
-            className="rounded-lg bg-muted px-3 py-2.5"
+            className="-mx-6 flex flex-col gap-2 border-t bg-muted px-6 py-3 sm:flex-row sm:items-center sm:gap-3"
           >
-            <div className="flex items-baseline justify-between gap-3">
+            <span className="flex items-baseline justify-between gap-3 sm:flex-1">
               <span className="text-xs text-muted-foreground">
                 {t('remainderLabel')}
               </span>
-              <Money
-                currency={currency}
-                amount={unassignedRemainder}
-                fractions
-                bold
-                className="text-sm"
-              />
-            </div>
-            <div className="mt-2 flex gap-2">
+              <span className="font-mono text-sm font-bold tabular-nums">
+                {formatAmountBare(currency, unassignedRemainder, locale, true)}
+              </span>
+            </span>
+            <span className="flex justify-end gap-2">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-9 flex-1 bg-card"
+                className="h-8 rounded-full border-primary/40 bg-transparent px-3 text-xs text-primary hover:bg-primary/10"
                 onClick={addRemainderProportionally}
                 disabled={!canSplitProportionally}
                 title={
@@ -625,15 +645,15 @@ export function ItemizationBuilder({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-9 flex-1 bg-card"
+                className="h-8 rounded-full border-primary/40 bg-transparent px-3 text-xs text-primary hover:bg-primary/10"
                 onClick={addRemainderEvenly}
               >
                 {t('remainderEvenly')}
               </Button>
-            </div>
+            </span>
           </div>
         ) : (
-          <div className="flex items-baseline justify-between gap-3 rounded-lg bg-muted px-3 py-2.5">
+          <div className="-mx-6 flex items-baseline justify-between gap-3 border-t bg-muted px-6 py-3">
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Check className="h-3.5 w-3.5 text-credit" />
               {t('allAssigned')}
@@ -861,27 +881,22 @@ function YourShare({
   withLabel: boolean
 }) {
   const t = useTranslations('ExpenseForm.Itemization')
+  const locale = useLocale()
   if (!show) return null
   if (!isMine)
     return (
-      <span className="shrink-0 font-mono text-xs text-subtle-foreground">
+      <span className="shrink-0 font-mono text-xs font-medium text-subtle-foreground">
         —
       </span>
     )
+  // One voice, one colour: the concept sets the whole figure — label included — in mono in the
+  // accent. The label in a second colour made it read as two things rather than one figure.
   return (
-    <span className="flex shrink-0 items-baseline justify-end gap-1">
-      {withLabel && (
-        <span className="font-mono text-xs text-subtle-foreground">
-          {t('yourShareShort')}
-        </span>
-      )}
-      <Money
-        currency={currency}
-        amount={amount}
-        fractions
-        bold
-        className="text-xs text-credit"
-      />
+    <span className="flex shrink-0 items-baseline justify-end gap-1 font-mono text-xs font-semibold text-credit">
+      {withLabel && <span>{t('yourShareShort')}</span>}
+      <span className="tabular-nums">
+        {formatAmountBare(currency, amount, locale, true)}
+      </span>
     </span>
   )
 }
@@ -909,7 +924,7 @@ function MarkTile({
       className={cn(
         'grid shrink-0 place-items-center font-mono font-semibold uppercase transition-colors',
         size === 'row'
-          ? 'h-7 w-7 rounded-md text-[9px]'
+          ? 'h-[30px] w-[30px] rounded-lg text-[9px]'
           : 'h-11 rounded-xl text-[10px]',
         isOn
           ? 'bg-primary text-primary-foreground'

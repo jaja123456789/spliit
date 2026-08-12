@@ -117,6 +117,25 @@ export function formatCurrencyMagnitude(
   return formatCurrencyWith(currency, amount, locale, fractions, 'never')
 }
 
+/**
+ * An amount with the currency's decimal places but no symbol.
+ *
+ * For columns that have already said which currency they are in. On a receipt line the price reads
+ * `24.00` and your share of it has to read `8.00`, not `$8.00` — one figure with a symbol beside
+ * one without reads as two different kinds of number rather than a part of a whole.
+ */
+export function formatAmountBare(
+  currency: Currency,
+  amount: number,
+  locale: string,
+  fractions?: boolean,
+) {
+  return new Intl.NumberFormat(locale, {
+    minimumFractionDigits: currency.decimal_digits,
+    maximumFractionDigits: currency.decimal_digits,
+  }).format(fractions ? amount : amountAsDecimal(amount, currency))
+}
+
 export function getCurrencyFromGroup(
   group: Pick<Group, 'currency' | 'currencyCode'>,
 ): Currency {
