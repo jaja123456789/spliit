@@ -306,6 +306,16 @@
       "byAmount": "Unevenly – By amount",
       "saveAsDefault": "Save as default splitting options"
     },
+    "SplitMode": {
+      "title": "How to split",
+      "description": "Everyone shares it equally unless you say otherwise.",
+      "evenly": "Evenly",
+      "byItem": "By item",
+      "more": "More",
+      "byShares": "By shares",
+      "byPercentage": "By percentage",
+      "byAmount": "By exact amount"
+    },
     "DeletePopup": {
       "label": "Delete",
       "title": "Delete this expense?",

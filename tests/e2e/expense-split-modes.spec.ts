@@ -131,17 +131,12 @@ test('Create expense - by shares split mode', async ({ page }) => {
   await aliceOption.waitFor({ state: 'visible' })
   await aliceOption.click()
 
-  // Step 5: Expand advanced options
-  await page
-    .getByRole('button', { name: 'Advanced splitting options…' })
-    .click()
-
-  // Step 6: Select split mode: By shares
-  const splitModeSelect = page
-    .getByRole('combobox')
-    .filter({ hasText: 'Evenly' })
-  await splitModeSelect.click()
-  await page.getByRole('option', { name: 'Unevenly – By shares' }).click()
+  // Step 5: Choose the split mode. The three uncommon modes live in the segmented
+  // control's overflow sheet; "Advanced splitting options…" and the Select behind it
+  // are gone.
+  await page.getByTestId('split-mode-more').click()
+  await page.getByTestId('split-mode-sheet').waitFor({ state: 'visible' })
+  await page.getByTestId('split-mode-BY_SHARES').click()
 
   // Step 7: Fill shares - Alice: 1, Bob: 2, Charlie: 3
   // The split-mode inputs are plain textboxes without stable attributes;
@@ -236,17 +231,12 @@ test('Create expense - by percentage split mode', async ({ page }) => {
   await aliceOption.waitFor({ state: 'visible' })
   await aliceOption.click()
 
-  // Step 5: Expand advanced options
-  await page
-    .getByRole('button', { name: 'Advanced splitting options…' })
-    .click()
-
-  // Step 6: Select split mode: By percentage
-  const splitModeSelect = page
-    .getByRole('combobox')
-    .filter({ hasText: 'Evenly' })
-  await splitModeSelect.click()
-  await page.getByRole('option', { name: 'Unevenly – By percentage' }).click()
+  // Step 5: Choose the split mode. The three uncommon modes live in the segmented
+  // control's overflow sheet; "Advanced splitting options…" and the Select behind it
+  // are gone.
+  await page.getByTestId('split-mode-more').click()
+  await page.getByTestId('split-mode-sheet').waitFor({ state: 'visible' })
+  await page.getByTestId('split-mode-BY_PERCENTAGE').click()
 
   // Step 7: Fill percentages - Alice: 25%, Bob: 25%, Charlie: 50%
   // Scope to the "Paid for" section and match by the trailing "%" label.
@@ -335,17 +325,12 @@ test('Create expense - by amount split mode', async ({ page }) => {
   await paidBySelect.click()
   await page.getByRole('option', { name: participantA }).click()
 
-  // Step 5: Expand advanced options
-  await page
-    .getByRole('button', { name: 'Advanced splitting options…' })
-    .click()
-
-  // Step 6: Select split mode: By amount
-  const splitModeSelect = page
-    .getByRole('combobox')
-    .filter({ hasText: 'Evenly' })
-  await splitModeSelect.click()
-  await page.getByRole('option', { name: 'Unevenly – By amount' }).click()
+  // Step 5: Choose the split mode. The three uncommon modes live in the segmented
+  // control's overflow sheet; "Advanced splitting options…" and the Select behind it
+  // are gone.
+  await page.getByTestId('split-mode-more').click()
+  await page.getByTestId('split-mode-sheet').waitFor({ state: 'visible' })
+  await page.getByTestId('split-mode-BY_AMOUNT').click()
 
   // Step 7: Fill amounts - Alice: 50, Bob: 100, Charlie: 150 (sum to 300)
   // In BY_AMOUNT mode the per-participant amount inputs live in the "Paid for" rows.

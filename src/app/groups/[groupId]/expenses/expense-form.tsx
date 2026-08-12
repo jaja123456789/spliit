@@ -22,6 +22,12 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
 import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer'
+import {
   Form,
   FormControl,
   FormDescription,
@@ -39,7 +45,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 import { Locale } from '@/i18n/request'
 import { readActiveUser } from '@/lib/active-user'
@@ -78,7 +83,7 @@ import {
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { RecurrenceRule } from '@prisma/client'
-import { ChevronDown, Crown, Plus, Save, Trash2 } from 'lucide-react'
+import { Check, ChevronDown, Crown, Plus, Save, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -792,23 +797,64 @@ export function ExpenseForm({
     recalculateByAmount,
   ])
 
+  // One effect, not two. These used to be a pair keyed on the same dependencies — one clearing
+  // items, one forcing the split mode — which meant two writers racing to define what "itemised"
+  // means. Itemising is implemented as BY_AMOUNT over the per-person item totals; that is an
+  // implementation detail of the mode, so it is set in the same place the mode is.
   useEffect(() => {
     if (isItemized) {
-      // When switching TO itemized, we don't necessarily change splitMode immediately
-      // but the Schema transform will force it to BY_AMOUNT on submit.
+      form.setValue('splitMode', 'BY_AMOUNT', { shouldValidate: true })
     } else {
-      // Clear items when switching off
       form.setValue('items', [])
     }
   }, [isItemized, form])
 
-  useEffect(() => {
-    if (isItemized) {
-      // Force splitMode to BY_AMOUNT internally when itemizing
-      // This makes sure the validation rules for BY_AMOUNT are active
-      form.setValue('splitMode', 'BY_AMOUNT', { shouldValidate: true })
+  /**
+   * The split control has three positions; the form has two pieces of state behind them.
+   *
+   * `isItemized` and `splitMode` used to be steered independently — a Switch for one, a Select
+   * buried under "Advanced splitting options…" for the other — and turning the Switch on silently
+   * rewrote the Select's value to BY_AMOUNT. So the two controls could disagree, and the one that
+   * looked authoritative was hidden while the mode it reported was being overridden.
+   *
+   * There is one control now, and it reads both. BY_AMOUNT means two different things — "itemised,
+   * distributed into per-person amounts" and "someone typed exact amounts" — and `isItemized` is
+   * what tells them apart. That is why it takes precedence here: without it, reopening an itemised
+   * expense would light up "By exact amount".
+   */
+  const splitControl: 'EVENLY' | 'ITEMS' | 'OTHER' = isItemized
+    ? 'ITEMS'
+    : splitMode === 'EVENLY'
+    ? 'EVENLY'
+    : 'OTHER'
+
+  const [splitSheetOpen, setSplitSheetOpen] = useState(false)
+
+  /**
+   * Short names for the overflow modes. The `SplitModeField.*` strings say "Unevenly – By shares",
+   * a prefix that existed to group them inside a Select; in a sheet headed "How to split" it is
+   * noise, and it does not fit on a chip. Those strings are left alone — they are translated in 22
+   * other locales and asserted on by the e2e suite.
+   */
+  const shortSplitModeLabel = (mode: string) =>
+    match(mode)
+      .with('BY_SHARES', () => t('SplitMode.byShares'))
+      .with('BY_PERCENTAGE', () => t('SplitMode.byPercentage'))
+      .with('BY_AMOUNT', () => t('SplitMode.byAmount'))
+      .otherwise(() => t('SplitMode.more'))
+
+  const selectSplitControl = (
+    next: 'EVENLY' | 'ITEMS' | 'OTHER',
+    mode?: string,
+  ) => {
+    if (next === 'ITEMS') {
+      // The effect above turns this into BY_AMOUNT; the mode is the itemisation's own business.
+      setIsItemized(true)
+      return
     }
-  }, [isItemized, form])
+    setIsItemized(false)
+    handleSplitModeChange(next === 'EVENLY' ? 'EVENLY' : mode ?? 'BY_SHARES')
+  }
 
   // Trigger validation on PaidFor when splitMode changes to clear stale errors
   const handleSplitModeChange = (newMode: string) => {
@@ -1259,21 +1305,58 @@ export function ExpenseForm({
               </div>
             </div>
 
+            {/* One control for how the expense is split. Three positions, because two of them
+                cover almost everything people do and the third is where the rest lives. */}
             {!form.watch('isReimbursement') && (
-              <div className="col-span-2 flex items-center justify-between gap-4 rounded-lg border p-3">
-                <div>
-                  <Label htmlFor="itemize-mode" className="text-sm">
-                    {t('itemizeField.label')}
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    {t('itemizeField.description')}
-                  </p>
+              <div className="col-span-2" data-testid="split-control">
+                <Label className="text-sm">{t('SplitMode.title')}</Label>
+                <div className="mt-1.5 grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+                  {(
+                    [
+                      ['EVENLY', 'evenly', t('SplitMode.evenly')],
+                      ['ITEMS', 'items', t('SplitMode.byItem')],
+                    ] as const
+                  ).map(([value, testId, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      data-testid={`split-mode-${testId}`}
+                      aria-pressed={splitControl === value}
+                      onClick={() => selectSplitControl(value)}
+                      className={cn(
+                        'min-h-11 rounded-md px-2 text-sm font-medium transition-colors',
+                        splitControl === value
+                          ? 'bg-card text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    data-testid="split-mode-more"
+                    aria-pressed={splitControl === 'OTHER'}
+                    onClick={() => setSplitSheetOpen(true)}
+                    className={cn(
+                      'min-h-11 rounded-md px-2 text-sm font-medium transition-colors',
+                      splitControl === 'OTHER'
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {/* Carries the chosen mode's name once one is active, so the third position
+                        never reads as "something unspecified is going on". */}
+                    {splitControl === 'OTHER'
+                      ? shortSplitModeLabel(splitMode)
+                      : t('SplitMode.more')}
+                  </button>
                 </div>
-                <Switch
-                  id="itemize-mode"
-                  checked={isItemized}
-                  onCheckedChange={setIsItemized}
-                />
+                <p className="mt-1.5 text-xs text-muted-foreground">
+                  {splitControl === 'ITEMS'
+                    ? t('itemizeField.description')
+                    : t('SplitMode.description')}
+                </p>
               </div>
             )}
 
@@ -1546,6 +1629,29 @@ export function ExpenseForm({
                     )}
                   />
                 )}
+
+                {/* Deliberately out here rather than in the split sheet: this applies to any
+                    split, and the sheet is only reachable from the third position — so putting it
+                    there would make it impossible to remember an even split. */}
+                <FormField
+                  control={form.control}
+                  name="saveDefaultSplittingOptions"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2 flex flex-row gap-2 items-center space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div>
+                        <FormLabel>
+                          {t('SplitModeField.saveAsDefault')}
+                        </FormLabel>
+                      </div>
+                    </FormItem>
+                  )}
+                />
               </CollapsibleContent>
             </Collapsible>
           </CardContent>
@@ -1642,77 +1748,9 @@ export function ExpenseForm({
                 }}
               />
 
-              {!isItemized && (
-                <Collapsible
-                  className="mt-5"
-                  defaultOpen={splitMode !== 'EVENLY'}
-                >
-                  <CollapsibleTrigger asChild>
-                    <Button variant="link" type="button" className="-mx-4">
-                      {t('advancedOptions')}
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="grid sm:grid-cols-2 gap-6 pt-3">
-                      <FormField
-                        control={form.control}
-                        name="splitMode"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t('SplitModeField.label')}</FormLabel>
-                            <FormControl>
-                              <Select
-                                onValueChange={handleSplitModeChange}
-                                defaultValue={field.value}
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="EVENLY">
-                                    {t('SplitModeField.evenly')}
-                                  </SelectItem>
-                                  <SelectItem value="BY_SHARES">
-                                    {t('SplitModeField.byShares')}
-                                  </SelectItem>
-                                  <SelectItem value="BY_PERCENTAGE">
-                                    {t('SplitModeField.byPercentage')}
-                                  </SelectItem>
-                                  <SelectItem value="BY_AMOUNT">
-                                    {t('SplitModeField.byAmount')}
-                                  </SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </FormControl>
-                            <FormDescription>
-                              {t(`${sExpense}.splitModeDescription`)}
-                            </FormDescription>
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="saveDefaultSplittingOptions"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row gap-2 items-center space-y-0 pt-2">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <div>
-                              <FormLabel>
-                                {t('SplitModeField.saveAsDefault')}
-                              </FormLabel>
-                            </div>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              )}
+              {/* "Advanced splitting options…" and the Select behind it are gone: the mode is
+                  chosen by the segmented control above the fold, and the three uncommon modes
+                  live in its overflow sheet. */}
             </CardContent>
           </Card>
         )}
@@ -1740,6 +1778,41 @@ export function ExpenseForm({
             </CardContent>
           </Card>
         )}
+
+        {/* The overflow half of the split control. A sheet rather than a menu: these are three
+            mutually exclusive answers to one question, and the question deserves a title. */}
+        <Drawer open={splitSheetOpen} onOpenChange={setSplitSheetOpen}>
+          <DrawerContent data-testid="split-mode-sheet">
+            <DrawerHeader className="text-left">
+              <DrawerTitle>{t('SplitMode.title')}</DrawerTitle>
+            </DrawerHeader>
+            <div className="flex flex-col px-4 pb-8">
+              {(['BY_SHARES', 'BY_PERCENTAGE', 'BY_AMOUNT'] as const).map(
+                (mode) => {
+                  const active = splitControl === 'OTHER' && splitMode === mode
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      data-testid={`split-mode-${mode}`}
+                      onClick={() => {
+                        selectSplitControl('OTHER', mode)
+                        setSplitSheetOpen(false)
+                      }}
+                      className={cn(
+                        'flex min-h-12 items-center justify-between gap-3 border-b px-1 text-left text-base last:border-b-0',
+                        active && 'font-medium text-primary',
+                      )}
+                    >
+                      {shortSplitModeLabel(mode)}
+                      {active && <Check className="h-4 w-4" />}
+                    </button>
+                  )
+                },
+              )}
+            </div>
+          </DrawerContent>
+        </Drawer>
 
         {/* Global Error Fallback */}
         {form.formState.errors.root && (
