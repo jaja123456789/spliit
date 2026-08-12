@@ -468,7 +468,10 @@ export function ExpenseForm({
   const [isCategoryLoading, setCategoryLoading] = useState(false)
   // Open by default when editing: an existing expense may already carry a note, a recurrence or a
   // non-group currency, and hiding those behind a collapsed section would look like data loss.
-  const [showMoreOptions, setShowMoreOptions] = useState(!isCreate)
+  // Closed on both create and edit. It used to open on edit, which put five secondary fields
+  // between the amount and the split control on the screen people open to correct one number.
+  // The draft-restore path still forces it open, because a restored draft may have values in there.
+  const [showMoreOptions, setShowMoreOptions] = useState(false)
 
   // A receipt import is a more specific intent than a leftover draft, so it wins: the effect below
   // reads `pendingReceiptData` and resets the whole form, and restoring a draft over the top would
@@ -1150,9 +1153,16 @@ export function ExpenseForm({
 
             {/* Paid By Section */}
             <div className="col-span-2">
-              <FormLabel>{t(`${sExpense}.paidByField.label`)}</FormLabel>
+              {isMultiPayer && (
+                <FormLabel>{t(`${sExpense}.paidByField.label`)}</FormLabel>
+              )}
 
-              <div className="flex flex-col gap-2 mt-2">
+              <div
+                className={cn(
+                  'flex flex-col',
+                  isMultiPayer ? 'gap-2 mt-2' : '',
+                )}
+              >
                 {payerFields.map((field, index) => {
                   // Determine if this specific row is the highest payer
                   const currentAmount = Number(paidByValues[index]?.amount) || 0
@@ -1165,18 +1175,31 @@ export function ExpenseForm({
                     <div
                       key={field.id}
                       className={cn(
-                        'flex gap-2 items-start p-2 rounded-lg transition-all border border-transparent',
+                        'flex gap-2 transition-all',
+                        isMultiPayer
+                          ? 'items-start rounded-lg border border-transparent p-2'
+                          : 'items-center justify-between border-b py-1',
                         // If they are the highest, give them a subtle background and border
-                        isHighest
-                          ? 'bg-primary/5 border-primary/20 shadow-sm'
-                          : 'bg-transparent',
+                        isHighest && 'bg-primary/5 border-primary/20 shadow-sm',
                       )}
                     >
                       <FormField
                         control={form.control}
                         name={`paidBy.${index}.participant`}
                         render={({ field }) => (
-                          <FormItem className="flex-1 space-y-0">
+                          <FormItem
+                            className={cn(
+                              'space-y-0',
+                              isMultiPayer
+                                ? 'flex-1'
+                                : 'flex flex-1 items-center justify-between gap-2',
+                            )}
+                          >
+                            {!isMultiPayer && (
+                              <FormLabel className="text-sm font-normal text-muted-foreground">
+                                {t(`${sExpense}.paidByField.label`)}
+                              </FormLabel>
+                            )}
                             <Select
                               onValueChange={field.onChange}
                               defaultValue={field.value}
@@ -1188,6 +1211,11 @@ export function ExpenseForm({
                                   data-testid={`paid-by-select-${index}`}
                                   className={cn(
                                     isHighest && 'border-primary/30',
+                                    // A row, not a full-width box: with one payer this is a
+                                    // statement of fact you occasionally change, so it reads as
+                                    // the value in a row rather than as an empty field.
+                                    !isMultiPayer &&
+                                      'h-11 w-auto justify-end gap-1 border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0',
                                   )}
                                 >
                                   <div className="flex items-center gap-2">
@@ -1306,6 +1334,29 @@ export function ExpenseForm({
               </div>
             </div>
 
+            {/* Out of More options: a date is not an advanced setting, and burying it meant
+                every backdated expense cost two extra taps. A row, like Paid by above it. */}
+            <FormField
+              control={form.control}
+              name="expenseDate"
+              render={({ field }) => (
+                <FormItem className="col-span-2 flex items-center justify-between gap-2 space-y-0 border-b py-1">
+                  <FormLabel className="text-sm font-normal text-muted-foreground">
+                    {t(`${sExpense}.DateField.label`)}
+                  </FormLabel>
+                  <FormControl>
+                    <Input
+                      className="date-base h-11 w-auto border-0 bg-transparent px-0 text-right font-medium shadow-none focus-visible:ring-0"
+                      type="date"
+                      value={formatDate(field.value)}
+                      onChange={(e) => field.onChange(new Date(e.target.value))}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             {/* One control for how the expense is split. Three positions, because two of them
                 cover almost everything people do and the third is where the rest lives. */}
             {!form.watch('isReimbursement') && (
@@ -1387,30 +1438,6 @@ export function ExpenseForm({
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="grid sm:grid-cols-2 gap-6 pt-4">
-                <FormField
-                  control={form.control}
-                  name="expenseDate"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t(`${sExpense}.DateField.label`)}</FormLabel>
-                      <FormControl>
-                        <Input
-                          className="date-base"
-                          type="date"
-                          value={formatDate(field.value)}
-                          onChange={(e) =>
-                            field.onChange(new Date(e.target.value))
-                          }
-                        />
-                      </FormControl>
-                      <FormDescription>
-                        {t(`${sExpense}.DateField.description`)}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
                 <FormField
                   control={form.control}
                   name="category"

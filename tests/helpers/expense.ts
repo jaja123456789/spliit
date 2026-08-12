@@ -72,6 +72,7 @@ export async function setExpenseRecurrence(
   recurrence: 'Daily' | 'Weekly' | 'Monthly',
 ): Promise<void> {
   // Find the recurrence combobox
+  await expandMoreOptions(page)
   const recurrenceCombobox = page
     .getByRole('combobox')
     .filter({ hasText: /None|Daily|Weekly|Monthly/ })
@@ -89,10 +90,10 @@ export async function setExpenseRecurrence(
 /**
  * Opens the "More options" section if it is closed.
  *
- * The form leads with the amount and keeps category, date, notes, recurrence and the currency
- * fields behind a collapsible, which starts closed when creating an expense (open when editing,
- * where those fields usually already have values). Anything filling one of them has to open it
- * first, or the locator waits 30 seconds for a field that is in the DOM but hidden.
+ * The form leads with the amount and keeps category, notes, recurrence and the conversion fields
+ * behind a collapsible, which starts closed on create *and* on edit. Radix unmounts collapsed
+ * content, so those fields are not merely hidden — they are absent, and anything reading one has to
+ * open the section first. The date is no longer among them; it sits beside Paid by.
  */
 export async function expandMoreOptions(page: Page): Promise<void> {
   const trigger = page.getByRole('button', { name: /more options/i }).first()
@@ -104,10 +105,13 @@ export async function expandMoreOptions(page: Page): Promise<void> {
   } catch {
     return // no collapsible on this form
   }
-  // The date field is the cheapest proxy for "the section is already open".
-  if (await page.locator('input[type="date"]').first().isVisible()) return
+  // The notes field is the probe for "already open". It used to be the date input, which moved out
+  // of this section — leaving the check true on every form, so this would have returned silently
+  // and every caller would have timed out on a field it was supposed to reveal.
+  const probe = page.locator('textarea').first()
+  if (await probe.isVisible()) return
   await trigger.click()
-  await page.locator('input[type="date"]').first().waitFor({ state: 'visible' })
+  await probe.waitFor({ state: 'visible' })
 }
 
 /**
@@ -137,8 +141,8 @@ export async function fillExpenseForm(
   await payerOption.waitFor({ state: 'visible', timeout: 5000 })
   await payerOption.click()
 
-  // Everything below lives behind "More options", which is closed on the create form.
-  if (options.category || options.date || options.notes || options.recurrence) {
+  // Everything below except the date lives behind "More options", which starts closed.
+  if (options.category || options.notes || options.recurrence) {
     await expandMoreOptions(page)
   }
 
@@ -317,6 +321,7 @@ export async function verifyExpenseValues(
     await expect(page.locator('input[type="date"]')).toHaveValue(expected.date)
   }
   if (expected.notes) {
+    await expandMoreOptions(page)
     await expect(page.locator('textarea')).toHaveValue(expected.notes)
   }
   if (expected.payer) {
@@ -334,6 +339,7 @@ export async function verifyExpenseRecurrence(
   page: Page,
   expectedRecurrence: 'None' | 'Daily' | 'Weekly' | 'Monthly',
 ): Promise<void> {
+  await expandMoreOptions(page)
   const recurrenceCombobox = page
     .getByRole('combobox')
     .filter({ hasText: expectedRecurrence })

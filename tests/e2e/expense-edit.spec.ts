@@ -173,6 +173,7 @@ test.describe('Expense Editing', () => {
     // Click again to verify notes were saved
     await page.getByText('Notes Update Test').click()
     await page.waitForURL(/\/groups\/[^/]+\/expenses\/[^/]+\/edit/)
+    await expandMoreOptions(page)
     await expect(page.locator('textarea')).toHaveValue(newNotes)
   })
 
@@ -243,6 +244,7 @@ test.describe('Expense Editing', () => {
     // Amount may lose trailing zeros
     await expect(page.locator(AMOUNT_INPUT)).toHaveValue(/350(\.00)?/)
     await expect(page.locator('input[type="date"]')).toHaveValue(newDate)
+    await expandMoreOptions(page)
     await expect(page.locator('textarea')).toHaveValue(newNotes)
     await expect(
       page.getByRole('combobox').filter({ hasText: 'Charlie' }),

@@ -163,6 +163,7 @@ test.describe('Expense Creation', () => {
     await page.getByText(expenseTitle).click()
     await page.waitForURL(/\/groups\/[^/]+\/expenses\/[^/]+\/edit/)
 
+    await expandMoreOptions(page)
     const notesTextarea = page.locator('textarea')
     await expect(notesTextarea).toHaveValue(expenseNotes)
   })
@@ -257,6 +258,7 @@ test.describe('Expense Creation', () => {
     await expect(page.locator('input[name="title"]')).toHaveValue(expenseTitle)
     await expect(page.locator(AMOUNT_INPUT)).toHaveValue(expenseAmount)
     await expect(page.locator('input[type="date"]')).toHaveValue(expenseDate)
+    await expandMoreOptions(page)
     await expect(page.locator('textarea')).toHaveValue(expenseNotes)
 
     // Verify payer selection persisted (Bob should be selected)
