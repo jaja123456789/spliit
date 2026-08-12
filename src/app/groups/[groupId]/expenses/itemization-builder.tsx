@@ -33,7 +33,7 @@ import {
   formatCurrency,
 } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
-import { Check, Plus, Trash2, Users } from 'lucide-react'
+import { Check, ChevronDown, Plus, Trash2, Users } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { useFormContext } from 'react-hook-form'
@@ -356,6 +356,7 @@ export function ItemizationBuilder({
             return (
               <div
                 key={field.id}
+                data-testid={`item-row-${index}`}
                 className={cn(
                   'border-b px-6 transition-colors',
                   isRowSelected && 'bg-primary/5',
@@ -395,7 +396,7 @@ export function ItemizationBuilder({
                                 printed text. A soft fill is the lightest thing that still says
                                 "field" without putting a bordered control back in every row —
                                 the box is the shape, the border is what made it a slab. */}
-                            <div className="rounded-md bg-muted/50 transition-colors focus-within:bg-muted focus-within:ring-1 focus-within:ring-ring">
+                            <div className="rounded-t-sm border-b border-input transition-colors focus-within:border-primary focus-within:bg-muted/40">
                               <FormControl>
                                 <Input
                                   {...field}
@@ -456,7 +457,7 @@ export function ItemizationBuilder({
                                 so the decimal point lands in the same column whatever the
                                 value's length — only the symbol moves, which is what it does on
                                 a printed statement too. */}
-                            <div className="flex items-center rounded-md bg-muted/50 pl-2 transition-colors focus-within:bg-muted focus-within:ring-1 focus-within:ring-ring [&_button]:h-7 [&_button]:w-7">
+                            <div className="flex items-center rounded-t-sm border-b border-input pl-1.5 transition-colors focus-within:border-primary focus-within:bg-muted/40 [&_button]:h-7 [&_button]:w-7">
                               <span className="font-mono text-xs text-subtle-foreground">
                                 {currency.symbol || group.currency}
                               </span>
@@ -526,7 +527,7 @@ export function ItemizationBuilder({
                         aria-expanded={isOpen}
                         disabled={isSelecting}
                         onClick={() => setOpenRowId(isOpen ? null : field.id)}
-                        className="flex w-full items-center gap-2 pb-2.5 pt-1.5 text-left disabled:opacity-100"
+                        className="-mx-2 flex min-h-[36px] w-full items-center gap-2 rounded-md px-2 py-1 text-left transition-colors hover:bg-muted/60 disabled:opacity-100 disabled:hover:bg-transparent"
                       >
                         {/* The stack goes when the row is open: the grid below is the same set of
                         people at four times the size, and the concept's open row drops it too. */}
@@ -537,7 +538,7 @@ export function ItemizationBuilder({
                             activeUserId={activeUserId}
                           />
                         )}
-                        <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                        <span className="min-w-0 truncate text-xs text-muted-foreground">
                           {summaryText}
                           {isOpen &&
                             participantIds.length > 1 &&
@@ -555,6 +556,13 @@ export function ItemizationBuilder({
                               </>
                             )}
                         </span>
+                        <ChevronDown
+                          className={cn(
+                            'h-3.5 w-3.5 shrink-0 text-subtle-foreground transition-transform',
+                            isOpen && 'rotate-180',
+                          )}
+                        />
+                        <span className="flex-1" />
                         <YourShare
                           currency={currency}
                           amount={perPersonAmount}
