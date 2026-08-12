@@ -1254,29 +1254,15 @@ export function ExpenseForm({
                   {t('addPayer')}
                 </Button>
                 <div className="flex flex-col items-end gap-1">
-                  {/* The Subtraction Message */}
-                  {hasExcludedItems && (
-                    <div className="text-right text-xs text-amber-600 font-medium animate-in fade-in slide-in-from-right-1">
-                      —{' '}
-                      {formatCurrency(
-                        expenseCurrency,
-                        totalExcluded,
-                        locale,
-                        true,
-                      )}{' '}
-                      {t('excludedItems')}
-                    </div>
-                  )}
+                  {/* The excluded amount used to be repeated here in amber, next to the itemisation
+                      sheet that already reports it. One place, at the foot of that sheet. */}
 
                   {/* Only worth showing when it differs from the hero: several payers summing to
-                      a total, or an itemised bill with something excluded from the split. */}
+                      a total. An itemised bill reports its own totals in its strip. */}
                   <div
                     className={cn(
-                      !isMultiPayer && !hasExcludedItems && 'hidden',
-                      'text-right font-bold tabular-nums px-3 py-1 rounded-md transition-colors border',
-                      hasExcludedItems
-                        ? 'bg-credit/10 border-credit/30'
-                        : 'bg-muted/50 border-transparent text-foreground',
+                      !isMultiPayer && 'hidden',
+                      'text-right font-bold tabular-nums px-3 py-1 rounded-md transition-colors bg-muted text-foreground',
                       // Red means "there is something to fix", so it follows validation rather
                       // than the sign of the total. The previous `totalAmount <= 0` painted a
                       // pristine form red before a single keystroke, and painted every legitimate

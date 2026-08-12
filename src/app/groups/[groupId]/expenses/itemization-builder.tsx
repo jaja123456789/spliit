@@ -2,7 +2,6 @@
 
 import { Money } from '@/components/money'
 import { ProfileAvatar } from '@/components/profile-avatar'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CalculatorInput } from '@/components/ui/calculator-input'
 import {
@@ -31,7 +30,6 @@ import {
   amountAsMinorUnits,
   cn,
   distributeMinorUnits,
-  formatCurrency,
 } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { Check, EyeOff, Plus, Trash2, Users } from 'lucide-react'
@@ -139,7 +137,6 @@ export function ItemizationBuilder({
   }, 0)
   const totalExcluded = totalAmount - groupSplitSum
   const unassignedRemainder = totalAmount - allItemsEnteredSum
-  const isBalanced = Math.abs(unassignedRemainder) < 0.01
 
   // Each participant's share of the items entered so far. Proportional allocation is meaningless
   // without it — and impossible if nobody has been assigned anything yet.
@@ -207,40 +204,12 @@ export function ItemizationBuilder({
   }
 
   return (
-    <div className="sticky top-0 z-10 bg-card/95 backdrop-blur py-2 justify-between items-center mb-2 border-b">
+    <div>
       <div className="space-y-4">
-        <div className="flex flex-wrap justify-between items-center mb-2 gap-2">
-          <div className="text-sm font-medium">Receipt Breakdown</div>
-
-          <div className="flex items-center gap-2">
-            <div className="text-xs font-mono tabular-nums flex flex-col items-end">
-              <span className="text-credit font-bold">
-                Shared Total:{' '}
-                {formatCurrency(currency, groupSplitSum, locale, true)}
-              </span>
-              {totalExcluded > 0 && (
-                <span className="text-muted-foreground line-through">
-                  Excluded:{' '}
-                  {formatCurrency(currency, totalExcluded, locale, true)}
-                </span>
-              )}
-            </div>
-
-            {Math.abs(unassignedRemainder) > 0.01 ? (
-              <Badge
-                variant="destructive"
-                className="text-xs tabular-nums animate-pulse"
-              >
-                Unassigned:{' '}
-                {formatCurrency(currency, unassignedRemainder, locale, true)}
-              </Badge>
-            ) : (
-              <div className="text-xs font-mono px-2 py-1 rounded-full border border-credit/30 bg-credit/10 text-credit flex items-center gap-1">
-                <Check className="w-3 h-3" /> All set
-              </div>
-            )}
-          </div>
-        </div>
+        {/* The running totals used to live in a sticky header — "Receipt Breakdown" over a
+            Shared Total, a struck-through Excluded and a pulsing red "Unassigned" badge, three
+            figures competing above the lines they described. They are all one question, asked
+            once, in the strip at the foot of this sheet. */}
 
         {/* Fields Loop */}
         <div className="space-y-3">
@@ -412,51 +381,6 @@ export function ItemizationBuilder({
           })}
         </div>
 
-        {/* What is left over after the items is almost always tax and service. Splitting that
-            evenly is wrong whenever people ordered different amounts: a 20% service charge on a
-            £60 order is not the same as on a £15 one. Both options are offered because a flat
-            cover charge genuinely is even. */}
-        {!isBalanced && Math.abs(unassignedRemainder) > 0.01 && (
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-xs text-muted-foreground">
-              {t('remainderPrompt', {
-                amount: formatCurrency(
-                  currency,
-                  unassignedRemainder,
-                  locale,
-                  true,
-                ),
-              })}
-            </span>
-            <div className="flex flex-wrap justify-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="text-xs h-7"
-                onClick={addRemainderProportionally}
-                disabled={!canSplitProportionally}
-                title={
-                  canSplitProportionally
-                    ? undefined
-                    : t('proportionalUnavailable')
-                }
-              >
-                {t('splitProportionally')}
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="text-xs h-7"
-                onClick={addRemainderEvenly}
-              >
-                {t('splitEvenly')}
-              </Button>
-            </div>
-          </div>
-        )}
-
         {/* A row, not an 80px dashed slab. Typing a receipt in means using this repeatedly, and
             each press used to push the line you had just filled in further off screen. The new
             line inherits the previous line's people, because consecutive lines on a receipt are
@@ -485,6 +409,84 @@ export function ItemizationBuilder({
           <Plus className="w-4 h-4" />
           {t('addLine')}
         </Button>
+
+        {/* The strip: one sunken bar at the foot carrying whatever is left to decide.
+            What is left over after the lines is almost always tax and service. Splitting that
+            evenly is wrong whenever people ordered different amounts — a 20% service charge on a
+            £60 order is not the same as on a £15 one — so proportional leads. Even is still
+            offered, because a flat cover charge genuinely is even. */}
+        {Math.abs(unassignedRemainder) > 0.01 ? (
+          <div
+            data-testid="remainder-strip"
+            className="rounded-lg bg-muted px-3 py-2.5"
+          >
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="text-xs text-muted-foreground">
+                {t('remainderLabel')}
+              </span>
+              <Money
+                currency={currency}
+                amount={unassignedRemainder}
+                fractions
+                bold
+                className="text-sm"
+              />
+            </div>
+            <div className="mt-2 flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 flex-1 bg-card"
+                onClick={addRemainderProportionally}
+                disabled={!canSplitProportionally}
+                title={
+                  canSplitProportionally
+                    ? undefined
+                    : t('proportionalUnavailable')
+                }
+              >
+                {t('remainderProportional')}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 flex-1 bg-card"
+                onClick={addRemainderEvenly}
+              >
+                {t('remainderEvenly')}
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-baseline justify-between gap-3 rounded-lg bg-muted px-3 py-2.5">
+            <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Check className="h-3.5 w-3.5 text-credit" />
+              {t('allAssigned')}
+            </span>
+            <span className="flex items-baseline gap-3">
+              {totalExcluded > 0.009 && (
+                <span className="flex items-baseline gap-1 text-xs text-subtle-foreground">
+                  <Money currency={currency} amount={totalExcluded} fractions />
+                  {t('excludedTotal')}
+                </span>
+              )}
+              <span className="flex items-baseline gap-1">
+                <Money
+                  currency={currency}
+                  amount={groupSplitSum}
+                  fractions
+                  bold
+                  className="text-sm"
+                />
+                <span className="text-xs text-muted-foreground">
+                  {t('sharedTotal')}
+                </span>
+              </span>
+            </span>
+          </div>
+        )}
 
         {/* Global Items Array Error (e.g. "Items must sum to total") */}
         <FormField

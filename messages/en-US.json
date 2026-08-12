@@ -345,7 +345,13 @@
       "yourShare": "your share",
       "excludedHint": "Not shared by anyone — assign it to include it",
       "sameAsAbove": "Same as above",
-      "addLine": "Add a line"
+      "addLine": "Add a line",
+      "remainderLabel": "Tax & service, not on any line",
+      "remainderProportional": "In proportion",
+      "remainderEvenly": "Evenly",
+      "allAssigned": "Every line is assigned",
+      "sharedTotal": "shared",
+      "excludedTotal": "excluded"
     },
     "Draft": {
       "prompt": "You have an unsaved expense from earlier.",
