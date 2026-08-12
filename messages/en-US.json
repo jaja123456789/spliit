@@ -322,7 +322,12 @@
       "more": "More",
       "byShares": "By shares",
       "byPercentage": "By percentage",
-      "byAmount": "By exact amount"
+      "byAmount": "By exact amount",
+      "sheetHint": "Pick one. You can still adjust each person after.",
+      "bySharesHint": "Give people a number of shares — 2 for a couple, 1 each for the rest.",
+      "byPercentageHint": "Type a percentage each. They have to add up to 100.",
+      "byAmountHint": "Type exactly what each person owes.",
+      "close": "Close"
     },
     "DeletePopup": {
       "label": "Delete",

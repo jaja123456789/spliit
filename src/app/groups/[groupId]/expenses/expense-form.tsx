@@ -23,6 +23,8 @@ import {
 import {
   Drawer,
   DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
   DrawerHeader,
   DrawerTitle,
 } from '@/components/ui/drawer'
@@ -1780,11 +1782,21 @@ export function ExpenseForm({
           <DrawerContent data-testid="split-mode-sheet">
             <DrawerHeader className="text-left">
               <DrawerTitle>{t('SplitMode.title')}</DrawerTitle>
+              <DrawerDescription>{t('SplitMode.sheetHint')}</DrawerDescription>
             </DrawerHeader>
-            <div className="flex flex-col px-4 pb-8">
+            {/* Rows big enough to hit, each saying what the mode actually does, and a way out that
+                is not "guess that the backdrop is tappable". The first version was three bare
+                12px-tall lines with no description and no dismiss. */}
+            <div className="flex flex-col gap-2 px-4">
               {(['BY_SHARES', 'BY_PERCENTAGE', 'BY_AMOUNT'] as const).map(
                 (mode) => {
                   const active = splitControl === 'OTHER' && splitMode === mode
+                  const hint = match(mode)
+                    .with('BY_SHARES', () => t('SplitMode.bySharesHint'))
+                    .with('BY_PERCENTAGE', () =>
+                      t('SplitMode.byPercentageHint'),
+                    )
+                    .otherwise(() => t('SplitMode.byAmountHint'))
                   return (
                     <button
                       key={mode}
@@ -1795,17 +1807,38 @@ export function ExpenseForm({
                         setSplitSheetOpen(false)
                       }}
                       className={cn(
-                        'flex min-h-12 items-center justify-between gap-3 border-b px-1 text-left text-base last:border-b-0',
-                        active && 'font-medium text-primary',
+                        'flex min-h-16 items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left transition-colors',
+                        active
+                          ? 'border-primary bg-primary/5'
+                          : 'hover:bg-muted',
                       )}
                     >
-                      {shortSplitModeLabel(mode)}
-                      {active && <Check className="h-4 w-4" />}
+                      <span className="min-w-0">
+                        <span className="block text-base font-medium">
+                          {shortSplitModeLabel(mode)}
+                        </span>
+                        <span className="block text-xs text-muted-foreground">
+                          {hint}
+                        </span>
+                      </span>
+                      {active && (
+                        <Check className="h-5 w-5 shrink-0 text-primary" />
+                      )}
                     </button>
                   )
                 },
               )}
             </div>
+            <DrawerFooter>
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => setSplitSheetOpen(false)}
+              >
+                {t('SplitMode.close')}
+              </Button>
+            </DrawerFooter>
           </DrawerContent>
         </Drawer>
 
