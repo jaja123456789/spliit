@@ -358,7 +358,7 @@ export function ItemizationBuilder({
                 key={field.id}
                 data-testid={`item-row-${index}`}
                 className={cn(
-                  'border-b border-divider px-6 transition-colors',
+                  'border-b-2 border-divider px-6 transition-colors',
                   isRowSelected && 'bg-primary/5',
                   isOpen && 'bg-muted/30',
                   // The excluded line stays legible — it is still a line on the receipt, and its

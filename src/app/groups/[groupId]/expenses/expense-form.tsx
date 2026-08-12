@@ -1216,7 +1216,7 @@ export function ExpenseForm({
                 Full-bleed (`-mx-6`, each row paying the padding back with `px-6`): the concept's
                 thesis is a ledger of hairline rules spanning the sheet, and a rule that stops 24px
                 short on both sides reads as another stacked box instead. */}
-            <div className="col-span-2 -mx-6">
+            <div className="col-span-2 -mx-6 -mt-2">
               {isMultiPayer && (
                 <FormLabel className="px-6">
                   {t(`${sExpense}.paidByField.label`)}
@@ -1244,7 +1244,7 @@ export function ExpenseForm({
                         'flex gap-2 transition-all',
                         isMultiPayer
                           ? 'items-start rounded-lg border border-transparent p-2'
-                          : 'items-center justify-between border-b px-6 py-1',
+                          : 'items-center justify-between border-b px-6',
                         // If they are the highest, give them a subtle background and border
                         isHighest && 'bg-primary/5 border-primary/20 shadow-sm',
                       )}
@@ -1284,7 +1284,7 @@ export function ExpenseForm({
                                     // the concept a row that states a value carries none, and only
                                     // the row that opens something (More options) does.
                                     !isMultiPayer &&
-                                      'h-11 w-auto justify-end border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0 [&>svg]:hidden',
+                                      'h-10 w-auto justify-end border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0 [&>svg]:hidden',
                                   )}
                                 >
                                   <div className="flex items-center gap-2">
@@ -1378,13 +1378,13 @@ export function ExpenseForm({
                 control={form.control}
                 name="expenseDate"
                 render={({ field }) => (
-                  <FormItem className="flex items-center justify-between gap-2 space-y-0 border-b px-6 py-1">
+                  <FormItem className="flex items-center justify-between gap-2 space-y-0 border-b px-6">
                     <FormLabel className="text-xs font-normal text-muted-foreground">
                       {t(`${sExpense}.DateField.label`)}
                     </FormLabel>
                     <FormControl>
                       <Input
-                        className="date-base h-11 w-auto border-0 bg-transparent px-0 text-right font-medium shadow-none focus-visible:ring-0"
+                        className="date-base h-10 w-auto border-0 bg-transparent px-0 text-right font-medium shadow-none focus-visible:ring-0"
                         type="date"
                         value={formatDate(field.value)}
                         onChange={(e) =>
@@ -1397,7 +1397,7 @@ export function ExpenseForm({
                 )}
               />
 
-              <div className="flex justify-between items-center mt-2 px-6">
+              <div className="flex justify-between items-center px-6 pt-1">
                 <Button
                   type="button"
                   variant="ghost"
