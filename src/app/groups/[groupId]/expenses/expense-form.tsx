@@ -976,13 +976,17 @@ export function ExpenseForm({
                       {t(`${sExpense}.amountLabel`)}
                     </FormLabel>
                     <div className="flex items-baseline justify-center gap-1">
-                      <span className="text-3xl font-medium text-muted-foreground">
+                      {/* Mono here too. This is the largest figure in the app; leaving it in the
+                          body face made the one number the screen exists for the only one not
+                          spoken in the figure voice — and the typed and derived variants below
+                          have to match each other exactly, which two faces cannot. */}
+                      <span className="text-3xl font-medium font-mono text-muted-foreground">
                         {expenseCurrency.symbol || group.currency}
                       </span>
                       {isMultiPayer || isItemized ? (
                         // With several payers or an itemised bill the total is derived, so it is
                         // shown rather than typed — the parts are edited below.
-                        <span className="text-5xl font-semibold tabular-nums tracking-tight">
+                        <span className="text-5xl font-semibold font-mono tabular-nums tracking-tight">
                           {formatCurrency(
                             expenseCurrency,
                             effectiveTotal,
@@ -995,7 +999,7 @@ export function ExpenseForm({
                           <CalculatorInput
                             placeholder="0.00"
                             className="w-auto max-w-[10rem] border-0 bg-transparent shadow-none"
-                            inputClassName="h-auto w-full border-0 bg-transparent p-0 text-center text-5xl font-semibold leading-none tabular-nums tracking-tight shadow-none focus-visible:ring-0"
+                            inputClassName="h-auto w-full border-0 bg-transparent p-0 text-center text-5xl font-semibold font-mono leading-none tabular-nums tracking-tight shadow-none focus-visible:ring-0"
                             {...field}
                             onValueChange={(val) =>
                               handlePayerAmountChange(0, val)

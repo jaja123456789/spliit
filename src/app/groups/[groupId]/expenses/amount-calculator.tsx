@@ -184,7 +184,9 @@ export function AmountCalculator({
         <div className="text-sm text-muted-foreground font-mono h-5 uppercase tracking-wider mb-1">
           {formula}
         </div>
-        <div className="text-4xl font-bold font-mono tracking-tight w-full text-right">
+        {/* font-semibold, not font-bold: --font-mono ships 400/500/600 and a 700 request here would
+            be synthesised rather than drawn. */}
+        <div className="text-4xl font-semibold font-mono tracking-tight w-full text-right">
           {display}
         </div>
       </div>

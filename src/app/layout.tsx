@@ -48,12 +48,14 @@ const nunitoSans = Nunito_Sans({
  * IBM Plex Mono rather than a technical mono: it is humanist, with the same open apertures and
  * slightly soft terminals as Nunito Sans, and its 0/O and 1/l are unambiguous at 12px.
  *
- * Two weights only. 500 for row figures and 600 for headline ones — no 700, so nothing here can ask
- * the browser to synthesise a weight it has not downloaded.
+ * Three weights: 400 so a bare `font-mono` (the MCP token strings) gets a face rather than the
+ * nearest substitute, 500 for row figures, 600 for headline ones. Deliberately no 700 — nothing in
+ * the app should ask the browser to synthesise a weight that was never downloaded, which means
+ * `font-mono font-bold` is a mistake wherever it appears.
  */
 const plexMono = IBM_Plex_Mono({
   subsets: ['latin'],
-  weight: ['500', '600'],
+  weight: ['400', '500', '600'],
   display: 'swap',
   variable: '--font-mono',
 })
