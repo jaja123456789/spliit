@@ -1,12 +1,6 @@
 'use client'
 import { Totals } from '@/app/groups/[groupId]/stats/totals'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useActiveUser } from '@/lib/hooks'
 import { getCurrencyFromGroup } from '@/lib/utils'
@@ -42,14 +36,10 @@ export function TotalsPageClient() {
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('Totals.title')}</CardTitle>
-          <CardDescription>{t('Totals.description')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Totals />
-        </CardContent>
+      {/* One sheet. `Totals` owns its own header now, so there is no CardHeader here repeating the
+          tab name over a sentence explaining that a summary is a summary. */}
+      <Card className="pb-2">
+        <Totals />
       </Card>
 
       {/* Sibling of the totals, not a child of them: these are their own cards, and nesting three
@@ -63,7 +53,11 @@ export function TotalsPageClient() {
           </CardContent>
         </Card>
       ) : (
-        <Charts data={data} currency={getCurrencyFromGroup(group)} />
+        <Charts
+          data={data}
+          currency={getCurrencyFromGroup(group)}
+          activeUserId={participantId}
+        />
       )}
     </div>
   )

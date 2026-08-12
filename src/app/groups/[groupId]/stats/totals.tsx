@@ -1,5 +1,7 @@
 'use client'
 import { TotalsFigure } from '@/app/groups/[groupId]/stats/totals-figure'
+import { Money } from '@/components/money'
+import { SheetHeader } from '@/components/sheet-header'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useActiveUser } from '@/lib/hooks'
 import { getCurrencyFromGroup } from '@/lib/utils'
@@ -7,6 +9,13 @@ import { trpc } from '@/trpc/client'
 import { useTranslations } from 'next-intl'
 import { useCurrentGroup } from '../current-group-context'
 
+/**
+ * The head of the stats sheet and the rows under it.
+ *
+ * The group total leads, as it does on the expenses sheet, and the personal figures follow as ruled
+ * rows. It used to be four equally-weighted label/figure pairs under a header that said "Totals"
+ * over "Spending summary of the entire group." — three lines of chrome above the first number.
+ */
 export function Totals() {
   const { groupId, group } = useCurrentGroup()
   const activeUser = useActiveUser(groupId)
@@ -20,61 +29,68 @@ export function Totals() {
   // disagree about who owes what.
   const { data: balancesData } = trpc.groups.balances.list.useQuery({ groupId })
 
-  if (!data || !group)
-    return (
-      <div className="grid gap-4">
-        {[0, 1, 2].map((index) => (
-          <div key={index}>
-            <Skeleton className="mt-1 h-3 w-48" />
-            <Skeleton className="mt-3 h-4 w-20" />
-          </div>
-        ))}
-      </div>
-    )
-
-  const currency = getCurrencyFromGroup(group)
+  const ready = !!data && !!group
+  const currency = group ? getCurrencyFromGroup(group) : null
   const balance = participantId
     ? balancesData?.balances[participantId]?.total
     : undefined
 
   return (
-    <div className="grid gap-4">
-      <TotalsFigure
+    <>
+      <SheetHeader
         label={t('groupTotal')}
-        amount={data.totalGroupSpendings}
-        currency={currency}
-        testId="total-group-spendings"
+        figureTestId="total-group-spendings"
+        figure={
+          ready && currency ? (
+            <Money currency={currency} amount={data.totalGroupSpendings} bold />
+          ) : (
+            <Skeleton className="h-8 w-40" />
+          )
+        }
+        context={ready ? t('description') : <Skeleton className="h-3.5 w-48" />}
       />
-      {participantId && (
-        <>
-          <TotalsFigure
-            label={t('youPaid')}
-            amount={data.totalParticipantSpendings ?? 0}
-            currency={currency}
-            testId="your-total-spendings"
-          />
-          <TotalsFigure
-            label={t('yourShare')}
-            amount={data.totalParticipantShare ?? 0}
-            currency={currency}
-            testId="your-total-share"
-          />
-          {balance !== undefined && (
-            <div className="border-t pt-4">
+      <div className="px-4 sm:px-6 pb-2">
+        {!ready || !currency ? (
+          <div className="flex flex-col">
+            {[0, 1, 2].map((index) => (
+              <div
+                key={index}
+                className="flex items-baseline justify-between gap-4 border-b last:border-b-0 py-3 h-[46px]"
+              >
+                <Skeleton className="h-3.5 w-24" />
+                <Skeleton className="h-4 w-20" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          participantId && (
+            <>
               <TotalsFigure
-                label={balance < 0 ? t('youOwe') : t('yourBalance')}
-                amount={balance}
+                label={t('youPaid')}
+                amount={data.totalParticipantSpendings ?? 0}
                 currency={currency}
-                tone="balance"
-                testId="your-balance"
+                testId="your-total-spendings"
               />
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t('balanceHint')}
-              </p>
-            </div>
-          )}
-        </>
-      )}
-    </div>
+              <TotalsFigure
+                label={t('yourShare')}
+                amount={data.totalParticipantShare ?? 0}
+                currency={currency}
+                testId="your-total-share"
+              />
+              {balance !== undefined && (
+                <TotalsFigure
+                  label={balance < 0 ? t('youOwe') : t('yourBalance')}
+                  hint={t('balanceHint')}
+                  amount={balance}
+                  currency={currency}
+                  tone="balance"
+                  testId="your-balance"
+                />
+              )}
+            </>
+          )
+        )}
+      </div>
+    </>
   )
 }

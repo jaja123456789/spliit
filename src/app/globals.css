@@ -54,8 +54,12 @@
     --debt: 16 88% 39.5%; /* 5.31 · 5.53 · 4.82, and 4.59 at worst on bg-debt/10 */
     /* Chart marks. Deliberately a separate step from --primary: the dark --primary is tuned for
        small UI accents and glares as a large area fill, so each mode gets a step chosen for its
-       own surface (both validated for lightness band, chroma and >=3:1 contrast). */
-    --chart-1: 162 88% 24%;
+       own surface (both validated for lightness band, chroma and >=3:1 contrast).
+       --chart-2 is the neutral bar. The accent means "you" everywhere else in the app, so it means
+       "you" here too: only your own bar is green, and every chart with no "you" in it — by
+       category, over time — is drawn entirely in the neutral. Length does the comparing. */
+    --chart-1: 162 88% 24%; /* 5.86 vs the sheet */
+    --chart-2: 42 9% 52%; /* 3.47 vs the sheet, 1.69 against --chart-1 */
   }
 
   /* Designed rather than inverted. The previous dark theme was a warm brown-black (#0C0A09) with a
@@ -89,6 +93,7 @@
     --input: 165 7% 22%; /* rule-2  #343C3A */
     --ring: 160 45% 58%;
     --chart-1: 160 45% 45%; /* 5.57 vs the sheet */
+    --chart-2: 165 7% 42%; /* 3.36 vs the sheet, 1.66 against --chart-1 */
     /* Sage and clay rather than mint and safety-orange: same directions, half the saturation, and
        they stop competing with each other when they sit in the same column. */
     --credit: 158 48% 66%; /* 10.40 · 9.36 · 8.29, and 7.59 at worst on bg-credit/10 */

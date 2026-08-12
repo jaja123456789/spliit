@@ -4,8 +4,14 @@ import { ReactNode } from 'react'
 type Props = {
   /** Caps label. Names what the figure is, and doubles as the sheet's heading. */
   label: ReactNode
-  /** The one number this screen is about. Omit while it is still loading — the box is reserved. */
+  /**
+   * The one number this screen is about. Pass a skeleton while it loads rather than nothing — the
+   * box is reserved either way, so the page does not move under the reader. Omit the prop entirely
+   * only for a screen that structurally has no figure, such as Activity.
+   */
   figure?: ReactNode
+  /** Goes on the figure's box, so it is addressable while loading as well as after. */
+  figureTestId?: string
   /** One line. Never two. */
   context?: ReactNode
   actions?: ReactNode
@@ -27,6 +33,7 @@ type Props = {
 export function SheetHeader({
   label,
   figure,
+  figureTestId,
   context,
   actions,
   className,
@@ -48,9 +55,14 @@ export function SheetHeader({
             heights are the measured line boxes of a one-line figure and a one-line context in this
             face — 38px and 21px, both a little over their nominal line-heights because the mono
             metrics exceed them. `min-` rather than a fixed height so a longer locale can wrap. */}
-        <div className="mt-1.5 min-h-[38px] text-3xl font-semibold leading-9 tracking-tight">
-          {figure}
-        </div>
+        {figure !== undefined && (
+          <div
+            data-testid={figureTestId}
+            className="mt-1.5 min-h-[38px] text-3xl font-semibold leading-9 tracking-tight"
+          >
+            {figure}
+          </div>
+        )}
         <div className="mt-1 min-h-[21px] text-sm leading-5 text-muted-foreground">
           {context}
         </div>

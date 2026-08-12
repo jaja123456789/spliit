@@ -1,11 +1,6 @@
 'use client'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { SheetHeader } from '@/components/sheet-header'
+import { Card, CardContent } from '@/components/ui/card'
 import { Currency } from '@/lib/currency'
 import { formatCurrency, formatDateOnly } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
@@ -14,6 +9,7 @@ import {
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
   LabelList,
   ResponsiveContainer,
   Tooltip,
@@ -23,10 +19,12 @@ import {
 
 type StatsData = AppRouterOutput['groups']['stats']['get']
 
-// Every chart here plots one series whose job is magnitude, so they all share a single hue and the
-// bar length does the encoding. Both steps are defined in globals.css and validated against their
-// own surface, which is what keeps them readable in dark mode.
-const MARK = 'hsl(var(--chart-1))'
+// Every chart here plots one series whose job is magnitude, so bar length does the encoding and the
+// bars are neutral. The accent means "you" everywhere else in this app, so it is spent on exactly
+// one bar on this page — yours, in the by-member chart. Both steps are defined in globals.css and
+// validated against the surface they land on, which is what keeps them readable in dark mode.
+const YOU = 'hsl(var(--chart-1))'
+const MARK = 'hsl(var(--chart-2))'
 const AXIS = 'hsl(var(--muted-foreground))'
 const GRID = 'hsl(var(--border))'
 
@@ -57,11 +55,11 @@ function ChartCard({
 }) {
   return (
     <Card className={className}>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent>
+      {/* Same header as every other sheet: the chart's name is a caps label, not a headline. A
+          20px title over a sentence above each of three charts was three times as much chrome as
+          chart. */}
+      <SheetHeader label={title} context={description} />
+      <CardContent className="px-2 sm:px-4">
         <div className="h-[300px] w-full">
           {isEmpty ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
@@ -81,9 +79,11 @@ function ChartCard({
 export function Charts({
   data,
   currency,
+  activeUserId,
 }: {
   data: StatsData
   currency: Currency
+  activeUserId?: string
 }) {
   const t = useTranslations('Stats.Charts')
   const tCategories = useTranslations('Categories')
@@ -192,6 +192,14 @@ export function Charts({
             maxBarSize={24}
             radius={[0, 4, 4, 0]}
           >
+            {/* The one accented bar on this page. `participantSpending` carries the participant id,
+                so this is a direct match rather than a join through the group by name. */}
+            {data.participantSpending.map((participant) => (
+              <Cell
+                key={participant.id}
+                fill={participant.id === activeUserId ? YOU : MARK}
+              />
+            ))}
             <LabelList
               dataKey="amount"
               position="right"
