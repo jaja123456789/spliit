@@ -430,7 +430,8 @@
       "noImbursements": "It looks like your group doesn’t need any reimbursement 😁",
       "owes": "<strong>{from}</strong> owes <strong>{to}</strong>",
       "markAsPaid": "Mark as paid"
-    }
+    },
+    "recordPayment": "Record a payment"
   },
   "Stats": {
     "title": "Stats",
@@ -739,5 +740,23 @@
         "footer": "If you didn't request this email, you can safely ignore it."
       }
     }
+  },
+  "Payment": {
+    "title": "Record a payment",
+    "description": "Money that has already changed hands. It settles a balance rather than adding to it.",
+    "from": "Who paid",
+    "to": "Who received it",
+    "amount": "Amount",
+    "date": "Date",
+    "notes": "Note",
+    "notesPlaceholder": "Optional",
+    "save": "Record payment",
+    "saving": "Recording…",
+    "cancel": "Cancel",
+    "record": "Record a payment",
+    "sameParticipant": "Pick two different people.",
+    "defaultTitle": "Payment from {from} to {to}",
+    "payWith": "Pay with",
+    "payWithHint": "Opens {app}. Recording it here is separate."
   }
 }

@@ -42,7 +42,8 @@ test('Active user changes balance view', async ({ page }) => {
   await expect(markAsPaidLink).toBeVisible()
 
   const hrefBefore = await markAsPaidLink.getAttribute('href')
-  expect(hrefBefore).toContain('reimbursement=yes')
+  // Points at the payment screen now, not at the expense form wearing a `reimbursement=yes` flag.
+  expect(hrefBefore).toContain('/payments/create')
   expect(hrefBefore).toMatch(/\bfrom=/)
   expect(hrefBefore).toMatch(/\bto=/)
   expect(hrefBefore).toMatch(/\bamount=/)

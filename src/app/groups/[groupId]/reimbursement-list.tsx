@@ -25,6 +25,7 @@ export function ReimbursementList({
   groupId,
 }: Props) {
   const t = useTranslations('Balances.Reimbursements')
+  const tPayment = useTranslations('Payment')
   if (reimbursements.length === 0) {
     return (
       <p className="text-sm pb-6" data-testid="no-reimbursements">
@@ -71,7 +72,8 @@ export function ReimbursementList({
                     ),
                   })}
                 </div>
-                {/* Mark as paid button */}
+                {/* Prefills the payment screen rather than the expense form. Same three values,
+                    somewhere they mean something. */}
                 <Button
                   variant="outline"
                   size="sm"
@@ -79,7 +81,7 @@ export function ReimbursementList({
                   className="h-7 text-xs gap-1 sm:ml-auto"
                 >
                   <Link
-                    href={`/groups/${groupId}/expenses/create?reimbursement=yes&from=${reimbursement.from}&to=${reimbursement.to}&amount=${reimbursement.amount}`}
+                    href={`/groups/${groupId}/payments/create?from=${reimbursement.from}&to=${reimbursement.to}&amount=${reimbursement.amount}`}
                   >
                     <Check className="w-3 h-3" />
                     {t('markAsPaid')}
@@ -94,11 +96,14 @@ export function ReimbursementList({
               />
             </div>
 
-            {/* Payment Links Row */}
+            {/* Paying and recording are two different acts, and the row now says which is which:
+                these leave the app for Venmo or PayPal and settle nothing here, while "Mark as
+                paid" above is the bookkeeping. Only handles the recipient has actually filled in
+                appear — `getPaymentOptions` returns nothing for an empty profile. */}
             {paymentOptions.length > 0 && (
-              <div className="flex gap-2 flex-wrap mt-1">
-                <span className="text-xs text-muted-foreground self-center">
-                  Pay with:
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <span className="text-xs text-subtle-foreground">
+                  {tPayment('payWith')}
                 </span>
                 {paymentOptions.map((opt, idx) => (
                   <PaymentOptionButton key={idx} option={opt} />

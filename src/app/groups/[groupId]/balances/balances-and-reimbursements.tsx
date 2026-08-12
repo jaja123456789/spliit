@@ -4,12 +4,15 @@ import { BalancesList } from '@/app/groups/[groupId]/balances-list'
 import { ReimbursementList } from '@/app/groups/[groupId]/reimbursement-list'
 import { Money } from '@/components/money'
 import { SheetHeader } from '@/components/sheet-header'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useActiveUser } from '@/lib/hooks'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
+import { Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import Link from 'next/link'
 import { useEffect } from 'react'
 import { match } from 'ts-pattern'
 import { useCurrentGroup } from '../current-group-context'
@@ -104,8 +107,19 @@ export default function BalancesAndReimbursements() {
         )}
       </CardContent>
 
-      <div className="font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground px-4 sm:px-6 pt-5 pb-1">
-        {t('Reimbursements.title')}
+      <div className="flex items-center justify-between gap-3 px-4 sm:px-6 pt-5 pb-1">
+        <span className="font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
+          {t('Reimbursements.title')}
+        </span>
+        {/* Recording a payment used to be reachable only from a suggested-reimbursement row, so a
+            settled group offered no way to record one — which is precisely the moment you want to
+            record the payment that settled it. */}
+        <Button variant="outline" size="sm" asChild className="h-8">
+          <Link href={`/groups/${groupId}/payments/create`}>
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            {t('recordPayment')}
+          </Link>
+        </Button>
       </div>
       <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
         {isLoading ? (
