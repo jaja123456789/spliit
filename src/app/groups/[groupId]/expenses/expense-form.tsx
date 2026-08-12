@@ -1681,13 +1681,12 @@ export function ExpenseForm({
             </Collapsible>
           </CardContent>
         </Card>
+        {/* A plain sheet. The dashed double border framed the lines as a foreign object pasted
+            into the form, and the header repeated, word for word, the hint the split control
+            directly above it already shows. */}
         {isItemized ? (
-          <Card className="mt-4 border-dashed border-2">
-            <CardHeader>
-              <CardTitle>{t('Itemization.title')}</CardTitle>
-              <CardDescription>{t('Itemization.subtitle')}</CardDescription>
-            </CardHeader>
-            <CardContent>
+          <Card className="mt-4">
+            <CardContent className="pt-4">
               <ItemizationBuilder
                 group={group}
                 currency={expenseCurrency}

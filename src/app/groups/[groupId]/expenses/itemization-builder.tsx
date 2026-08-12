@@ -30,9 +30,10 @@ import {
   amountAsMinorUnits,
   cn,
   distributeMinorUnits,
+  formatCurrency,
 } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
-import { Check, EyeOff, Plus, Trash2, Users } from 'lucide-react'
+import { Check, Plus, Trash2, Users } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useState } from 'react'
 import { useFormContext } from 'react-hook-form'
@@ -72,9 +73,12 @@ function ParticipantStack({
       {shown.map((id, index) => (
         <span
           key={id}
+          // -3px, not -6px. A 20px plate centres two 8px mono letters across its middle 9.6px,
+          // so the covering mark's 2px ring reached into the previous mark's second letter and
+          // every mark in the stack but the last read as one and a half characters.
           className={cn(
             'rounded-[5px] ring-2 ring-card',
-            index > 0 && '-ml-1.5',
+            index > 0 && '-ml-[3px]',
           )}
         >
           <ProfileAvatar
@@ -85,7 +89,7 @@ function ParticipantStack({
         </span>
       ))}
       {extra > 0 && (
-        <span className="-ml-1.5 grid h-5 min-w-5 place-items-center rounded-[5px] bg-muted px-1 font-mono text-[10px] font-semibold text-muted-foreground ring-2 ring-card">
+        <span className="-ml-[3px] grid h-5 min-w-5 place-items-center rounded-[5px] bg-muted px-1 font-mono text-[10px] font-semibold text-muted-foreground ring-2 ring-card">
           +{extra}
         </span>
       )}
@@ -191,6 +195,24 @@ export function ItemizationBuilder({
   const [isSelecting, setIsSelecting] = useState(false)
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([])
 
+  /**
+   * Which row has its picker open. One at a time, keyed by react-hook-form's row id.
+   *
+   * Only one, because the picker is 46px-tall targets six across: two open rows push the third
+   * off a phone screen, and the whole point of opening one is to see the per-head figure change
+   * against the lines around it.
+   */
+  const [openRowId, setOpenRowId] = useState<string | null>(null)
+
+  /**
+   * Whether the marks are individual targets in the row instead of a stack you tap to open.
+   *
+   * The concept draws it both ways deliberately: a phone row has space for a stack and nothing
+   * more, a desktop row is "wide enough for individual targets again". Six is where twelve
+   * 28px marks plus a name, a price and a figure stop fitting in a 734px row.
+   */
+  const inlineMarks = isDesktop && group.participants.length <= 6
+
   const toggleRow = (rowId: string) =>
     setSelectedRowIds((current) =>
       current.includes(rowId)
@@ -233,29 +255,31 @@ export function ItemizationBuilder({
     remove(index)
   }
 
+  /**
+   * What the line's strip says about who shares it.
+   *
+   * It describes the set rather than listing it: "everyone", "Bob only", "3 sharing", "not
+   * shared". The list it replaced ("Alice, Bob & 2 more") grew with the group, and past two names
+   * it was doing nothing the marks beside it were not already doing — while pushing your own
+   * share off the end of the row.
+   */
   const getPayerSummary = (selectedIds: string[]) => {
-    if (!selectedIds || selectedIds.length === 0) return t('noOne')
+    if (!selectedIds || selectedIds.length === 0) return t('notShared')
     if (
       selectedIds.length === group.participants.length &&
       group.participants.length > 1
     )
-      return t('everyone')
-
-    const you = t('you')
-    let names = selectedIds
-      .map((id) => {
-        if (activeUserId && id === activeUserId) return you
-        return group.participants.find((p) => p.id === id)?.name
+      return t('sharedByEveryone')
+    if (selectedIds.length === 1) {
+      const only = selectedIds[0]
+      return t('sharedByOne', {
+        name:
+          activeUserId && only === activeUserId
+            ? t('yourShareShort')
+            : group.participants.find((p) => p.id === only)?.name ?? '',
       })
-      .filter(Boolean) as string[]
-
-    if (names.includes(you)) {
-      names = [you, ...names.filter((n) => n !== you)]
     }
-
-    if (names.length === 1) return names[0]
-    if (names.length === 2) return `${names[0]} & ${names[1]}`
-    return `${names[0]}, ${names[1]} & ${names.length - 2} more`
+    return t('sharedByCount', { count: selectedIds.length })
   }
 
   return (
@@ -267,7 +291,7 @@ export function ItemizationBuilder({
             once, in the strip at the foot of this sheet. */}
 
         {fields.length > 1 && (
-          <div className="flex items-center justify-between gap-3">
+          <div className="-mt-2 flex items-center justify-between gap-3">
             <span className="text-xs text-muted-foreground">
               {isSelecting ? t('selectHint') : ''}
             </span>
@@ -286,8 +310,10 @@ export function ItemizationBuilder({
           </div>
         )}
 
-        {/* Fields Loop */}
-        <div className="space-y-3">
+        {/* The lines, as one run of ruled rows spanning the sheet rather than a stack of cards.
+            `-mx-6` with each row paying it back: a rule that stops at the card's padding reads as
+            another box, which is the shape the concept trades away. */}
+        <div className="-mx-6 border-t">
           {fields.map((field, index) => {
             // Safe access to watched values for summary calculations
             const currentItem = watchedItems[index] || {}
@@ -302,174 +328,199 @@ export function ItemizationBuilder({
               !!activeUserId && participantIds.includes(activeUserId)
 
             const isRowSelected = selectedRowIds.includes(field.id)
+            const isOpen = openRowId === field.id
 
             return (
               <div
                 key={field.id}
                 className={cn(
-                  'group relative flex gap-3 p-3 rounded-lg border shadow-sm transition-all',
-                  isExcluded
-                    ? 'bg-muted/30 border-dashed opacity-75'
-                    : 'bg-card hover:border-primary/40',
-                  isRowSelected && 'border-primary bg-primary/5',
+                  'border-b px-6 transition-colors',
+                  isRowSelected && 'bg-primary/5',
+                  isOpen && 'bg-muted/40',
+                  // The excluded line stays legible — it is still a line on the receipt, and its
+                  // own strip already says "not shared". A dashed border and a tinted card said it
+                  // three more times.
+                  isExcluded && !isOpen && 'opacity-60',
                 )}
               >
-                {isSelecting && (
-                  <label className="flex shrink-0 items-start pt-2">
-                    <input
-                      type="checkbox"
-                      className="h-5 w-5 accent-[hsl(var(--primary))]"
-                      data-testid={`select-line-${index}`}
-                      checked={isRowSelected}
-                      onChange={() => toggleRow(field.id)}
-                    />
-                    <span className="sr-only">
-                      {currentItem.name || t('itemNamePlaceholder')}
-                    </span>
-                  </label>
-                )}
-                <div className="flex min-w-0 flex-1 flex-col gap-3">
-                  <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-start">
-                    {/* Item Name */}
-                    <div className="flex-1">
-                      <FormField
-                        control={control}
-                        name={`items.${index}.name`}
-                        render={({ field }) => (
-                          <FormItem className="space-y-0">
-                            <FormControl>
-                              <Input
-                                {...field}
-                                placeholder={t('itemNamePlaceholder')}
-                                className={cn(
-                                  'h-9 text-sm transition-all',
-                                  isExcluded && 'text-muted-foreground',
-                                )}
-                              />
-                            </FormControl>
-                            <FormMessage className="text-xs pl-1 mt-1" />
-                          </FormItem>
-                        )}
+                <div className="flex items-center gap-2 py-2">
+                  {isSelecting && (
+                    <label className="flex shrink-0 items-center">
+                      <input
+                        type="checkbox"
+                        className="h-5 w-5 accent-[hsl(var(--primary))]"
+                        data-testid={`select-line-${index}`}
+                        checked={isRowSelected}
+                        onChange={() => toggleRow(field.id)}
                       />
-                    </div>
-
-                    <div className="flex gap-2 items-start justify-end">
-                      {/* Price Input */}
-                      <div className="w-[110px]">
-                        <FormField
-                          control={control}
-                          name={`items.${index}.price`}
-                          render={({ field }) => (
-                            <FormItem className="space-y-0">
-                              <div className="relative">
-                                <FormControl>
-                                  <CalculatorInput
-                                    {...field}
-                                    placeholder="0.00"
-                                    className="h-9"
-                                    inputClassName={cn(
-                                      'h-9 text-sm text-right pr-8',
-                                      isExcluded && 'text-muted-foreground',
-                                    )}
-                                    onValueChange={(val) => {
-                                      field.onChange(val)
-                                      trigger('items')
-                                      trigger('paidBy')
-                                    }}
-                                  />
-                                </FormControl>
-                                <div className="absolute right-9 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                                  {currency.symbol || group.currency}
-                                </div>
-                              </div>
-                              <FormMessage className="text-xs text-right pr-1 mt-1" />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-
-                      {/* Participant Popover */}
-                      <FormField
-                        control={control}
-                        name={`items.${index}.participantIds`}
-                        render={({ field }) => (
-                          <FormItem className="space-y-0">
-                            <ParticipantSelector
-                              value={field.value || []}
-                              onChange={(val) => {
-                                field.onChange(val)
-                                trigger('items')
-                              }}
-                              group={group}
-                              isDesktop={isDesktop}
-                              activeUserId={activeUserId}
-                              isExcluded={isExcluded}
-                              isMeInvolved={isMeInvolved}
-                            />
-                          </FormItem>
-                        )}
-                      />
-
-                      {/* Delete Button */}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
-                        onClick={() => removeRow(index)}
-                        type="button"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Second line: who shared it, and what it costs you.
-                    It used to read "Alice, Bob will each pay $12.00" — a sentence that grows with
-                    the group, and a figure that is only your share when you happen to be on the
-                    line. The stack shows who without spending a line on names, and the figure is
-                    now explicitly yours: a dash when you are not on this item. */}
-                  <div className="flex items-center justify-between gap-3 px-1 min-h-6">
-                    {isExcluded ? (
-                      <span className="text-xs text-subtle-foreground italic">
-                        {t('excludedHint')}
+                      <span className="sr-only">
+                        {currentItem.name || t('itemNamePlaceholder')}
                       </span>
-                    ) : (
-                      <>
-                        <div className="flex min-w-0 items-center gap-2">
-                          <ParticipantStack
-                            participantIds={participantIds}
+                    </label>
+                  )}
+
+                  {/* Name and price are the receipt line. Borderless: a bordered box around each
+                      is the "control array" the concept trades away — four lines of a bill became
+                      eight bordered inputs stacked in four bordered cards. */}
+                  <FormField
+                    control={control}
+                    name={`items.${index}.name`}
+                    render={({ field }) => (
+                      <FormItem className="min-w-0 flex-1 space-y-0">
+                        <FormControl>
+                          <Input
+                            {...field}
+                            placeholder={t('itemNamePlaceholder')}
+                            className={cn(
+                              'h-8 border-0 bg-transparent px-0 text-sm font-medium shadow-none focus-visible:ring-0',
+                              isExcluded && 'line-through',
+                            )}
+                          />
+                        </FormControl>
+                        <FormMessage className="text-xs" />
+                      </FormItem>
+                    )}
+                  />
+
+                  {/* Desktop, small group: the marks are individual targets in the row itself, as
+                      the concept has them — "desktop rows are wide enough for individual targets
+                      again". Past six people they stop fitting and the row falls back to the
+                      stack-and-open form below. */}
+                  {inlineMarks && (
+                    <FormField
+                      control={control}
+                      name={`items.${index}.participantIds`}
+                      render={({ field }) => (
+                        <FormItem className="space-y-0">
+                          <MarkRow
+                            value={field.value || []}
+                            onChange={(val) => {
+                              field.onChange(val)
+                              trigger('items')
+                            }}
                             group={group}
                             activeUserId={activeUserId}
+                            rowIndex={index}
                           />
-                          <span className="truncate text-xs text-muted-foreground">
-                            {summaryText}
-                          </span>
-                        </div>
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
-                        {itemPrice > 0 && (
-                          <span className="flex shrink-0 items-baseline gap-1.5">
-                            <span className="text-xs text-subtle-foreground">
-                              {t('yourShare')}
-                            </span>
-                            {isMeInvolved ? (
-                              <Money
-                                currency={currency}
-                                amount={perPersonAmount}
-                                fractions
-                                className="text-xs text-credit"
-                                bold
-                              />
-                            ) : (
-                              <span className="font-mono text-xs text-subtle-foreground">
-                                —
-                              </span>
-                            )}
-                          </span>
-                        )}
-                      </>
+                  <FormField
+                    control={control}
+                    name={`items.${index}.price`}
+                    render={({ field }) => (
+                      <FormItem className="w-[104px] shrink-0 space-y-0">
+                        <FormControl>
+                          <CalculatorInput
+                            {...field}
+                            placeholder="0.00"
+                            className="h-8 w-full border-0 bg-transparent shadow-none"
+                            inputClassName="h-8 border-0 bg-transparent px-0 text-right font-mono text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                            onValueChange={(val) => {
+                              field.onChange(val)
+                              trigger('items')
+                              trigger('paidBy')
+                            }}
+                          />
+                        </FormControl>
+                        <FormMessage className="mt-1 pr-1 text-right text-xs" />
+                      </FormItem>
                     )}
-                  </div>
+                  />
+
+                  {inlineMarks && (
+                    <span className="w-14 shrink-0 text-right">
+                      <YourShare
+                        currency={currency}
+                        amount={perPersonAmount}
+                        show={itemPrice > 0}
+                        isMine={isMeInvolved}
+                        withLabel={false}
+                      />
+                    </span>
+                  )}
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0 text-subtle-foreground hover:bg-destructive/10 hover:text-destructive"
+                    onClick={() => removeRow(index)}
+                    type="button"
+                    title={t('removeLine')}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
+
+                {/* The second line is the whole target. "Tap a row to change who" — one place to
+                    aim at instead of a 36px icon button in the row's most crowded corner, and it
+                    is the same strip that tells you who shares the line and what it costs you. */}
+                {!inlineMarks && (
+                  <button
+                    type="button"
+                    data-testid={`assign-row-${index}`}
+                    aria-expanded={isOpen}
+                    disabled={isSelecting}
+                    onClick={() => setOpenRowId(isOpen ? null : field.id)}
+                    className="flex w-full items-center gap-2 pb-2.5 pt-0.5 text-left disabled:opacity-100"
+                  >
+                    <ParticipantStack
+                      participantIds={participantIds}
+                      group={group}
+                      activeUserId={activeUserId}
+                    />
+                    <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                      {summaryText}
+                      {isOpen && participantIds.length > 1 && itemPrice > 0 && (
+                        <>
+                          {' · '}
+                          {t('perHeadEach', {
+                            amount: formatCurrency(
+                              currency,
+                              perPersonAmount,
+                              locale,
+                              true,
+                            ),
+                          })}
+                        </>
+                      )}
+                    </span>
+                    <YourShare
+                      currency={currency}
+                      amount={perPersonAmount}
+                      show={itemPrice > 0}
+                      isMine={isMeInvolved}
+                      withLabel
+                    />
+                  </button>
+                )}
+
+                {isOpen && (
+                  <FormField
+                    control={control}
+                    name={`items.${index}.participantIds`}
+                    render={({ field }) => (
+                      <FormItem className="space-y-0 pb-3">
+                        <RowPicker
+                          value={field.value || []}
+                          onChange={(val) => {
+                            field.onChange(val)
+                            trigger('items')
+                          }}
+                          group={group}
+                          activeUserId={activeUserId}
+                          previousIds={
+                            watchedItems[index - 1]?.participantIds ?? null
+                          }
+                          previousName={watchedItems[index - 1]?.name ?? ''}
+                          rowIndex={index}
+                        />
+                      </FormItem>
+                    )}
+                  />
+                )}
               </div>
             )
           })}
@@ -789,84 +840,221 @@ function BulkAssign({
   )
 }
 
-function ParticipantSelector({
+/**
+ * What the line costs you, in the right-hand column of every row.
+ *
+ * A dash when the line is not yours — the concept is explicit that the figure is *your* share and
+ * not the group's per-head cost, so a line you are not on has to say so rather than quietly
+ * showing what the people on it are each paying.
+ */
+function YourShare({
+  currency,
+  amount,
+  show,
+  isMine,
+  withLabel,
+}: {
+  currency: Currency
+  amount: number
+  show: boolean
+  isMine: boolean
+  withLabel: boolean
+}) {
+  const t = useTranslations('ExpenseForm.Itemization')
+  if (!show) return null
+  if (!isMine)
+    return (
+      <span className="shrink-0 font-mono text-xs text-subtle-foreground">
+        —
+      </span>
+    )
+  return (
+    <span className="flex shrink-0 items-baseline justify-end gap-1">
+      {withLabel && (
+        <span className="font-mono text-xs text-subtle-foreground">
+          {t('yourShareShort')}
+        </span>
+      )}
+      <Money
+        currency={currency}
+        amount={amount}
+        fractions
+        bold
+        className="text-xs text-credit"
+      />
+    </span>
+  )
+}
+
+/** One person's mark, as a target rather than a picture of them. */
+function MarkTile({
+  participant,
+  isOn,
+  isMe,
+  size,
+  onClick,
+}: {
+  participant: { id: string; name: string }
+  isOn: boolean
+  isMe: boolean
+  size: 'row' | 'grid'
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={isOn}
+      title={participant.name}
+      className={cn(
+        'grid shrink-0 place-items-center font-mono font-semibold uppercase transition-colors',
+        size === 'row'
+          ? 'h-7 w-7 rounded-md text-[9px]'
+          : 'h-11 rounded-xl text-[10px]',
+        isOn
+          ? 'bg-primary text-primary-foreground'
+          : 'bg-muted text-subtle-foreground hover:bg-muted-foreground/20',
+        isMe && 'ring-2 ring-inset ring-primary/30',
+      )}
+    >
+      {participant.name.slice(0, 2)}
+      <span className="sr-only">{participant.name}</span>
+    </button>
+  )
+}
+
+/** The marks inline in a desktop row: every person is their own target, no opening required. */
+function MarkRow({
   value,
   onChange,
   group,
-  isDesktop,
   activeUserId,
-  isExcluded,
-  isMeInvolved,
+  rowIndex,
 }: {
   value: string[]
   onChange: (val: string[]) => void
   group: Group
-  isDesktop: boolean
   activeUserId?: string | null
-  isExcluded: boolean
-  isMeInvolved: boolean | null
+  rowIndex: number
+}) {
+  return (
+    <span className="flex shrink-0 gap-1" data-testid={`marks-${rowIndex}`}>
+      {group.participants.map((participant) => (
+        <MarkTile
+          key={participant.id}
+          participant={participant}
+          isOn={value.includes(participant.id)}
+          isMe={!!activeUserId && participant.id === activeUserId}
+          size="row"
+          onClick={() =>
+            onChange(
+              value.includes(participant.id)
+                ? value.filter((id) => id !== participant.id)
+                : [...value, participant.id],
+            )
+          }
+        />
+      ))}
+    </span>
+  )
+}
+
+/**
+ * The picker that opens inside the row.
+ *
+ * Presets first, because the three answers people actually give — everyone, nobody, the same as
+ * the line above — are three quarters of the taps. Then the marks as a grid of 44px targets, and
+ * the consequence restated underneath so you watch your own share move while you are choosing,
+ * rather than finding out after saving.
+ */
+function RowPicker({
+  value,
+  onChange,
+  group,
+  activeUserId,
+  previousIds,
+  previousName,
+  rowIndex,
+}: {
+  value: string[]
+  onChange: (val: string[]) => void
+  group: Group
+  activeUserId?: string | null
+  previousIds: string[] | null
+  previousName: string
+  rowIndex: number
 }) {
   const t = useTranslations('ExpenseForm.Itemization')
-  const [open, setOpen] = useState(false)
-  useMobilePopoverState(open, setOpen, isDesktop)
+  const allIds = group.participants.map((p) => p.id)
+  const isEveryone = value.length === allIds.length && allIds.length > 0
+  const canCopyPrevious = !!previousIds && previousIds.length > 0
 
-  const TriggerButton = (
-    <FormControl>
-      <Button
-        variant={isExcluded ? 'outline' : 'secondary'}
-        size="icon"
-        className={cn(
-          'h-9 w-9 shrink-0 relative transition-colors',
-          isExcluded &&
-            'border-dashed border-muted-foreground/50 text-muted-foreground',
-          isMeInvolved && 'bg-primary/10 text-primary border-primary/20',
-        )}
-        type="button"
-        title={isExcluded ? t('assignTo') : t('editAssignment')}
-      >
-        {isExcluded ? (
-          <EyeOff className="h-4 w-4 opacity-50" />
-        ) : (
-          <Users className="h-4 w-4" />
-        )}
-        {value.length > 0 && value.length < group.participants.length && (
-          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-mono tabular-nums text-primary-foreground font-semibold shadow-sm">
-            {value.length}
-          </span>
-        )}
-      </Button>
-    </FormControl>
+  const preset = (
+    label: string,
+    isOn: boolean,
+    onClick: () => void,
+    testId: string,
+  ) => (
+    <button
+      key={testId}
+      type="button"
+      data-testid={testId}
+      onClick={onClick}
+      className={cn(
+        'rounded-full border px-3 py-1.5 text-xs transition-colors',
+        isOn
+          ? 'border-primary bg-primary/10 font-medium text-primary'
+          : 'border-input text-muted-foreground hover:bg-muted',
+      )}
+    >
+      {label}
+    </button>
   )
-
-  const SelectionList = (
-    <ParticipantChooser
-      value={value}
-      onChange={onChange}
-      group={group}
-      activeUserId={activeUserId}
-    />
-  )
-
-  if (isDesktop) {
-    return (
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>{TriggerButton}</PopoverTrigger>
-        <PopoverContent className="w-64 p-2" align="end">
-          {SelectionList}
-        </PopoverContent>
-      </Popover>
-    )
-  }
 
   return (
-    <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerTrigger asChild>{TriggerButton}</DrawerTrigger>
-      <DrawerContent>
-        <DrawerHeader className="text-left pb-0">
-          <DrawerTitle>Split Item</DrawerTitle>
-        </DrawerHeader>
-        <div className="p-4 pb-8">{SelectionList}</div>
-      </DrawerContent>
-    </Drawer>
+    <div data-testid={`row-picker-${rowIndex}`}>
+      <div className="flex flex-wrap gap-1.5">
+        {preset(
+          t('sharedByEveryone'),
+          isEveryone,
+          () => onChange(allIds),
+          `preset-everyone-${rowIndex}`,
+        )}
+        {preset(
+          t('notShared'),
+          value.length === 0,
+          () => onChange([]),
+          `preset-none-${rowIndex}`,
+        )}
+        {canCopyPrevious &&
+          preset(
+            previousName
+              ? t('sameAsNamed', { name: previousName })
+              : t('sameAsAbove'),
+            false,
+            () => onChange(previousIds),
+            `preset-same-${rowIndex}`,
+          )}
+      </div>
+
+      <div className="mt-2 grid grid-cols-6 gap-1.5 lg:grid-cols-8">
+        {group.participants.map((participant) => (
+          <MarkTile
+            key={participant.id}
+            participant={participant}
+            isOn={value.includes(participant.id)}
+            isMe={!!activeUserId && participant.id === activeUserId}
+            size="grid"
+            onClick={() =>
+              onChange(
+                value.includes(participant.id)
+                  ? value.filter((id) => id !== participant.id)
+                  : [...value, participant.id],
+              )
+            }
+          />
+        ))}
+      </div>
+    </div>
   )
 }

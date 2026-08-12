@@ -355,8 +355,6 @@
       "proportionalUnavailable": "Assign at least one item to someone first.",
       "remainderName": "Tax & service",
       "remainderNameFor": "Tax & service · {name}",
-      "yourShare": "your share",
-      "excludedHint": "Not shared by anyone — assign it to include it",
       "sameAsAbove": "Same as above",
       "addLine": "Add a line",
       "remainderLabel": "Tax & service, not on any line",
@@ -371,8 +369,6 @@
       "splitAmong": "Split among",
       "selectAll": "Select everyone",
       "clearAll": "Nobody (exclude the line)",
-      "assignTo": "Assign to someone",
-      "editAssignment": "Edit who shared it",
       "noOne": "No one",
       "everyone": "Everyone",
       "you": "You",
@@ -385,7 +381,10 @@
       "sharedByOne": "{name} only",
       "sharedByCount": "{count} sharing",
       "notShared": "not shared",
-      "yourShareShort": "you"
+      "yourShareShort": "you",
+      "removeLine": "Remove this line",
+      "sameAsNamed": "Same as {name}",
+      "perHeadEach": "{amount} each"
     },
     "Draft": {
       "prompt": "You have an unsaved expense from earlier.",
