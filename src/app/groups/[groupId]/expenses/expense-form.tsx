@@ -1655,10 +1655,8 @@ export function ExpenseForm({
         {isItemized ? (
           <Card className="mt-4 border-dashed border-2">
             <CardHeader>
-              <CardTitle>Itemization</CardTitle>
-              <CardDescription>
-                Break down the receipt. Totals will be auto-calculated.
-              </CardDescription>
+              <CardTitle>{t('Itemization.title')}</CardTitle>
+              <CardDescription>{t('Itemization.subtitle')}</CardDescription>
             </CardHeader>
             <CardContent>
               <ItemizationBuilder

@@ -179,23 +179,78 @@ export function ItemizationBuilder({
     setTimeout(() => trigger(['items', 'paidBy']), 0)
   }
 
+  /**
+   * Assigning several lines to the same people in one go.
+   *
+   * The concept asked for long-press to select, which the row cannot support: it is a live form —
+   * a text input for the name and a calculator input for the price — and long-pressing a text
+   * input on a phone raises the platform's own selection handles and context menu. A mode toggle
+   * gets the same end state without fighting the OS for the only surface the row has, and unlike a
+   * gesture it can be reached from a keyboard.
+   */
+  const [isSelecting, setIsSelecting] = useState(false)
+  const [selectedRowIds, setSelectedRowIds] = useState<string[]>([])
+
+  const toggleRow = (rowId: string) =>
+    setSelectedRowIds((current) =>
+      current.includes(rowId)
+        ? current.filter((id) => id !== rowId)
+        : [...current, rowId],
+    )
+
+  const leaveSelection = () => {
+    setIsSelecting(false)
+    setSelectedRowIds([])
+  }
+
+  // Keyed by react-hook-form's own row id, not by index: `remove(index)` shifts every index above
+  // it, so an index-based selection would silently start pointing at different lines.
+  const selectedIndexes = fields
+    .map((field, index) => ({ id: field.id, index }))
+    .filter(({ id }) => selectedRowIds.includes(id))
+    .map(({ index }) => index)
+
+  const selectedTotal = selectedIndexes.reduce(
+    (sum, index) => sum + (Number(watchedItems[index]?.price) || 0),
+    0,
+  )
+
+  const assignToSelected = (participantIds: string[]) => {
+    for (const index of selectedIndexes) {
+      setValue(`items.${index}.participantIds`, participantIds, {
+        shouldDirty: true,
+      })
+    }
+    // One validation pass for the batch, not one per line.
+    trigger(['items', 'paidBy'])
+    leaveSelection()
+  }
+
+  const removeRow = (index: number) => {
+    const rowId = fields[index]?.id
+    if (rowId)
+      setSelectedRowIds((current) => current.filter((id) => id !== rowId))
+    remove(index)
+  }
+
   const getPayerSummary = (selectedIds: string[]) => {
-    if (!selectedIds || selectedIds.length === 0) return 'No one'
+    if (!selectedIds || selectedIds.length === 0) return t('noOne')
     if (
       selectedIds.length === group.participants.length &&
       group.participants.length > 1
     )
-      return 'Everyone'
+      return t('everyone')
 
+    const you = t('you')
     let names = selectedIds
       .map((id) => {
-        if (activeUserId && id === activeUserId) return 'You'
+        if (activeUserId && id === activeUserId) return you
         return group.participants.find((p) => p.id === id)?.name
       })
       .filter(Boolean) as string[]
 
-    if (names.includes('You')) {
-      names = ['You', ...names.filter((n) => n !== 'You')]
+    if (names.includes(you)) {
+      names = [you, ...names.filter((n) => n !== you)]
     }
 
     if (names.length === 1) return names[0]
@@ -210,6 +265,26 @@ export function ItemizationBuilder({
             Shared Total, a struck-through Excluded and a pulsing red "Unassigned" badge, three
             figures competing above the lines they described. They are all one question, asked
             once, in the strip at the foot of this sheet. */}
+
+        {fields.length > 1 && (
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-xs text-muted-foreground">
+              {isSelecting ? t('selectHint') : ''}
+            </span>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              data-testid="select-lines"
+              onClick={() =>
+                isSelecting ? leaveSelection() : setIsSelecting(true)
+              }
+            >
+              {isSelecting ? t('selectDone') : t('select')}
+            </Button>
+          </div>
+        )}
 
         {/* Fields Loop */}
         <div className="space-y-3">
@@ -226,160 +301,207 @@ export function ItemizationBuilder({
             const isMeInvolved =
               !!activeUserId && participantIds.includes(activeUserId)
 
+            const isRowSelected = selectedRowIds.includes(field.id)
+
             return (
               <div
                 key={field.id}
                 className={cn(
-                  'group relative flex flex-col gap-3 p-3 rounded-lg border shadow-sm transition-all',
+                  'group relative flex gap-3 p-3 rounded-lg border shadow-sm transition-all',
                   isExcluded
                     ? 'bg-muted/30 border-dashed opacity-75'
                     : 'bg-card hover:border-primary/40',
+                  isRowSelected && 'border-primary bg-primary/5',
                 )}
               >
-                <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-start">
-                  {/* Item Name */}
-                  <div className="flex-1">
-                    <FormField
-                      control={control}
-                      name={`items.${index}.name`}
-                      render={({ field }) => (
-                        <FormItem className="space-y-0">
-                          <FormControl>
-                            <Input
-                              {...field}
-                              placeholder="Item name..."
-                              className={cn(
-                                'h-9 text-sm transition-all',
-                                isExcluded && 'text-muted-foreground',
-                              )}
-                            />
-                          </FormControl>
-                          <FormMessage className="text-xs pl-1 mt-1" />
-                        </FormItem>
-                      )}
+                {isSelecting && (
+                  <label className="flex shrink-0 items-start pt-2">
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 accent-[hsl(var(--primary))]"
+                      data-testid={`select-line-${index}`}
+                      checked={isRowSelected}
+                      onChange={() => toggleRow(field.id)}
                     />
-                  </div>
-
-                  <div className="flex gap-2 items-start justify-end">
-                    {/* Price Input */}
-                    <div className="w-[110px]">
+                    <span className="sr-only">
+                      {currentItem.name || t('itemNamePlaceholder')}
+                    </span>
+                  </label>
+                )}
+                <div className="flex min-w-0 flex-1 flex-col gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-start">
+                    {/* Item Name */}
+                    <div className="flex-1">
                       <FormField
                         control={control}
-                        name={`items.${index}.price`}
+                        name={`items.${index}.name`}
                         render={({ field }) => (
                           <FormItem className="space-y-0">
-                            <div className="relative">
-                              <FormControl>
-                                <CalculatorInput
-                                  {...field}
-                                  placeholder="0.00"
-                                  className="h-9"
-                                  inputClassName={cn(
-                                    'h-9 text-sm text-right pr-8',
-                                    isExcluded && 'text-muted-foreground',
-                                  )}
-                                  onValueChange={(val) => {
-                                    field.onChange(val)
-                                    trigger('items')
-                                    trigger('paidBy')
-                                  }}
-                                />
-                              </FormControl>
-                              <div className="absolute right-9 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                                {currency.symbol || group.currency}
-                              </div>
-                            </div>
-                            <FormMessage className="text-xs text-right pr-1 mt-1" />
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder={t('itemNamePlaceholder')}
+                                className={cn(
+                                  'h-9 text-sm transition-all',
+                                  isExcluded && 'text-muted-foreground',
+                                )}
+                              />
+                            </FormControl>
+                            <FormMessage className="text-xs pl-1 mt-1" />
                           </FormItem>
                         )}
                       />
                     </div>
 
-                    {/* Participant Popover */}
-                    <FormField
-                      control={control}
-                      name={`items.${index}.participantIds`}
-                      render={({ field }) => (
-                        <FormItem className="space-y-0">
-                          <ParticipantSelector
-                            value={field.value || []}
-                            onChange={(val) => {
-                              field.onChange(val)
-                              trigger('items')
-                            }}
-                            group={group}
-                            isDesktop={isDesktop}
-                            activeUserId={activeUserId}
-                            isExcluded={isExcluded}
-                            isMeInvolved={isMeInvolved}
-                          />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="flex gap-2 items-start justify-end">
+                      {/* Price Input */}
+                      <div className="w-[110px]">
+                        <FormField
+                          control={control}
+                          name={`items.${index}.price`}
+                          render={({ field }) => (
+                            <FormItem className="space-y-0">
+                              <div className="relative">
+                                <FormControl>
+                                  <CalculatorInput
+                                    {...field}
+                                    placeholder="0.00"
+                                    className="h-9"
+                                    inputClassName={cn(
+                                      'h-9 text-sm text-right pr-8',
+                                      isExcluded && 'text-muted-foreground',
+                                    )}
+                                    onValueChange={(val) => {
+                                      field.onChange(val)
+                                      trigger('items')
+                                      trigger('paidBy')
+                                    }}
+                                  />
+                                </FormControl>
+                                <div className="absolute right-9 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                                  {currency.symbol || group.currency}
+                                </div>
+                              </div>
+                              <FormMessage className="text-xs text-right pr-1 mt-1" />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
-                    {/* Delete Button */}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
-                      onClick={() => remove(index)}
-                      type="button"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                      {/* Participant Popover */}
+                      <FormField
+                        control={control}
+                        name={`items.${index}.participantIds`}
+                        render={({ field }) => (
+                          <FormItem className="space-y-0">
+                            <ParticipantSelector
+                              value={field.value || []}
+                              onChange={(val) => {
+                                field.onChange(val)
+                                trigger('items')
+                              }}
+                              group={group}
+                              isDesktop={isDesktop}
+                              activeUserId={activeUserId}
+                              isExcluded={isExcluded}
+                              isMeInvolved={isMeInvolved}
+                            />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Delete Button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                        onClick={() => removeRow(index)}
+                        type="button"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
 
-                {/* Second line: who shared it, and what it costs you.
+                  {/* Second line: who shared it, and what it costs you.
                     It used to read "Alice, Bob will each pay $12.00" — a sentence that grows with
                     the group, and a figure that is only your share when you happen to be on the
                     line. The stack shows who without spending a line on names, and the figure is
                     now explicitly yours: a dash when you are not on this item. */}
-                <div className="flex items-center justify-between gap-3 px-1 min-h-6">
-                  {isExcluded ? (
-                    <span className="text-xs text-subtle-foreground italic">
-                      {t('excludedHint')}
-                    </span>
-                  ) : (
-                    <>
-                      <div className="flex min-w-0 items-center gap-2">
-                        <ParticipantStack
-                          participantIds={participantIds}
-                          group={group}
-                          activeUserId={activeUserId}
-                        />
-                        <span className="truncate text-xs text-muted-foreground">
-                          {summaryText}
-                        </span>
-                      </div>
-
-                      {itemPrice > 0 && (
-                        <span className="flex shrink-0 items-baseline gap-1.5">
-                          <span className="text-xs text-subtle-foreground">
-                            {t('yourShare')}
+                  <div className="flex items-center justify-between gap-3 px-1 min-h-6">
+                    {isExcluded ? (
+                      <span className="text-xs text-subtle-foreground italic">
+                        {t('excludedHint')}
+                      </span>
+                    ) : (
+                      <>
+                        <div className="flex min-w-0 items-center gap-2">
+                          <ParticipantStack
+                            participantIds={participantIds}
+                            group={group}
+                            activeUserId={activeUserId}
+                          />
+                          <span className="truncate text-xs text-muted-foreground">
+                            {summaryText}
                           </span>
-                          {isMeInvolved ? (
-                            <Money
-                              currency={currency}
-                              amount={perPersonAmount}
-                              fractions
-                              className="text-xs text-credit"
-                              bold
-                            />
-                          ) : (
-                            <span className="font-mono text-xs text-subtle-foreground">
-                              —
+                        </div>
+
+                        {itemPrice > 0 && (
+                          <span className="flex shrink-0 items-baseline gap-1.5">
+                            <span className="text-xs text-subtle-foreground">
+                              {t('yourShare')}
                             </span>
-                          )}
-                        </span>
-                      )}
-                    </>
-                  )}
+                            {isMeInvolved ? (
+                              <Money
+                                currency={currency}
+                                amount={perPersonAmount}
+                                fractions
+                                className="text-xs text-credit"
+                                bold
+                              />
+                            ) : (
+                              <span className="font-mono text-xs text-subtle-foreground">
+                                —
+                              </span>
+                            )}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             )
           })}
         </div>
+
+        {/* The bar carries what is selected — how many lines and how much money — because "assign
+            these to Bob" is a decision about an amount, not about a row count. */}
+        {isSelecting && selectedIndexes.length > 0 && (
+          <div
+            data-testid="selection-bar"
+            className="sticky bottom-2 z-20 flex items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 shadow-lg"
+          >
+            <span className="flex items-baseline gap-2 text-sm">
+              <span className="font-medium">
+                {t('selectedCount', { count: selectedIndexes.length })}
+              </span>
+              <Money
+                currency={currency}
+                amount={selectedTotal}
+                fractions
+                className="text-xs text-muted-foreground"
+              />
+            </span>
+            <BulkAssign
+              group={group}
+              isDesktop={isDesktop}
+              activeUserId={activeUserId}
+              onApply={assignToSelected}
+              label={t('assignSelected')}
+            />
+          </div>
+        )}
 
         {/* A row, not an 80px dashed slab. Typing a receipt in means using this repeatedly, and
             each press used to push the line you had just filled in further off screen. The new
@@ -499,6 +621,174 @@ export function ItemizationBuilder({
   )
 }
 
+/**
+ * The list of people a line — or a batch of lines — is shared by.
+ *
+ * Extracted so the per-row picker and the bulk bar cannot drift apart: they are the same question
+ * asked about a different number of lines, and a second copy would eventually answer it differently.
+ */
+function ParticipantChooser({
+  value,
+  onChange,
+  group,
+  activeUserId,
+}: {
+  value: string[]
+  onChange: (val: string[]) => void
+  group: Group
+  activeUserId?: string | null
+}) {
+  const t = useTranslations('ExpenseForm.Itemization')
+  const allSelected = value.length === group.participants.length
+
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between items-center px-2 pb-2 border-b mb-1">
+        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+          {t('splitAmong')}
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          type="button"
+          className="h-auto p-1 text-xs text-primary hover:bg-primary/10"
+          onClick={() =>
+            onChange(allSelected ? [] : group.participants.map((p) => p.id))
+          }
+        >
+          {allSelected ? t('clearAll') : t('selectAll')}
+        </Button>
+      </div>
+      <div className="max-h-[300px] overflow-y-auto grid grid-cols-1 gap-1">
+        {group.participants.map((participant) => {
+          const isSelected = value.includes(participant.id)
+          const isMe = !!activeUserId && participant.id === activeUserId
+
+          return (
+            <button
+              key={participant.id}
+              type="button"
+              className={cn(
+                'flex items-center gap-3 px-3 py-2 rounded-md text-left text-sm transition-colors min-h-11',
+                isSelected
+                  ? 'bg-primary/5 font-medium text-primary'
+                  : 'hover:bg-muted',
+              )}
+              onClick={() =>
+                onChange(
+                  isSelected
+                    ? value.filter((id) => id !== participant.id)
+                    : [...value, participant.id],
+                )
+              }
+            >
+              <span
+                className={cn(
+                  'w-5 h-5 rounded border flex items-center justify-center transition-colors shrink-0',
+                  isSelected
+                    ? 'bg-primary border-primary'
+                    : 'border-muted-foreground/30 bg-background',
+                )}
+              >
+                {isSelected && (
+                  <Check className="w-3.5 h-3.5 text-primary-foreground stroke-[3]" />
+                )}
+              </span>
+              <span className="truncate flex-1">
+                {participant.name}
+                {isMe && (
+                  <span className="ml-1 text-xs text-muted-foreground">
+                    ({t('you')})
+                  </span>
+                )}
+              </span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/**
+ * Applies one set of people to every selected line at once.
+ *
+ * Its own draft state, and an explicit apply: picking people here is a decision about several rows,
+ * so it should not start rewriting them on the first tap the way the per-row picker does.
+ */
+function BulkAssign({
+  group,
+  isDesktop,
+  activeUserId,
+  onApply,
+  label,
+}: {
+  group: Group
+  isDesktop: boolean
+  activeUserId?: string | null
+  onApply: (participantIds: string[]) => void
+  label: string
+}) {
+  const t = useTranslations('ExpenseForm.Itemization')
+  const [open, setOpen] = useState(false)
+  const [draft, setDraft] = useState<string[]>(() =>
+    group.participants.map((p) => p.id),
+  )
+  useMobilePopoverState(open, setOpen, isDesktop)
+
+  const body = (
+    <div className="space-y-2">
+      <ParticipantChooser
+        value={draft}
+        onChange={setDraft}
+        group={group}
+        activeUserId={activeUserId}
+      />
+      <Button
+        type="button"
+        className="w-full"
+        data-testid="bulk-assign-apply"
+        onClick={() => {
+          onApply(draft)
+          setOpen(false)
+        }}
+      >
+        {label}
+      </Button>
+    </div>
+  )
+
+  const trigger = (
+    <Button type="button" size="sm" className="h-8" data-testid="bulk-assign">
+      <Users className="mr-1.5 h-3.5 w-3.5" />
+      {label}
+    </Button>
+  )
+
+  if (isDesktop) {
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+        <PopoverContent className="w-64 p-2" align="end">
+          {body}
+        </PopoverContent>
+      </Popover>
+    )
+  }
+
+  return (
+    <Drawer open={open} onOpenChange={setOpen}>
+      <DrawerTrigger asChild>{trigger}</DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader className="text-left">
+          <DrawerTitle>{t('splitAmong')}</DrawerTitle>
+        </DrawerHeader>
+        <div className="px-4 pb-8">{body}</div>
+      </DrawerContent>
+    </Drawer>
+  )
+}
+
 function ParticipantSelector({
   value,
   onChange,
@@ -516,6 +806,7 @@ function ParticipantSelector({
   isExcluded: boolean
   isMeInvolved: boolean | null
 }) {
+  const t = useTranslations('ExpenseForm.Itemization')
   const [open, setOpen] = useState(false)
   useMobilePopoverState(open, setOpen, isDesktop)
 
@@ -531,7 +822,7 @@ function ParticipantSelector({
           isMeInvolved && 'bg-primary/10 text-primary border-primary/20',
         )}
         type="button"
-        title={isExcluded ? 'Assign to someone' : 'Edit assignment'}
+        title={isExcluded ? t('assignTo') : t('editAssignment')}
       >
         {isExcluded ? (
           <EyeOff className="h-4 w-4 opacity-50" />
@@ -548,81 +839,12 @@ function ParticipantSelector({
   )
 
   const SelectionList = (
-    <div className="space-y-1">
-      <div className="flex justify-between items-center px-2 pb-2 border-b mb-1">
-        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-          Split among
-        </span>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="h-auto p-1 text-xs text-primary hover:bg-primary/10"
-          onClick={() => {
-            const allIds = group.participants.map((p) => p.id)
-            const isAllSelected = value.length === group.participants.length
-            onChange(isAllSelected ? [] : allIds)
-          }}
-        >
-          {value.length === group.participants.length
-            ? 'Clear (Exclude)'
-            : 'Select All'}
-        </Button>
-      </div>
-      <div className="max-h-[300px] overflow-y-auto grid grid-cols-1 gap-1">
-        {group.participants.map((participant) => {
-          const isSelected = value.includes(participant.id)
-          const isMe = !!activeUserId && participant.id === activeUserId
-
-          return (
-            <div
-              key={participant.id}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2 rounded-md cursor-pointer text-sm transition-colors',
-                isSelected
-                  ? 'bg-primary/5 font-medium text-primary'
-                  : 'hover:bg-muted',
-              )}
-              onClick={() => {
-                const isAllSelected = value.length === group.participants.length
-                let next
-                if (isAllSelected) {
-                  // If all were selected, clicking one isolates it (optional behavior, but sticking to toggle here for simplicity)
-                  next = isSelected
-                    ? value.filter((id) => id !== participant.id)
-                    : [...value, participant.id]
-                } else {
-                  next = isSelected
-                    ? value.filter((id) => id !== participant.id)
-                    : [...value, participant.id]
-                }
-                onChange(next)
-              }}
-            >
-              <div
-                className={cn(
-                  'w-5 h-5 rounded border flex items-center justify-center transition-colors',
-                  isSelected
-                    ? 'bg-primary border-primary'
-                    : 'border-muted-foreground/30 bg-background',
-                )}
-              >
-                {isSelected && (
-                  <Check className="w-3.5 h-3.5 text-primary-foreground stroke-[3]" />
-                )}
-              </div>
-              <span className="truncate flex-1">
-                {participant.name}
-                {isMe && (
-                  <span className="ml-1 text-xs text-muted-foreground">
-                    (You)
-                  </span>
-                )}
-              </span>
-            </div>
-          )
-        })}
-      </div>
-    </div>
+    <ParticipantChooser
+      value={value}
+      onChange={onChange}
+      group={group}
+      activeUserId={activeUserId}
+    />
   )
 
   if (isDesktop) {
