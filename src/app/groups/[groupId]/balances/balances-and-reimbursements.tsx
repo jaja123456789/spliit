@@ -60,7 +60,10 @@ export default function BalancesAndReimbursements() {
         figure={
           isLoading || !currency ? (
             <Skeleton className="h-8 w-40" />
-          ) : yourBalance === undefined ? null : (
+          ) : // `undefined`, not `null`: with nobody selected as "you" this sheet has no figure at
+          // all, and `null` still renders the reserved box — a 38px empty band under the label.
+          // Anyone who answered "I don't want to select anyone" saw it on every visit.
+          yourBalance === undefined ? undefined : (
             <Money
               currency={currency}
               amount={Math.abs(yourBalance)}

@@ -17,7 +17,9 @@ export function ActivityPageClient() {
           column of amounts — so it gets the header without one rather than a reserved empty box.
           Whether it should stay a feed at all is an open question, and not one to settle here. */}
       <SheetHeader label={t('title')} context={t('description')} />
-      <CardContent className="flex flex-col space-y-4">
+      {/* px-4 sm:px-6 to match the header — CardContent's own p-6 left the date rules at a
+          different inset from the label above them. */}
+      <CardContent className="flex flex-col space-y-4 px-4 sm:px-6">
         <ActivityList />
       </CardContent>
     </Card>
