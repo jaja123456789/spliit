@@ -380,7 +380,12 @@
       "selectDone": "Done",
       "selectedCount": "{count, plural, one {# line} other {# lines}}",
       "assignSelected": "Assign",
-      "selectHint": "Pick the lines that share the same people."
+      "selectHint": "Pick the lines that share the same people.",
+      "sharedByEveryone": "everyone",
+      "sharedByOne": "{name} only",
+      "sharedByCount": "{count} sharing",
+      "notShared": "not shared",
+      "yourShareShort": "you"
     },
     "Draft": {
       "prompt": "You have an unsaved expense from earlier.",

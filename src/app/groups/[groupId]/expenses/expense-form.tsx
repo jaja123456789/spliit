@@ -438,6 +438,9 @@ export function ExpenseForm({
   )
   const isIncome = totalAmount < 0
   const isMultiPayer = payerFields.length > 1
+  // How wide the hero amount box needs to be, in glyphs. Never below 4, so an empty field is the
+  // width of its own "0.00" placeholder rather than collapsing to nothing.
+  const amountGlyphs = Math.max(4, String(paidByValues[0]?.amount ?? '').length)
   const sExpense = isIncome ? 'Income' : 'Expense'
   const maxAmount = Math.max(...paidByValues.map((p) => Number(p.amount) || 0))
 
@@ -1056,7 +1059,7 @@ export function ExpenseForm({
                                   type="button"
                                   data-testid="currency-trigger"
                                   title={t('changeCurrency')}
-                                  className="rounded-md px-1 font-mono text-3xl font-medium text-muted-foreground underline decoration-dotted underline-offset-4 transition-colors hover:text-foreground"
+                                  className="rounded-md px-1 font-mono text-2xl font-medium text-subtle-foreground transition-colors hover:bg-muted hover:text-foreground"
                                 >
                                   {expenseCurrency.symbol || group.currency}
                                 </button>
@@ -1065,15 +1068,18 @@ export function ExpenseForm({
                           )}
                         />
                       ) : (
-                        <span className="font-mono text-3xl font-medium text-muted-foreground">
+                        <span className="px-1 font-mono text-2xl font-medium text-subtle-foreground">
                           {expenseCurrency.symbol || group.currency}
                         </span>
                       )}
-                      {isMultiPayer || isItemized ? (
-                        // With several payers or an itemised bill the total is derived, so it is
-                        // shown rather than typed. It used to look exactly like the editable one,
-                        // so the calculator button simply vanishing read as a fault - the caption
-                        // below says where the figure comes from instead.
+                      {isMultiPayer ? (
+                        // Only several payers make the total a derived figure: it is their sum, so
+                        // there is nothing to type into it. An itemised bill is *not* such a case —
+                        // the total is what was paid, the lines are how it was shared, and the
+                        // difference between them is the tax the strip below offers to split. This
+                        // used to be derived for itemised expenses too, which left the one number
+                        // the reader typed invisible and uneditable on every itemised expense they
+                        // reopened.
                         <span
                           data-testid="derived-total"
                           className="font-mono text-5xl font-semibold tabular-nums tracking-tight"
@@ -1089,12 +1095,24 @@ export function ExpenseForm({
                         <FormControl>
                           {/* `h-auto` because InputGroup is `h-9` and this puts a 48px input in it:
                               the text overflowed its own box and long amounts scrolled inside a
-                              124px window. */}
+                              124px window.
+
+                              The width tracks the value instead of being a fixed 12rem box. At a
+                              fixed width the centred digits sat ~90px from the symbol and the
+                              calculator floated off to the right, so the three read as three
+                              scattered controls rather than one figure. Mono + `tabular-nums`
+                              makes `1ch` exactly one glyph; `tracking-tight` is -0.025em per
+                              character, subtracted back out so the box ends where the digits do. */}
                           <CalculatorInput
                             placeholder="0.00"
-                            className="h-auto w-auto max-w-[12rem] border-0 bg-transparent shadow-none"
-                            inputClassName="h-auto w-full border-0 bg-transparent p-0 text-center font-mono text-5xl font-semibold leading-none tabular-nums tracking-tight shadow-none focus-visible:ring-0"
+                            className="h-auto w-auto border-0 bg-transparent shadow-none"
+                            inputClassName="h-auto border-0 bg-transparent p-0 text-left font-mono text-5xl font-semibold leading-none tabular-nums tracking-tight shadow-none focus-visible:ring-0"
                             {...field}
+                            style={{
+                              width: `calc(${amountGlyphs}ch - ${
+                                amountGlyphs * 0.025
+                              }em)`,
+                            }}
                             onValueChange={(val) =>
                               handlePayerAmountChange(0, val)
                             }
@@ -1102,13 +1120,9 @@ export function ExpenseForm({
                         </FormControl>
                       )}
                     </div>
-                    {(isMultiPayer || isItemized) && (
+                    {isMultiPayer && (
                       <p className="mt-1 text-center text-xs text-muted-foreground">
-                        {isItemized
-                          ? t('derivedFromItems')
-                          : t('derivedFromPayers', {
-                              count: payerFields.length,
-                            })}
+                        {t('derivedFromPayers', { count: payerFields.length })}
                       </p>
                     )}
                     <FormMessage className="text-center" />
@@ -1128,7 +1142,7 @@ export function ExpenseForm({
                   <FormControl>
                     <Input
                       placeholder={t(`${sExpense}.TitleField.placeholder`)}
-                      className="h-auto border-0 bg-transparent p-0 text-center text-base shadow-none focus-visible:ring-0"
+                      className="h-auto border-0 bg-transparent p-0 text-center text-base shadow-none placeholder:font-normal placeholder:text-subtle-foreground focus-visible:ring-0"
                       {...field}
                       onBlur={async () => {
                         field.onBlur()
@@ -1153,16 +1167,22 @@ export function ExpenseForm({
               )}
             />
 
-            {/* Paid By Section */}
-            <div className="col-span-2">
+            {/* Paid By Section.
+
+                Full-bleed (`-mx-6`, each row paying the padding back with `px-6`): the concept's
+                thesis is a ledger of hairline rules spanning the sheet, and a rule that stops 24px
+                short on both sides reads as another stacked box instead. */}
+            <div className="col-span-2 -mx-6">
               {isMultiPayer && (
-                <FormLabel>{t(`${sExpense}.paidByField.label`)}</FormLabel>
+                <FormLabel className="px-6">
+                  {t(`${sExpense}.paidByField.label`)}
+                </FormLabel>
               )}
 
               <div
                 className={cn(
                   'flex flex-col',
-                  isMultiPayer ? 'gap-2 mt-2' : '',
+                  isMultiPayer ? 'gap-2 mt-2 px-6' : '',
                 )}
               >
                 {payerFields.map((field, index) => {
@@ -1180,7 +1200,7 @@ export function ExpenseForm({
                         'flex gap-2 transition-all',
                         isMultiPayer
                           ? 'items-start rounded-lg border border-transparent p-2'
-                          : 'items-center justify-between border-b py-1',
+                          : 'items-center justify-between border-b px-6 py-1',
                         // If they are the highest, give them a subtle background and border
                         isHighest && 'bg-primary/5 border-primary/20 shadow-sm',
                       )}
@@ -1198,7 +1218,7 @@ export function ExpenseForm({
                             )}
                           >
                             {!isMultiPayer && (
-                              <FormLabel className="text-sm font-normal text-muted-foreground">
+                              <FormLabel className="text-xs font-normal text-muted-foreground">
                                 {t(`${sExpense}.paidByField.label`)}
                               </FormLabel>
                             )}
@@ -1216,8 +1236,11 @@ export function ExpenseForm({
                                     // A row, not a full-width box: with one payer this is a
                                     // statement of fact you occasionally change, so it reads as
                                     // the value in a row rather than as an empty field.
+                                    // `[&>svg]:hidden` drops SelectTrigger's built-in chevron: in
+                                    // the concept a row that states a value carries none, and only
+                                    // the row that opens something (More options) does.
                                     !isMultiPayer &&
-                                      'h-11 w-auto justify-end gap-1 border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0',
+                                      'h-11 w-auto justify-end border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0 [&>svg]:hidden',
                                   )}
                                 >
                                   <div className="flex items-center gap-2">
@@ -1304,15 +1327,41 @@ export function ExpenseForm({
                 })}
               </div>
 
-              <div className="flex justify-between items-center mt-2">
+              {/* Out of More options: a date is not an advanced setting, and burying it meant
+                  every backdated expense cost two extra taps. It sits directly under Paid by so
+                  the two read as one run of ruled rows rather than two stranded rules. */}
+              <FormField
+                control={form.control}
+                name="expenseDate"
+                render={({ field }) => (
+                  <FormItem className="flex items-center justify-between gap-2 space-y-0 border-b px-6 py-1">
+                    <FormLabel className="text-xs font-normal text-muted-foreground">
+                      {t(`${sExpense}.DateField.label`)}
+                    </FormLabel>
+                    <FormControl>
+                      <Input
+                        className="date-base h-11 w-auto border-0 bg-transparent px-0 text-right font-medium shadow-none focus-visible:ring-0"
+                        type="date"
+                        value={formatDate(field.value)}
+                        onChange={(e) =>
+                          field.onChange(new Date(e.target.value))
+                        }
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-between items-center mt-2 px-6">
                 <Button
                   type="button"
                   variant="ghost"
                   size="sm"
                   onClick={handleAddPayer}
-                  className="text-primary"
+                  className="-ml-2 h-8 text-xs text-muted-foreground hover:text-foreground"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
                   {t('addPayer')}
                 </Button>
                 <div className="flex flex-col items-end gap-1">
@@ -1335,29 +1384,6 @@ export function ExpenseForm({
                 </div>
               </div>
             </div>
-
-            {/* Out of More options: a date is not an advanced setting, and burying it meant
-                every backdated expense cost two extra taps. A row, like Paid by above it. */}
-            <FormField
-              control={form.control}
-              name="expenseDate"
-              render={({ field }) => (
-                <FormItem className="col-span-2 flex items-center justify-between gap-2 space-y-0 border-b py-1">
-                  <FormLabel className="text-sm font-normal text-muted-foreground">
-                    {t(`${sExpense}.DateField.label`)}
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      className="date-base h-11 w-auto border-0 bg-transparent px-0 text-right font-medium shadow-none focus-visible:ring-0"
-                      type="date"
-                      value={formatDate(field.value)}
-                      onChange={(e) => field.onChange(new Date(e.target.value))}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
 
             {/* One control for how the expense is split. Three positions, because two of them
                 cover almost everything people do and the third is where the rest lives. */}
