@@ -1,5 +1,5 @@
-import os from 'node:os'
 import createNextIntlPlugin from 'next-intl/plugin'
+import os from 'node:os'
 
 const withNextIntl = createNextIntlPlugin()
 
