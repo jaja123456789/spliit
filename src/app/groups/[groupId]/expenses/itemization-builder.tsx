@@ -473,7 +473,7 @@ function ParticipantSelector({
           <Users className="h-4 w-4" />
         )}
         {value.length > 0 && value.length < group.participants.length && (
-          <span className="absolute -top-1 -right-1 flex h-[18px] w-[18px] items-center justify-center rounded-full bg-primary text-[10px] tabular-nums text-primary-foreground font-bold shadow-sm">
+          <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-mono tabular-nums text-primary-foreground font-semibold shadow-sm">
             {value.length}
           </span>
         )}

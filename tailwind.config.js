@@ -28,6 +28,16 @@ module.exports = {
           'Arial',
           'sans-serif',
         ],
+        // Figures only. `font-mono` resolved to the OS stack until now, which meant the app had a
+        // second typeface it had never chosen.
+        mono: [
+          'var(--font-mono)',
+          'ui-monospace',
+          'SFMono-Regular',
+          'Menlo',
+          'Consolas',
+          'monospace',
+        ],
       },
       colors: {
         border: 'hsl(var(--border))',

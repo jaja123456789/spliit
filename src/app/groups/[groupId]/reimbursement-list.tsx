@@ -1,13 +1,13 @@
 'use client'
 
+import { Money } from '@/components/money'
 import { Button } from '@/components/ui/button'
 import { Reimbursement } from '@/lib/balances'
 import { Currency } from '@/lib/currency'
 import { getPaymentOptions, PaymentOption } from '@/lib/payment-links'
-import { formatCurrency } from '@/lib/utils'
 import { Participant } from '@prisma/client'
 import { Check, Copy, ExternalLink, Landmark, Smartphone } from 'lucide-react'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useState } from 'react'
 
@@ -24,7 +24,6 @@ export function ReimbursementList({
   currency,
   groupId,
 }: Props) {
-  const locale = useLocale()
   const t = useTranslations('Balances.Reimbursements')
   if (reimbursements.length === 0) {
     return (
@@ -84,9 +83,12 @@ export function ReimbursementList({
                   </Link>
                 </Button>
               </div>
-              <div className="font-semibold tabular-nums ml-4">
-                {formatCurrency(currency, reimbursement.amount, locale)}
-              </div>
+              <Money
+                currency={currency}
+                amount={reimbursement.amount}
+                bold
+                className="ml-4"
+              />
             </div>
 
             {/* Payment Links Row */}

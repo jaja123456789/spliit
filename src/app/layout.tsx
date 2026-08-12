@@ -13,7 +13,7 @@ import { TRPCProvider } from '@/trpc/client'
 import type { Metadata, Viewport } from 'next'
 import { NextIntlClientProvider, useTranslations } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
-import { Nunito_Sans } from 'next/font/google'
+import { IBM_Plex_Mono, Nunito_Sans } from 'next/font/google'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Suspense } from 'react'
@@ -33,6 +33,29 @@ const nunitoSans = Nunito_Sans({
   subsets: ['latin', 'latin-ext'],
   display: 'swap',
   variable: '--font-sans',
+})
+
+/**
+ * The second voice, for figures only.
+ *
+ * This is a money app whose figures were set in the same face as its prose, at the same weight, so
+ * an amount read as another word in the sentence. A mono face separates the two registers and — the
+ * part that actually matters — puts every glyph on the same advance, so a column of amounts lines
+ * up on the decimal without any per-row measurement. Nunito Sans has tabular figures, but tabular
+ * figures still sit in a proportional face; the sign column this design depends on needs a fixed
+ * advance to sit in.
+ *
+ * IBM Plex Mono rather than a technical mono: it is humanist, with the same open apertures and
+ * slightly soft terminals as Nunito Sans, and its 0/O and 1/l are unambiguous at 12px.
+ *
+ * Two weights only. 500 for row figures and 600 for headline ones — no 700, so nothing here can ask
+ * the browser to synthesise a weight it has not downloaded.
+ */
+const plexMono = IBM_Plex_Mono({
+  subsets: ['latin'],
+  weight: ['500', '600'],
+  display: 'swap',
+  variable: '--font-mono',
 })
 
 export const metadata: Metadata = {
@@ -199,7 +222,7 @@ export default async function RootLayout({
   return (
     <html
       lang={locale}
-      className={nunitoSans.variable}
+      className={`${nunitoSans.variable} ${plexMono.variable}`}
       suppressHydrationWarning
     >
       <ApplePwaSplash icon={`${basePath}/logo-with-text.png`} color="#027756" />

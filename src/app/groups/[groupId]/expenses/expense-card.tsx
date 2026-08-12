@@ -1,12 +1,13 @@
 'use client'
 import { CategoryIcon } from '@/app/groups/[groupId]/expenses/category-icon'
 import { DocumentsCount } from '@/app/groups/[groupId]/expenses/documents-count'
+import { Money } from '@/components/money'
 import { Locale } from '@/i18n/request'
 import { getGroupExpenses } from '@/lib/api'
 import { getBalances } from '@/lib/balances'
 import { Currency, getCurrency } from '@/lib/currency'
 import { useActiveUser } from '@/lib/hooks'
-import { cn, formatCurrency, formatDateOnly } from '@/lib/utils'
+import { cn, formatDateOnly } from '@/lib/utils'
 import { ChevronRight } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useRouter } from 'next/navigation'
@@ -114,25 +115,25 @@ export function ExpenseCard({
             >
               {expense.title}
             </div>
-            <div className="text-right shrink-0">
-              <div
-                className={cn(
-                  'tabular-nums whitespace-nowrap text-base',
-                  expense.isReimbursement ? 'italic font-normal' : 'font-bold',
-                )}
-                data-testid="expense-amount"
-              >
-                {formatCurrency(currency, expense.amount, locale)}
-              </div>
+            <div className="text-right shrink-0" data-testid="expense-amount">
+              <Money
+                currency={currency}
+                amount={expense.amount}
+                bold={!expense.isReimbursement}
+                className={cn('text-base', expense.isReimbursement && 'italic')}
+              />
               {expense.originalCurrency &&
                 expense.originalAmount !== null &&
                 expense.originalCurrency !== currency.code && (
-                  <div className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
-                    {formatCurrency(
-                      getCurrency(expense.originalCurrency, locale as Locale),
-                      expense.originalAmount,
-                      locale,
-                    )}
+                  <div>
+                    <Money
+                      currency={getCurrency(
+                        expense.originalCurrency,
+                        locale as Locale,
+                      )}
+                      amount={expense.originalAmount}
+                      className="text-xs text-subtle-foreground"
+                    />
                   </div>
                 )}
             </div>
@@ -147,18 +148,15 @@ export function ExpenseCard({
 
               {/* Contextual Balance Text - Colored text only, no card background */}
               {userBalanceAmount !== 0 && (
-                <div
-                  className={cn(
-                    'mt-1 font-medium tabular-nums',
-                    userBalanceAmount > 0 ? 'text-credit' : 'text-debt',
-                  )}
-                >
+                <div className="mt-1">
                   {userBalanceAmount > 0 ? 'You lent ' : 'You borrowed '}
-                  {formatCurrency(
-                    currency,
-                    Math.abs(userBalanceAmount),
-                    locale,
-                  )}
+                  <Money
+                    currency={currency}
+                    amount={Math.abs(userBalanceAmount)}
+                    className={
+                      userBalanceAmount > 0 ? 'text-credit' : 'text-debt'
+                    }
+                  />
                 </div>
               )}
             </div>

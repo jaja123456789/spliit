@@ -1,7 +1,7 @@
 'use client'
+import { Money } from '@/components/money'
 import { Currency } from '@/lib/currency'
-import { cn, formatCurrency } from '@/lib/utils'
-import { useLocale } from 'next-intl'
+import { cn } from '@/lib/utils'
 
 /**
  * One labelled figure on the stats page.
@@ -24,25 +24,25 @@ export function TotalsFigure({
   tone?: 'neutral' | 'balance'
   testId?: string
 }) {
-  const locale = useLocale()
   const isCredit = amount > 0
   const isSettled = Math.abs(amount) < 0.01
 
   return (
     <div data-testid={testId}>
       <div className="text-sm text-muted-foreground">{label}</div>
-      <div
+      {/* Always the magnitude, and no sign column: the balance's label already says "You owe" or
+          "You are owed", and "You owe -$81.49" reads as the opposite of what it means. Tone is
+          passed as a class for the same reason — `colored` would read Math.abs as a credit. */}
+      <Money
+        currency={currency}
+        amount={Math.abs(amount)}
         className={cn(
-          'text-lg tabular-nums',
+          'text-lg',
           tone === 'balance' &&
             !isSettled &&
             (isCredit ? 'text-credit' : 'text-debt'),
         )}
-      >
-        {/* Always the magnitude: the balance's label already says "You owe" or "You are owed",
-            and "You owe -$81.49" reads as the opposite of what it means. */}
-        {formatCurrency(currency, Math.abs(amount), locale)}
-      </div>
+      />
     </div>
   )
 }

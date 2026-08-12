@@ -1,8 +1,9 @@
 'use client'
+import { Money } from '@/components/money'
 import { Button } from '@/components/ui/button'
 import { ActivityChange, decodeActivityData } from '@/lib/activity-changes'
 import { Currency } from '@/lib/currency'
-import { DateTimeStyle, cn, formatCurrency, formatDate } from '@/lib/utils'
+import { DateTimeStyle, cn, formatDate } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { ActivityType, Participant } from '@prisma/client'
 import { ChevronRight } from 'lucide-react'
@@ -62,9 +63,11 @@ export function ActivityItem({
 
   // Amounts are stored in minor units; everything else is already display text.
   const renderValue = (change: ActivityChange, value: string) =>
-    change.field === 'amount' && currency
-      ? formatCurrency(currency, Number(value), locale)
-      : value
+    change.field === 'amount' && currency ? (
+      <Money currency={currency} amount={Number(value)} />
+    ) : (
+      value
+    )
 
   return (
     <div

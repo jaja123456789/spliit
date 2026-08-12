@@ -9,6 +9,7 @@ import {
   formatAmountAsDecimal,
   formatCategoryForAIPrompt,
   formatCurrency,
+  formatCurrencyMagnitude,
   formatDate,
   formatDateOnly,
   formatFileSize,
@@ -98,6 +99,39 @@ describe('convertAmount / convertAmountParts', () => {
   it('converts income (negative amounts)', () => {
     const parts = convertAmountParts([-10], -10, 1.0854, usd)
     expect(sum(parts)).toBe(convertAmount(-10, 1.0854, usd))
+  })
+})
+
+describe('formatCurrencyMagnitude', () => {
+  // The signed column renders the sign itself, so the figure must arrive without one — in every
+  // locale, not just the ones that put it in front.
+  it.each([
+    ['en-US', -15000],
+    ['de-DE', -15000],
+    ['fr-FR', -15000],
+    ['fi-FI', -15000],
+    ['nl-NL', -15000],
+  ])('drops the sign in %s', (locale, amount) => {
+    const magnitude = formatCurrencyMagnitude(usd, amount, locale)
+    expect(magnitude).not.toMatch(/[-−()]/)
+    expect(magnitude).toBe(formatCurrencyMagnitude(usd, -amount, locale))
+  })
+
+  it('normalises negative zero', () => {
+    expect(formatCurrencyMagnitude(usd, -0, 'en-US')).toBe(
+      formatCurrencyMagnitude(usd, 0, 'en-US'),
+    )
+  })
+
+  it('keeps the currency’s own decimal count', () => {
+    expect(formatCurrencyMagnitude(jpy, -1000, 'en-US')).not.toMatch(
+      /[.,]\d\d$/,
+    )
+    expect(formatCurrencyMagnitude(usd, -1000, 'en-US')).toMatch(/[.,]\d\d$/)
+  })
+
+  it('leaves formatCurrency’s own output signed', () => {
+    expect(formatCurrency(usd, -15000, 'en-US')).toContain('-')
   })
 })
 

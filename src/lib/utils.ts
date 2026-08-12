@@ -62,6 +62,30 @@ export function formatCategoryForAIPrompt(category: Category) {
   return `"${category.grouping}/${category.name}" (ID: ${category.id})`
 }
 
+function formatCurrencyWith(
+  currency: Currency,
+  amount: number,
+  locale: string,
+  fractions: boolean | undefined,
+  signDisplay: Intl.NumberFormatOptions['signDisplay'],
+) {
+  const format = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: currency.decimal_digits,
+    maximumFractionDigits: currency.decimal_digits,
+    style: 'currency',
+    signDisplay,
+    // '€' will be placed in correct position
+    currency: currency.code.length ? currency.code : 'EUR',
+  })
+  const formatted = format.format(
+    fractions ? amount : amountAsDecimal(amount, currency),
+  )
+  if (currency.code.length) {
+    return formatted
+  }
+  return formatted.replace('€', currency.symbol)
+}
+
 /**
  * @param fractions Financial values in this app are generally processed in cents (or equivalent).
  * They are are therefore integer representations of the amount (e.g. 100 for USD 1.00).
@@ -73,20 +97,24 @@ export function formatCurrency(
   locale: string,
   fractions?: boolean,
 ) {
-  const format = new Intl.NumberFormat(locale, {
-    minimumFractionDigits: currency.decimal_digits,
-    maximumFractionDigits: currency.decimal_digits,
-    style: 'currency',
-    // '€' will be placed in correct position
-    currency: currency.code.length ? currency.code : 'EUR',
-  })
-  const formatted = format.format(
-    fractions ? amount : amountAsDecimal(amount, currency),
-  )
-  if (currency.code.length) {
-    return formatted
-  }
-  return formatted.replace('€', currency.symbol)
+  return formatCurrencyWith(currency, amount, locale, fractions, 'auto')
+}
+
+/**
+ * The magnitude of an amount, formatted for a column that carries the sign separately.
+ *
+ * Slicing a leading '-' off `formatCurrency` would be wrong: the app ships 23 locales and they do
+ * not agree about where the sign goes — it trails the figure in several, and the currency symbol
+ * moves with it. `signDisplay: 'never'` lets Intl drop the sign wherever that locale puts it, and
+ * also normalises negative zero, which `Math.abs` would leave as "-0.00" in some locales.
+ */
+export function formatCurrencyMagnitude(
+  currency: Currency,
+  amount: number,
+  locale: string,
+  fractions?: boolean,
+) {
+  return formatCurrencyWith(currency, amount, locale, fractions, 'never')
 }
 
 export function getCurrencyFromGroup(

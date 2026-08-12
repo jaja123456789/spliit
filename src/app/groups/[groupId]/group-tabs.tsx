@@ -51,10 +51,15 @@ export function GroupTabs({ groupId }: Props) {
           <TabsTrigger
             key={value}
             value={value}
-            className="flex-col gap-1 px-1 py-2 min-w-0 sm:flex-row sm:gap-1.5 sm:px-3 sm:py-1.5"
+            // No horizontal padding on the narrow layout. At 412px a tab is 53.7px wide and `px-1`
+            // left the label 45.7px, which is under the 12px width of half these labels — so the
+            // strip had been pushed to 10px to fit. Dropping the padding buys back 8px and the same
+            // one label truncates as before ("Information", 62.5px, which never fitted at 10px
+            // either).
+            className="flex-col gap-1 px-0 py-2 min-w-0 sm:flex-row sm:gap-1.5 sm:px-3 sm:py-1.5"
           >
             <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span className="text-[10px] leading-none truncate max-w-full sm:text-sm">
+            <span className="text-xs leading-none truncate max-w-full sm:text-sm">
               {t(messageKey as never)}
             </span>
           </TabsTrigger>

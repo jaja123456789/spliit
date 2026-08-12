@@ -1,10 +1,11 @@
 'use client'
 
+import { Money } from '@/components/money'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useActiveUser } from '@/lib/hooks'
-import { formatCurrency, getCurrencyFromGroup } from '@/lib/utils'
+import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 import { useCurrentGroup } from '../current-group-context'
 
 /**
@@ -17,7 +18,6 @@ import { useCurrentGroup } from '../current-group-context'
 export function ExpenseListTotal() {
   const { groupId, group } = useCurrentGroup()
   const activeUser = useActiveUser(groupId)
-  const locale = useLocale()
   const t = useTranslations('Expenses.Totals')
   const { data } = trpc.groups.stats.get.useQuery({
     groupId,
@@ -38,16 +38,22 @@ export function ExpenseListTotal() {
     <div className="flex flex-wrap gap-x-4 gap-y-1 px-4 sm:px-6 text-xs text-muted-foreground">
       <span>
         {t('group')}{' '}
-        <strong className="font-semibold tabular-nums text-foreground">
-          {formatCurrency(currency, data.totalGroupSpendings, locale)}
-        </strong>
+        <Money
+          currency={currency}
+          amount={data.totalGroupSpendings}
+          bold
+          className="text-foreground"
+        />
       </span>
       {data.totalParticipantShare !== undefined && (
         <span>
           {t('yourShare')}{' '}
-          <strong className="font-semibold tabular-nums text-foreground">
-            {formatCurrency(currency, data.totalParticipantShare, locale)}
-          </strong>
+          <Money
+            currency={currency}
+            amount={data.totalParticipantShare}
+            bold
+            className="text-foreground"
+          />
         </span>
       )}
     </div>

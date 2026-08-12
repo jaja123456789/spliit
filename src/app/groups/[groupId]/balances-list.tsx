@@ -1,12 +1,13 @@
 'use client'
 
+import { Money } from '@/components/money'
 import { ProfileAvatar } from '@/components/profile-avatar'
 import { Balances } from '@/lib/balances'
 import { Currency } from '@/lib/currency'
 import { useActiveUser } from '@/lib/hooks'
-import { cn, formatCurrency } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import { Participant } from '@prisma/client'
-import { useLocale, useTranslations } from 'next-intl'
+import { useTranslations } from 'next-intl'
 
 type Props = {
   balances: Balances
@@ -21,7 +22,6 @@ export function BalancesList({
   currency,
   groupId,
 }: Props) {
-  const locale = useLocale()
   const t = useTranslations('Balances')
   const activeUserId = useActiveUser(groupId)
   // `useActiveUser` is null both before its effect runs and when nobody is selected.
@@ -68,18 +68,14 @@ export function BalancesList({
                     </span>
                   )}
                 </span>
-                <span
-                  className={cn(
-                    'text-sm font-semibold tabular-nums whitespace-nowrap',
-                    isPositive
-                      ? 'text-credit'
-                      : isZero
-                      ? 'text-muted-foreground'
-                      : 'text-debt',
-                  )}
-                >
-                  {formatCurrency(currency, balance, locale)}
-                </span>
+                <Money
+                  currency={currency}
+                  amount={balance}
+                  signed
+                  colored
+                  bold
+                  className="text-sm"
+                />
               </div>
 
               {/* Diverging bar: direction is encoded in position as well as colour, so it still

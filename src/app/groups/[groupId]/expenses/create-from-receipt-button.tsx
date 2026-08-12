@@ -448,7 +448,7 @@ function ReceiptDialogContent({
                     onClick={() => cameraInputRef.current?.click()}
                   >
                     <Camera className="w-4 h-4" />
-                    <span className="text-[10px] leading-tight">
+                    <span className="text-xs leading-tight">
                       {t('addPagePhoto')}
                     </span>
                   </Button>
@@ -459,7 +459,7 @@ function ReceiptDialogContent({
                     onClick={() => galleryInputRef.current?.click()}
                   >
                     <ImagePlus className="w-4 h-4" />
-                    <span className="text-[10px] leading-tight">
+                    <span className="text-xs leading-tight">
                       {t('addPageGallery')}
                     </span>
                   </Button>
