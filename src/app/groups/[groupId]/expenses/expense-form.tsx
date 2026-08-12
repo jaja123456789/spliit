@@ -1189,7 +1189,7 @@ export function ExpenseForm({
                           <FormControl>
                             <CalculatorInput
                               placeholder="0.00"
-                              className="h-11 w-full border-0 bg-transparent shadow-none dark:bg-transparent"
+                              className="h-11 w-full border-0 bg-transparent shadow-none"
                               inputClassName="h-11 w-full border-0 bg-transparent px-1 font-mono text-3xl font-semibold tabular-nums shadow-none focus-visible:ring-0"
                               {...field}
                               onValueChange={(val) =>

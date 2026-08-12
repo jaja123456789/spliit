@@ -38,8 +38,15 @@
     --primary-foreground: 0 0% 100%; /* 5.86 on the fill */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 43 12% 88%; /* rule    #E4E2DD */
-    --input: 42 9% 79%; /* rule-2  #CFCCC5, a stronger edge for fields */
+    --border: 43 12% 88%; /* rule    #E4E2DD, 1.29 vs the sheet — decoration */
+    /* A list separator. Structure, not a control: WCAG asks nothing of it, so it stays quiet.
+       This is the value --input used to carry. */
+    --divider: 42 9% 79%; /* rule-2  #CFCCC5, 1.62 vs the sheet */
+    /* The visual boundary of a field. WCAG 1.4.11 wants 3:1 for the part of a control that
+       identifies it, and at the old 1.62 every input, select and textarea in the app fell short —
+       which is also why a field's own rule was indistinguishable from a divider drawn beside it.
+       3.46 on the sheet, 3.01 on --muted, so it holds on the sunken surfaces too. */
+    --input: 165 8% 52%; /* field   #7B8E89 */
     --ring: 162 88% 24%;
     --radius: 0.75rem;
 
@@ -89,8 +96,9 @@
     --primary-foreground: 166 26% 10%; /* 7.97 on the fill */
     --destructive: 0 87% 47%;
     --destructive-foreground: 0 85.7% 97.3%;
-    --border: 163 8% 17%; /* rule    #282F2D */
-    --input: 165 7% 22%; /* rule-2  #343C3A */
+    --border: 163 8% 17%; /* rule    #282F2D, 1.22 vs the sheet — decoration */
+    --divider: 165 7% 22%; /* rule-2  #343C3A, 1.47 vs the sheet */
+    --input: 165 7% 46%; /* field   #6D7E79, 3.90 vs the sheet */
     --ring: 160 45% 58%;
     --chart-1: 160 45% 45%; /* 5.57 vs the sheet */
     --chart-2: 165 7% 42%; /* 3.36 vs the sheet, 1.66 against --chart-1 */

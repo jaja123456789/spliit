@@ -358,7 +358,7 @@ export function ItemizationBuilder({
                 key={field.id}
                 data-testid={`item-row-${index}`}
                 className={cn(
-                  'border-b border-input px-6 transition-colors',
+                  'border-b border-divider px-6 transition-colors',
                   isRowSelected && 'bg-primary/5',
                   isOpen && 'bg-muted/30',
                   // The excluded line stays legible — it is still a line on the receipt, and its
@@ -396,13 +396,18 @@ export function ItemizationBuilder({
                                 printed text. A soft fill is the lightest thing that still says
                                 "field" without putting a bordered control back in every row —
                                 the box is the shape, the border is what made it a slab. */}
-                            {/* Dotted, and the rule between rows solid. Both were 1px of
-                                `--input` and a row ended up carrying three parallel hairlines of
-                                identical weight — the two field rules read as dividers in the
-                                wrong places. Making the field rule lighter only weakened it; a
-                                different *kind* of line separates them outright, and dotted is
-                                the older and plainer signal for somewhere you write. */}
-                            <div className="rounded-t-sm border-b border-dotted border-input transition-colors focus-within:border-primary focus-within:bg-muted/40">
+                            {/* One idiom, one state change. The rest state was a dotted rule and
+                                the focus state added a filled background *and* changed the rule —
+                                a line field and a filled field at once, which is why the two
+                                fought. It is a line field: a boundary at rest, the same boundary
+                                in the accent on focus, and nothing else moves.
+
+                                The boundary is `--input`, now a WCAG 1.4.11 3:1 colour. That is
+                                what stops it reading as a divider: the rule between rows is
+                                `--divider` at 1.62, less than half the contrast, and full-bleed
+                                where this one is inset. Tone and extent, not a different kind of
+                                line. */}
+                            <div className="border-b border-input transition-colors focus-within:border-primary">
                               <FormControl>
                                 <Input
                                   {...field}
@@ -463,7 +468,7 @@ export function ItemizationBuilder({
                                 so the decimal point lands in the same column whatever the
                                 value's length — only the symbol moves, which is what it does on
                                 a printed statement too. */}
-                            <div className="flex items-center rounded-t-sm border-b border-dotted border-input pl-1.5 transition-colors focus-within:border-primary focus-within:bg-muted/40 [&_button]:h-7 [&_button]:w-7">
+                            <div className="flex items-center border-b border-input pl-1.5 transition-colors focus-within:border-primary [&_button]:h-7 [&_button]:w-7">
                               <span className="font-mono text-xs text-subtle-foreground">
                                 {currency.symbol || group.currency}
                               </span>
@@ -471,7 +476,7 @@ export function ItemizationBuilder({
                                 <CalculatorInput
                                   {...field}
                                   placeholder="0.00"
-                                  className="h-8 w-auto border-0 bg-transparent shadow-none dark:bg-transparent"
+                                  className="h-8 w-auto border-0 bg-transparent shadow-none"
                                   inputClassName="h-8 max-w-[7rem] border-0 bg-transparent px-0 text-right font-mono text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
                                   style={{
                                     width: `${Math.max(

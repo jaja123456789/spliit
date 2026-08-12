@@ -14,7 +14,12 @@ function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="input-group"
       role="group"
       className={cn(
-        "group/input-group border-input dark:bg-input/30 shadow-xs relative flex w-full items-center rounded-md border outline-none transition-[color,box-shadow]",
+        // No `dark:bg-input/30`. Every other field in this app is transparent with a boundary
+        // (`Input` and `Textarea` both sit on `bg-background`), so a translucent fill keyed to the
+        // *boundary* token made InputGroup the odd one out — and two call sites had already had to
+        // paste `dark:bg-transparent` on to undo it. Now that --input is a 3:1 boundary colour the
+        // fill would be a visible plate, so it goes rather than getting darker.
+        "group/input-group border-input shadow-xs relative flex w-full items-center rounded-md border outline-none transition-[color,box-shadow]",
         "h-9 has-[>textarea]:h-auto",
 
         // Variants based on alignment.
