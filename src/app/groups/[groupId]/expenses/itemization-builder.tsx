@@ -3,6 +3,7 @@
 import { Money } from '@/components/money'
 import { ProfileAvatar } from '@/components/profile-avatar'
 import { Button } from '@/components/ui/button'
+import { CalculatorInput } from '@/components/ui/calculator-input'
 import {
   Drawer,
   DrawerContent,
@@ -356,7 +357,7 @@ export function ItemizationBuilder({
               <div
                 key={field.id}
                 className={cn(
-                  'group/row border-b px-6 transition-colors',
+                  'border-b px-6 transition-colors',
                   isRowSelected && 'bg-primary/5',
                   isOpen && 'bg-muted/30',
                   // The excluded line stays legible — it is still a line on the receipt, and its
@@ -445,31 +446,34 @@ export function ItemizationBuilder({
                         name={`items.${index}.price`}
                         render={({ field }) => (
                           <FormItem className="shrink-0 space-y-0">
-                            {/* The box tracks the value rather than reserving room for the
+                            {/* The calculator lives inside the field rather than beside it, so
+                                the symbol, the figure and the way to work the figure out are one
+                                control instead of three things in a row.
+
+                                The box tracks the value rather than reserving room for the
                                 longest one, so the symbol sits against its own digits instead of
                                 26px away. The figures still line up: right-aligned and tabular,
                                 so the decimal point lands in the same column whatever the
                                 value's length — only the symbol moves, which is what it does on
                                 a printed statement too. */}
-                            <div className="flex items-baseline justify-end gap-0.5 rounded-md bg-muted/50 pl-2 pr-2.5 transition-colors focus-within:bg-muted focus-within:ring-1 focus-within:ring-ring">
+                            <div className="flex items-center rounded-md bg-muted/50 pl-2 transition-colors focus-within:bg-muted focus-within:ring-1 focus-within:ring-ring [&_button]:h-7 [&_button]:w-7">
                               <span className="font-mono text-xs text-subtle-foreground">
                                 {currency.symbol || group.currency}
                               </span>
                               <FormControl>
-                                <Input
+                                <CalculatorInput
                                   {...field}
-                                  type="text"
-                                  inputMode="decimal"
                                   placeholder="0.00"
+                                  className="h-8 w-auto border-0 bg-transparent shadow-none dark:bg-transparent"
+                                  inputClassName="h-8 max-w-[7rem] border-0 bg-transparent px-0 text-right font-mono text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
                                   style={{
                                     width: `${Math.max(
                                       4,
                                       String(currentItem.price ?? '').length,
                                     )}ch`,
                                   }}
-                                  className="h-8 max-w-[7rem] border-0 bg-transparent px-0 text-right font-mono text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
-                                  onChange={(e) => {
-                                    field.onChange(e.target.value)
+                                  onValueChange={(val: string) => {
+                                    field.onChange(val)
                                     trigger('items')
                                     trigger('paidBy')
                                   }}
@@ -493,15 +497,16 @@ export function ItemizationBuilder({
                         </span>
                       )}
 
-                      {/* The bin is not part of the line, so it is not in the line at rest — it
-                      appears once you are working on that row (hover, or focus, which is what a
-                      tap into either field gives you on a phone). Deleting several at once lives
-                      in the selection bar, which needs no pointer at all. */}
+                      {/* The bin stays put. A control that appears on hover is gone the moment
+                          the pointer leaves, and on focus-within it vanishes as soon as you click
+                          the title above — so the row's only destructive action was there or not
+                          depending on where the cursor had last been. Quiet and permanent beats
+                          loud and intermittent. */}
                       {!isSelecting && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="hidden h-8 w-8 shrink-0 text-subtle-foreground hover:bg-destructive/10 hover:text-destructive group-focus-within/row:inline-flex group-hover/row:inline-flex"
+                          className="h-8 w-8 shrink-0 text-subtle-foreground hover:bg-destructive/10 hover:text-destructive"
                           onClick={() => removeRow(index)}
                           type="button"
                           title={t('removeLine')}
