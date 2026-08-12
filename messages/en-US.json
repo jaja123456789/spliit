@@ -757,6 +757,12 @@
     "sameParticipant": "Pick two different people.",
     "defaultTitle": "Payment from {from} to {to}",
     "payWith": "Pay with",
-    "payWithHint": "Opens {app}. Recording it here is separate."
+    "payWithHint": "Opens {app}. Recording it here is separate.",
+    "settleAll": "Settle all {count}",
+    "settleAllConfirmTitle": "Record {count} payments?",
+    "settleAllConfirmBody": "This records every suggested payment at once, as if each had already been made. Nothing leaves the app.",
+    "settleAllConfirm": "Record them",
+    "settleAllCancel": "Cancel",
+    "settleAllFailed": "Nothing was recorded. Try again."
   }
 }

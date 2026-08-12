@@ -2,6 +2,7 @@
 
 import { BalancesList } from '@/app/groups/[groupId]/balances-list'
 import { ReimbursementList } from '@/app/groups/[groupId]/reimbursement-list'
+import { SettleAllButton } from '@/app/groups/[groupId]/settle-all-button'
 import { Money } from '@/components/money'
 import { SheetHeader } from '@/components/sheet-header'
 import { Button } from '@/components/ui/button'
@@ -111,15 +112,25 @@ export default function BalancesAndReimbursements() {
         <span className="font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
           {t('Reimbursements.title')}
         </span>
-        {/* Recording a payment used to be reachable only from a suggested-reimbursement row, so a
-            settled group offered no way to record one — which is precisely the moment you want to
-            record the payment that settled it. */}
-        <Button variant="outline" size="sm" asChild className="h-8">
-          <Link href={`/groups/${groupId}/payments/create`}>
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            {t('recordPayment')}
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {!isLoading && (
+            <SettleAllButton
+              groupId={groupId}
+              reimbursements={balancesData.reimbursements}
+              participants={group.participants}
+              activeUserId={activeUserId}
+            />
+          )}
+          {/* Recording a payment used to be reachable only from a suggested-reimbursement row, so
+              a settled group offered no way to record one — which is precisely the moment you want
+              to record the payment that settled it. */}
+          <Button variant="outline" size="sm" asChild className="h-8">
+            <Link href={`/groups/${groupId}/payments/create`}>
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              {t('recordPayment')}
+            </Link>
+          </Button>
+        </div>
       </div>
       <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
         {isLoading ? (

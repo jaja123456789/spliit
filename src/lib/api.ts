@@ -666,6 +666,83 @@ export async function deleteGroup(groupId: string) {
   await prisma.group.delete({ where: { id: groupId } })
 }
 
+/**
+ * Records several payments as one unit of work.
+ *
+ * Settling three debts through `createExpense` is three round trips with no relationship to each
+ * other: if the second fails, the first is already recorded and the reader has no way to tell which
+ * of the three went through. A single button that can half-succeed is worse than three trips
+ * through the form, so this writes them inside one transaction — all of them, or none.
+ *
+ * A payment is a much smaller shape than an expense: one payer, one payee, split evenly, no items,
+ * no documents, no recurrence. That is why this inserts directly rather than threading a
+ * transaction client through `createExpense` — the simpler shape is what makes the smaller blast
+ * radius available.
+ *
+ * @param payments amounts in *minor* units, which is what balances are computed in.
+ */
+export async function createPayments(
+  groupId: string,
+  payments: { from: string; to: string; amount: number; title: string }[],
+  participantId?: string,
+) {
+  const group = await getGroup(groupId)
+  if (!group) throw new Error(`Invalid group ID: ${groupId}`)
+
+  const participantIds = new Set(group.participants.map((p) => p.id))
+  for (const payment of payments) {
+    for (const id of [payment.from, payment.to]) {
+      if (!participantIds.has(id))
+        throw new Error(`Invalid participant ID: ${id}`)
+    }
+    if (payment.from === payment.to)
+      throw new Error('A payment cannot be from someone to themselves')
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const created: string[] = []
+    for (const payment of payments) {
+      const expenseId = randomId()
+      await tx.activity.create({
+        data: {
+          id: randomId(),
+          groupId,
+          activityType: ActivityType.CREATE_EXPENSE,
+          participantId,
+          expenseId,
+          data: payment.title,
+        },
+      })
+      await tx.expense.create({
+        data: {
+          id: expenseId,
+          groupId,
+          expenseDate: new Date(),
+          categoryId: 1,
+          amount: payment.amount,
+          title: payment.title,
+          splitMode: 'EVENLY',
+          recurrenceRule: RecurrenceRule.NONE,
+          isReimbursement: true,
+          paidBy: {
+            createMany: {
+              data: [{ participantId: payment.from, amount: payment.amount }],
+            },
+          },
+          paidFor: {
+            createMany: {
+              // Shares for EVENLY are stored as hundredths, like everywhere else.
+              data: [{ participantId: payment.to, shares: 100 }],
+            },
+          },
+        },
+      })
+      created.push(expenseId)
+    }
+    return created
+  })
+}
+
 export async function logActivity(
   groupId: string,
   activityType: ActivityType,

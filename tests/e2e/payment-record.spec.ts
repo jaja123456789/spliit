@@ -58,6 +58,57 @@ test.describe('Recording a payment', () => {
     await expect(page.getByTestId('payment-from')).toBeVisible()
   })
 
+  test('settles every suggestion at once', async ({ page }) => {
+    await page.goto('/groups')
+    const groupId = await createGroupViaAPI(page, `settle all ${randomId(4)}`, [
+      'Alice',
+      'Bob',
+      'Charlie',
+    ])
+    // Alice pays for everyone twice over, so both Bob and Charlie owe her.
+    await createExpenseViaAPI(page, groupId, {
+      title: 'Hotel',
+      amount: 9000,
+      payerName: 'Alice',
+    })
+
+    await page.goto(`/groups/${groupId}/expenses`)
+    await navigateToTab(page, 'Balances')
+    await expect(page.getByTestId('reimbursement-row-Bob-Alice')).toBeVisible()
+    await expect(
+      page.getByTestId('reimbursement-row-Charlie-Alice'),
+    ).toBeVisible()
+
+    await page.getByTestId('settle-all').click()
+    await page.getByTestId('settle-all-confirm').click()
+
+    // Both are recorded together, so the whole group lands settled rather than half settled.
+    await expect(page.getByTestId('no-reimbursements')).toBeVisible()
+    await expect(page.getByTestId('balance-row-Bob')).toContainText('$0.00')
+    await expect(page.getByTestId('balance-row-Charlie')).toContainText('$0.00')
+    await expect(page.getByTestId('balance-row-Alice')).toContainText('$0.00')
+  })
+
+  test('offers no batch action for a single suggestion', async ({ page }) => {
+    await page.goto('/groups')
+    await page.goto('/groups')
+    const groupId = await createGroupViaAPI(page, `single ${randomId(4)}`, [
+      'Alice',
+      'Bob',
+    ])
+    await createExpenseViaAPI(page, groupId, {
+      title: 'Taxi',
+      amount: 4000,
+      payerName: 'Alice',
+    })
+
+    await page.goto(`/groups/${groupId}/expenses`)
+    await navigateToTab(page, 'Balances')
+    await expect(page.getByTestId('reimbursement-row-Bob-Alice')).toBeVisible()
+    // One suggestion is not a batch; the row's own button already does it in one tap.
+    await expect(page.getByTestId('settle-all')).toHaveCount(0)
+  })
+
   test('refuses a payment from someone to themselves', async ({ page }) => {
     await page.goto('/groups')
     const groupId = await createGroupViaAPI(page, `self pay ${randomId(4)}`, [
