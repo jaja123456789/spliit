@@ -2,29 +2,29 @@
 
 import { BalancesList } from '@/app/groups/[groupId]/balances-list'
 import { ReimbursementList } from '@/app/groups/[groupId]/reimbursement-list'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Money } from '@/components/money'
+import { SheetHeader } from '@/components/sheet-header'
+import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useActiveUser } from '@/lib/hooks'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { useTranslations } from 'next-intl'
-import { Fragment, useEffect } from 'react'
+import { useEffect } from 'react'
 import { match } from 'ts-pattern'
 import { useCurrentGroup } from '../current-group-context'
 
 export default function BalancesAndReimbursements() {
   const utils = trpc.useUtils()
   const { groupId, group } = useCurrentGroup()
+  const activeUserId = useActiveUser(groupId)
   const { data: balancesData, isLoading: balancesAreLoading } =
     trpc.groups.balances.list.useQuery({
       groupId,
     })
   const t = useTranslations('Balances')
+  // "You are owed" / "You owe" already exist, worded for exactly this, on the Stats tab.
+  const tStats = useTranslations('Stats.Totals')
 
   useEffect(() => {
     // Until we use tRPC more widely and can invalidate the cache on expense
@@ -33,48 +33,92 @@ export default function BalancesAndReimbursements() {
   }, [utils])
 
   const isLoading = balancesAreLoading || !balancesData || !group
+  const currency = group ? getCurrencyFromGroup(group) : null
+
+  // The header answers the question the screen exists for, so it needs the reader's own balance —
+  // not the group's. Without an active user there is no "you", and the sheet falls back to naming
+  // itself.
+  const yourBalance =
+    activeUserId && balancesData
+      ? balancesData.balances[activeUserId]?.total ?? 0
+      : undefined
+  const isSettled = yourBalance !== undefined && yourBalance === 0
 
   return (
-    <>
-      <Card className="mb-4">
-        <CardHeader>
-          <CardTitle>{t('title')}</CardTitle>
-          <CardDescription>{t('description')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <BalancesLoading participantCount={group?.participants.length} />
+    <Card className="mb-4">
+      {/* One sheet, not two cards. "Balances" and "Suggested reimbursements" are two views of the
+          same arithmetic — a heading, a paragraph and a second border between them made them look
+          like unrelated screens that happened to share a tab. */}
+      <SheetHeader
+        label={
+          yourBalance === undefined
+            ? t('title')
+            : isSettled
+            ? t('allSettled')
+            : tStats(yourBalance > 0 ? 'yourBalance' : 'youOwe')
+        }
+        figure={
+          isLoading || !currency ? (
+            <Skeleton className="h-8 w-40" />
+          ) : yourBalance === undefined ? null : (
+            <Money
+              currency={currency}
+              amount={Math.abs(yourBalance)}
+              bold
+              className={
+                isSettled
+                  ? 'text-muted-foreground'
+                  : yourBalance > 0
+                  ? 'text-credit'
+                  : 'text-debt'
+              }
+            />
+          )
+        }
+        context={
+          isLoading ? (
+            <Skeleton className="h-3.5 w-40" />
+          ) : yourBalance === undefined ? (
+            t('description')
           ) : (
-            <BalancesList
-              balances={balancesData.balances}
-              participants={group?.participants}
-              currency={getCurrencyFromGroup(group)}
-              groupId={groupId}
-            />
-          )}
-        </CardContent>
-      </Card>
-      <Card className="mb-4">
-        <CardHeader>
-          <CardTitle>{t('Reimbursements.title')}</CardTitle>
-          <CardDescription>{t('Reimbursements.description')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <ReimbursementsLoading
-              participantCount={group?.participants.length}
-            />
-          ) : (
-            <ReimbursementList
-              reimbursements={balancesData.reimbursements}
-              participants={group?.participants}
-              currency={getCurrencyFromGroup(group)}
-              groupId={groupId}
-            />
-          )}
-        </CardContent>
-      </Card>
-    </>
+            t('headerContext', {
+              people: group.participants.length,
+              toSettle: balancesData.reimbursements.length,
+            })
+          )
+        }
+      />
+      <CardContent className="px-4 sm:px-6 pb-2">
+        {isLoading ? (
+          <BalancesLoading participantCount={group?.participants.length} />
+        ) : (
+          <BalancesList
+            balances={balancesData.balances}
+            participants={group.participants}
+            currency={getCurrencyFromGroup(group)}
+            groupId={groupId}
+          />
+        )}
+      </CardContent>
+
+      <div className="font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground px-4 sm:px-6 pt-5 pb-1">
+        {t('Reimbursements.title')}
+      </div>
+      <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
+        {isLoading ? (
+          <ReimbursementsLoading
+            participantCount={group?.participants.length}
+          />
+        ) : (
+          <ReimbursementList
+            reimbursements={balancesData.reimbursements}
+            participants={group.participants}
+            currency={getCurrencyFromGroup(group)}
+            groupId={groupId}
+          />
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -100,42 +144,42 @@ const ReimbursementsLoading = ({
   )
 }
 
+/**
+ * The balance rows with the content taken out, rather than a different shape that happens to be
+ * grey. The previous version was a two-column grid left over from an older bar-chart layout; it
+ * measured 17px shorter than the list it stood in for, so everything below it — the section rule,
+ * the reimbursements, the footer — jumped when the data landed.
+ */
 const BalancesLoading = ({
   participantCount = 3,
 }: {
   participantCount?: number
 }) => {
-  const barWidth = (index: number) =>
+  const nameWidth = (index: number) =>
     match(index % 3)
-      .with(0, () => 'w-1/3')
-      .with(1, () => 'w-2/3')
-      .otherwise(() => 'w-full')
+      .with(0, () => 'w-20')
+      .with(1, () => 'w-16')
+      .otherwise(() => 'w-24')
 
   return (
-    <div className="grid grid-cols-2 py-1 gap-y-2">
+    <div className="flex flex-col gap-4">
       {Array(participantCount)
         .fill(undefined)
-        .map((_, index) =>
-          index % 2 === 0 ? (
-            <Fragment key={index}>
-              <div className="flex items-center justify-end pr-2">
-                <Skeleton className="h-3 w-16" />
+        .map((_, index) => (
+          <div key={index} className="flex items-center gap-3">
+            <Skeleton className="h-10 w-10 shrink-0 rounded-[10px]" />
+            <div className="flex flex-1 min-w-0 flex-col gap-1">
+              <div className="flex items-baseline justify-between gap-2 h-5">
+                <Skeleton className={`h-3.5 ${nameWidth(index)}`} />
+                <Skeleton className="h-3.5 w-20" />
               </div>
-              <div className="self-start">
-                <Skeleton className={`h-7 ${barWidth(index)} rounded-l-none`} />
+              <Skeleton className="h-1.5 w-full rounded-full" />
+              <div className="h-4 flex items-center">
+                <Skeleton className="h-3 w-14" />
               </div>
-            </Fragment>
-          ) : (
-            <Fragment key={index}>
-              <div className="flex items-center justify-end">
-                <Skeleton className={`h-7 ${barWidth(index)} rounded-r-none`} />
-              </div>
-              <div className="flex items-center pl-2">
-                <Skeleton className="h-3 w-16" />
-              </div>
-            </Fragment>
-          ),
-        )}
+            </div>
+          </div>
+        ))}
     </div>
   )
 }

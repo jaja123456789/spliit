@@ -1,21 +1,28 @@
 'use client'
 
 import { Money } from '@/components/money'
+import { SheetHeader } from '@/components/sheet-header'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useActiveUser } from '@/lib/hooks'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { useTranslations } from 'next-intl'
+import { ReactNode } from 'react'
 import { useCurrentGroup } from '../current-group-context'
 
 /**
- * The running totals for the expense list.
+ * The head of the expenses sheet.
+ *
+ * This used to be a strip of small print below a header that said "Expenses" over "Here are the
+ * expenses that you created for your group." — a title repeating the tab you had just pressed, and
+ * a sentence explaining a list. The group total takes that space instead, because it is the thing
+ * people open this screen to see.
  *
  * The list itself is paginated, so summing the rows on screen would quietly report the first page
  * as the whole group. These come from the same stats query the Stats tab uses, which is also why
- * they agree with it.
+ * the two agree.
  */
-export function ExpenseListTotal() {
+export function ExpenseListTotal({ actions }: { actions?: ReactNode }) {
   const { groupId, group } = useCurrentGroup()
   const activeUser = useActiveUser(groupId)
   const t = useTranslations('Expenses.Totals')
@@ -24,38 +31,36 @@ export function ExpenseListTotal() {
     participantId: activeUser ?? undefined,
   })
 
-  if (!group || !data)
-    return (
-      <div className="flex gap-4 px-4 sm:px-6">
-        <Skeleton className="h-3 w-24 rounded-full" />
-        <Skeleton className="h-3 w-24 rounded-full" />
-      </div>
-    )
-
-  const currency = getCurrencyFromGroup(group)
+  const currency = group ? getCurrencyFromGroup(group) : null
+  const ready = !!currency && !!data
 
   return (
-    <div className="flex flex-wrap gap-x-4 gap-y-1 px-4 sm:px-6 text-xs text-muted-foreground">
-      <span>
-        {t('group')}{' '}
-        <Money
-          currency={currency}
-          amount={data.totalGroupSpendings}
-          bold
-          className="text-foreground"
-        />
-      </span>
-      {data.totalParticipantShare !== undefined && (
-        <span>
-          {t('yourShare')}{' '}
-          <Money
-            currency={currency}
-            amount={data.totalParticipantShare}
-            bold
-            className="text-foreground"
-          />
-        </span>
-      )}
-    </div>
+    <SheetHeader
+      label={t('group')}
+      actions={actions}
+      figure={
+        ready ? (
+          <Money currency={currency} amount={data.totalGroupSpendings} bold />
+        ) : (
+          <Skeleton className="h-8 w-40" />
+        )
+      }
+      context={
+        ready ? (
+          data.totalParticipantShare !== undefined && (
+            <>
+              {t('yourShare')}{' '}
+              <Money
+                currency={currency}
+                amount={data.totalParticipantShare}
+                className="text-foreground"
+              />
+            </>
+          )
+        ) : (
+          <Skeleton className="h-3.5 w-32" />
+        )
+      }
+    />
   )
 }

@@ -1,5 +1,7 @@
 'use client'
-import { CategoryIcon } from '@/app/groups/[groupId]/expenses/category-icon'
+// No category glyph on the row. It repeated the same icon down the whole list — a group's expenses
+// cluster in two or three categories — and cost 26px of every row's width to say something the
+// title already said. The category is still chosen and shown on the expense itself.
 import { DocumentsCount } from '@/app/groups/[groupId]/expenses/documents-count'
 import { Money } from '@/components/money'
 import { Locale } from '@/i18n/request'
@@ -85,100 +87,93 @@ export function ExpenseCard({
     }
   }
 
+  // A converted row trades one piece of secondary information for the other rather than growing a
+  // third line: the original amount takes the slot under the figure where your share would sit.
+  const original =
+    expense.originalCurrency &&
+    expense.originalAmount !== null &&
+    expense.originalCurrency !== currency.code
+      ? {
+          currency: getCurrency(expense.originalCurrency, locale as Locale),
+          amount: expense.originalAmount,
+        }
+      : null
+
   return (
     <div
       key={expense.id}
       data-testid={`expense-item-${expense.id}`}
       className={cn(
-        'group relative flex justify-between px-4 sm:px-6 py-4 text-sm cursor-pointer transition-colors hover:bg-accent/50',
-        'border-b last:border-b-0 sm:border sm:rounded-lg sm:mx-4 sm:my-1', // Clean standard borders
+        'group relative flex items-start gap-3 px-4 sm:px-6 py-3.5 text-sm cursor-pointer transition-colors hover:bg-accent/50',
+        'border-b last:border-b-0',
         expense.isReimbursement && 'italic bg-muted/20',
       )}
       onClick={() => {
         router.push(`/groups/${groupId}/expenses/${expense.id}/edit`)
       }}
     >
-      <div className="flex items-start gap-3 flex-1 overflow-hidden">
-        <CategoryIcon
-          category={expense.category}
-          className="w-8 h-8 p-1.5 rounded-full bg-secondary text-secondary-foreground shrink-0 mt-0.5"
-        />
+      <div className="flex-1 min-w-0">
+        <div className="flex justify-between items-baseline gap-3">
+          <div
+            className={cn(
+              'font-medium text-base truncate',
+              expense.isReimbursement && 'italic text-muted-foreground',
+            )}
+            data-testid="expense-title"
+          >
+            {expense.title}
+          </div>
+          <div className="shrink-0" data-testid="expense-amount">
+            <Money
+              currency={currency}
+              amount={expense.amount}
+              bold={!expense.isReimbursement}
+              className={cn('text-base', expense.isReimbursement && 'italic')}
+            />
+          </div>
+        </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex justify-between items-start gap-2">
-            <div
-              className={cn(
-                'font-medium text-base truncate pr-2',
-                expense.isReimbursement && 'italic text-muted-foreground',
-              )}
-              data-testid="expense-title"
-            >
-              {expense.title}
-            </div>
-            <div className="text-right shrink-0" data-testid="expense-amount">
+        <div className="flex justify-between items-baseline gap-3 mt-0.5">
+          <div className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+            <Participants
+              expense={expense}
+              participantCount={participantCount}
+            />
+          </div>
+          <div className="shrink-0 text-xs">
+            {original ? (
               <Money
-                currency={currency}
-                amount={expense.amount}
-                bold={!expense.isReimbursement}
-                className={cn('text-base', expense.isReimbursement && 'italic')}
+                currency={original.currency}
+                amount={original.amount}
+                className="text-subtle-foreground"
               />
-              {expense.originalCurrency &&
-                expense.originalAmount !== null &&
-                expense.originalCurrency !== currency.code && (
-                  <div>
-                    <Money
-                      currency={getCurrency(
-                        expense.originalCurrency,
-                        locale as Locale,
-                      )}
-                      amount={expense.originalAmount}
-                      className="text-xs text-subtle-foreground"
-                    />
-                  </div>
-                )}
-            </div>
+            ) : (
+              userBalanceAmount !== 0 && (
+                // Your share as a signed figure rather than a sentence. "You lent" and
+                // "You borrowed" were hard-coded English in a 23-locale app; the sign says the
+                // same thing in every one of them.
+                <Money
+                  currency={currency}
+                  amount={userBalanceAmount}
+                  signed
+                  colored
+                />
+              )
+            )}
           </div>
+        </div>
 
-          <div className="flex justify-between items-end mt-1">
-            <div className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-              <Participants
-                expense={expense}
-                participantCount={participantCount}
-              />
-
-              {/* Contextual Balance Text - Colored text only, no card background */}
-              {userBalanceAmount !== 0 && (
-                <div className="mt-1">
-                  {userBalanceAmount > 0 ? 'You lent ' : 'You borrowed '}
-                  <Money
-                    currency={currency}
-                    amount={Math.abs(userBalanceAmount)}
-                    className={
-                      userBalanceAmount > 0 ? 'text-credit' : 'text-debt'
-                    }
-                  />
-                </div>
-              )}
-            </div>
-
-            <div className="flex flex-col items-end gap-1 ml-2">
-              <div
-                className="text-xs uppercase tracking-wider text-subtle-foreground font-medium"
-                data-testid="expense-date"
-              >
-                {formatDateOnly(expense.expenseDate, locale, {
-                  dateStyle: 'medium',
-                })}
-              </div>
-              <DocumentsCount count={expense._count.documents} />
-            </div>
-          </div>
+        <div className="flex items-center gap-3 mt-1 text-xs uppercase tracking-wider text-subtle-foreground font-medium">
+          <span data-testid="expense-date">
+            {formatDateOnly(expense.expenseDate, locale, {
+              dateStyle: 'medium',
+            })}
+          </span>
+          <DocumentsCount count={expense._count.documents} />
         </div>
       </div>
 
-      <div className="self-center pl-2 hidden sm:block opacity-0 group-hover:opacity-100 transition-opacity">
-        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-      </div>
+      <ChevronRight className="w-4 h-4 self-center shrink-0 text-subtle-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 hidden sm:block" />
     </div>
   )
 }

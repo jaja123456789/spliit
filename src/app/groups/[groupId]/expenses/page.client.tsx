@@ -5,13 +5,7 @@ import { CreateFromReceiptButton } from '@/app/groups/[groupId]/expenses/create-
 import { ExpenseList } from '@/app/groups/[groupId]/expenses/expense-list'
 import ExportButton from '@/app/groups/[groupId]/export-button'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { cn } from '@/lib/utils' // Import cn
 import { Plus } from 'lucide-react'
 import { Metadata } from 'next'
@@ -47,32 +41,31 @@ export default function GroupExpensesPageClient({
 
   return (
     <>
-      <Card className="mb-20 sm:mb-4 rounded-none -mx-4 border-x-0 sm:border-x sm:rounded-lg sm:mx-0 shadow-sm">
-        <div className="flex flex-1 items-center justify-between pr-4 sm:pr-6">
-          <CardHeader className="flex-1 p-4 sm:p-6">
-            <CardTitle>{t('title')}</CardTitle>
-            <CardDescription>{t('description')}</CardDescription>
-          </CardHeader>
+      {/* One sheet: header, search, then a run of ruled rows. It used to be a card whose rows were
+          themselves bordered, rounded cards on anything wider than a phone — a card inside a card,
+          with two competing edges around every expense.
+          `mb-20` is load-bearing on mobile: it is the clearance that stops the FAB covering the
+          last row. */}
+      <Card className="mb-20 sm:mb-4 rounded-none -mx-4 border-x-0 sm:border-x sm:rounded-lg sm:mx-0 shadow-sm overflow-hidden">
+        <CardContent className="p-0 flex flex-col gap-3 pb-4 sm:pb-6 relative min-h-[300px]">
+          <ExpenseList
+            actions={
+              <>
+                <ExportButton groupId={groupId} />
+                {enableReceiptExtract && <CreateFromReceiptButton />}
 
-          {/* Desktop Toolbar */}
-          <div className="flex flex-row space-x-2">
-            <ExportButton groupId={groupId} />
-            {enableReceiptExtract && <CreateFromReceiptButton />}
-
-            {/* Desktop Add Button (hidden on mobile to favor FAB) */}
-            <Button asChild size="icon" className="hidden sm:inline-flex">
-              <Link
-                href={`/groups/${groupId}/expenses/create`}
-                title={t('create')}
-              >
-                <Plus className="w-4 h-4" />
-              </Link>
-            </Button>
-          </div>
-        </div>
-
-        <CardContent className="p-0 pt-0 pb-4 sm:pb-6 flex flex-col gap-4 relative min-h-[300px]">
-          <ExpenseList />
+                {/* Desktop Add Button (hidden on mobile to favor FAB) */}
+                <Button asChild size="icon" className="hidden sm:inline-flex">
+                  <Link
+                    href={`/groups/${groupId}/expenses/create`}
+                    title={t('create')}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Link>
+                </Button>
+              </>
+            }
+          />
         </CardContent>
       </Card>
 

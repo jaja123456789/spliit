@@ -390,6 +390,8 @@
   "Balances": {
     "title": "Balances",
     "description": "This is the amount that each participant paid or was paid for.",
+    "allSettled": "All settled up",
+    "headerContext": "{people, plural, one {# person} other {# people}} · {toSettle, plural, =0 {nothing to settle} one {# payment to settle} other {# payments to settle}}",
     "you": "You",
     "getsBack": "gets back",
     "settledUp": "settled up",

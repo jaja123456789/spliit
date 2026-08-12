@@ -11,7 +11,7 @@ import { trpc } from '@/trpc/client'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { forwardRef, useEffect, useMemo, useState } from 'react'
+import { ReactNode, forwardRef, useEffect, useMemo, useState } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useDebounce } from 'use-debounce'
 import { useCurrentGroup } from '../current-group-context'
@@ -60,7 +60,7 @@ function getGroupedExpensesByDate(expenses: ExpensesType) {
   }, {})
 }
 
-export function ExpenseList() {
+export function ExpenseList({ actions }: { actions?: ReactNode }) {
   const { groupId, group } = useCurrentGroup()
   const [searchText, setSearchText] = useState('')
   const [debouncedSearchText] = useDebounce(searchText, 300)
@@ -87,7 +87,7 @@ export function ExpenseList() {
 
   return (
     <>
-      <ExpenseListTotal />
+      <ExpenseListTotal actions={actions} />
       <SearchBar onValueChange={(value) => setSearchText(value)} />
       <ExpenseListForSearch
         groupId={groupId}
@@ -160,11 +160,10 @@ const ExpenseListForSearch = ({
 
         return (
           <div key={expenseGroup}>
-            <div
-              className={
-                'text-muted-foreground text-xs pl-4 sm:pl-6 py-2 font-semibold sticky top-16 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60'
-              }
-            >
+            {/* A section rule: mono caps, no border, sitting on the sheet it scrolls over. It was
+                `bg-background`, which was indistinguishable from the sheet only because light
+                --background and --card were both pure white. */}
+            <div className="text-subtle-foreground text-xs font-mono uppercase tracking-[0.14em] px-4 sm:px-6 pt-4 pb-1.5 sticky top-16 z-10 bg-card">
               {t(`Groups.${expenseGroup}`)}
             </div>
             {groupExpenses.map((expense) => (
@@ -184,25 +183,25 @@ const ExpenseListForSearch = ({
   )
 }
 
+/** The expense row with the content taken out — same three lines, same two columns. */
 const ExpensesLoading = forwardRef<HTMLDivElement>((_, ref) => {
   return (
     <div ref={ref}>
-      <Skeleton className="mx-4 sm:mx-6 mt-1 mb-2 h-3 w-32 rounded-full" />
+      <div className="px-4 sm:px-6 pt-4 pb-1.5">
+        <Skeleton className="h-3 w-24" />
+      </div>
       {[0, 1, 2].map((i) => (
-        <div
-          key={i}
-          className="flex justify-between items-start px-2 sm:px-6 py-4 text-sm gap-2"
-        >
-          <div className="flex-0 pl-2 pr-1">
-            <Skeleton className="h-4 w-4 rounded-full" />
+        <div key={i} className="border-b px-4 sm:px-6 py-3.5">
+          <div className="flex justify-between items-baseline gap-3 h-6">
+            <Skeleton className="h-4 w-36" />
+            <Skeleton className="h-4 w-20" />
           </div>
-          <div className="flex-1 flex flex-col gap-2">
-            <Skeleton className="h-4 w-16 rounded-full" />
-            <Skeleton className="h-4 w-32 rounded-full" />
+          <div className="flex justify-between items-baseline gap-3 mt-0.5 h-5">
+            <Skeleton className="h-3 w-48" />
+            <Skeleton className="h-3 w-16" />
           </div>
-          <div className="flex-0 flex flex-col gap-2 items-end mr-2 sm:mr-12">
-            <Skeleton className="h-4 w-16 rounded-full" />
-            <Skeleton className="h-4 w-20 rounded-full" />
+          <div className="mt-1 h-4 flex items-center">
+            <Skeleton className="h-3 w-24" />
           </div>
         </div>
       ))}
