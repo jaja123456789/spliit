@@ -112,8 +112,8 @@ describe('expenseFormSchema', () => {
       amount: 1000,
       paidBy: [{ participant: 'p0', amount: 1000 }],
       paidFor: [
-        { participant: 'p0', shares: 2500 },
-        { participant: 'p1', shares: 3000 },
+        { participant: 'p0', shares: 25 },
+        { participant: 'p1', shares: 30 },
       ],
       splitMode: 'BY_PERCENTAGE',
       saveDefaultSplittingOptions: false,
@@ -124,7 +124,7 @@ describe('expenseFormSchema', () => {
 
     expect(resultLess.success).toBe(false)
 
-    // Invalid: sum > 100% (6000 + 5000 = 11000 = 110%)
+    // Invalid: sum > 100% (60% + 50% = 110%)
     const resultMore = expenseFormSchema.safeParse({
       expenseDate: new Date('2025-01-01T00:00:00.000Z'),
       title: 'Dinner',
@@ -132,8 +132,8 @@ describe('expenseFormSchema', () => {
       amount: 1000,
       paidBy: [{ participant: 'p0', amount: 1000 }],
       paidFor: [
-        { participant: 'p0', shares: 6000 },
-        { participant: 'p1', shares: 5000 },
+        { participant: 'p0', shares: 60 },
+        { participant: 'p1', shares: 50 },
       ],
       splitMode: 'BY_PERCENTAGE',
       saveDefaultSplittingOptions: false,
@@ -144,7 +144,7 @@ describe('expenseFormSchema', () => {
 
     expect(resultMore.success).toBe(false)
 
-    // Valid: sum = 100% (7000 + 3000 = 10000 = 100%)
+    // Valid: sum = 100% (70% + 30%)
     const resultValid = expenseFormSchema.safeParse({
       expenseDate: new Date('2025-01-01T00:00:00.000Z'),
       title: 'Dinner',
@@ -152,8 +152,8 @@ describe('expenseFormSchema', () => {
       amount: 1000,
       paidBy: [{ participant: 'p0', amount: 1000 }],
       paidFor: [
-        { participant: 'p0', shares: 7000 },
-        { participant: 'p1', shares: 3000 },
+        { participant: 'p0', shares: 70 },
+        { participant: 'p1', shares: 30 },
       ],
       splitMode: 'BY_PERCENTAGE',
       saveDefaultSplittingOptions: false,

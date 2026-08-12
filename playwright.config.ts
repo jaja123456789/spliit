@@ -75,6 +75,10 @@ export default defineConfig({
       // `.mail/`, which is the transport `tests/helpers/auth.ts` reads from, so the auth specs
       // need this to pass rather than merely tolerating it.
       SMTP_HOST: '',
+      // .env pins these to the /spliit deployment. Left alone, NextAuth would mint callback URLs
+      // under /spliit/api/auth while the app answers at the root, so every magic link 404s.
+      NEXTAUTH_URL: 'http://localhost:3000/api/auth',
+      NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'e2e-not-a-real-secret',
     },
     reuseExistingServer: !process.env.CI,
   },

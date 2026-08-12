@@ -199,6 +199,7 @@ test.describe('Expense Creation', () => {
     await page.getByRole('option', { name: 'Bob' }).click()
 
     // Check reimbursement checkbox
+    await expandMoreOptions(page)
     const reimbursementCheckbox = page.getByRole('checkbox', {
       name: /reimbursement/i,
     })

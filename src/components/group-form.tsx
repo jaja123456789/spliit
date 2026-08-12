@@ -502,8 +502,12 @@ export function GroupForm({
                             key: NO_ACTIVE_USER,
                             name: t('Settings.ActiveUserField.none'),
                           },
+                          // `||`, not `??`: `append()` gives a new participant `id: ''`, and an
+                          // empty string survives `??`. A `<SelectItem value="">` makes Radix
+                          // throw, which took the whole page down as soon as you named a
+                          // participant you had just added.
                           ...fields.map((f, index) => ({
-                            key: f.id ?? `new-${index}`,
+                            key: f.id || `new-${index}`,
                             name: form.watch(`participants.${index}.name`),
                           })),
                         ]

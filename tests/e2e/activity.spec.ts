@@ -131,8 +131,9 @@ test('Log shows update', async ({ page }) => {
   // underneath it.
   await expect(page.getByText(updatedTitle).first()).toBeVisible()
 
-  // Verify "updated" or "edit" action text appears (e.g., "Alice updated Updated Expense")
-  await expect(page.getByText(/updated|edit/i)).toBeVisible()
+  // Verify "updated" or "edit" action text appears (e.g., "Alice updated Updated Expense").
+  // `.first()` for the same reason as above — the entry and its diff both carry the word.
+  await expect(page.getByText(/updated|edit/i).first()).toBeVisible()
 })
 
 test('Log shows delete', async ({ page }) => {

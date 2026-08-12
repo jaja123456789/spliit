@@ -34,7 +34,9 @@ test.describe('Recurring Expense Instances', () => {
         expenseDate: yesterday,
         title: expenseTitle,
         amount: 2500,
-        paidById: payer!.id,
+        paidBy: {
+          createMany: { data: [{ participantId: payer!.id, amount: 2500 }] },
+        },
         splitMode: 'EVENLY',
         recurrenceRule: 'DAILY',
         recurringExpenseLink: {
@@ -125,7 +127,9 @@ test.describe('Recurring Expense Instances', () => {
         expenseDate: yesterday,
         title: expense1Title,
         amount: 1000,
-        paidById: payer!.id,
+        paidBy: {
+          createMany: { data: [{ participantId: payer!.id, amount: 1000 }] },
+        },
         splitMode: 'EVENLY',
         recurrenceRule: 'DAILY',
         recurringExpenseLink: {
@@ -153,7 +157,9 @@ test.describe('Recurring Expense Instances', () => {
         expenseDate: yesterday,
         title: expense2Title,
         amount: 2000,
-        paidById: payer!.id,
+        paidBy: {
+          createMany: { data: [{ participantId: payer!.id, amount: 2000 }] },
+        },
         splitMode: 'EVENLY',
         recurrenceRule: 'WEEKLY',
         recurringExpenseLink: {

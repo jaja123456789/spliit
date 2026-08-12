@@ -186,15 +186,12 @@ test.describe('Group Editing', () => {
     const aliceContainer = aliceInput.locator(
       'xpath=ancestor::div[contains(@class,"flex")][1]',
     )
-    const aliceRemoveButton = aliceContainer
-      .locator('button svg.lucide-trash-2')
-      .first()
-    const disabledButton = aliceRemoveButton.locator(
-      'xpath=ancestor::button[@disabled]',
-    )
-
-    // Verify the remove button is disabled
-    await expect(disabledButton).toBeVisible()
+    // Protection is expressed as an explanation on the button rather than a disabled attribute:
+    // the button stays enabled so tapping it can say why removal is not possible.
+    const aliceRemoveButton = aliceContainer.getByRole('button', {
+      name: /part of expenses/i,
+    })
+    await expect(aliceRemoveButton).toBeVisible()
 
     // Verify only Alice is protected (Bob can be removed)
     const protectedCount = await countProtectedParticipants(page)

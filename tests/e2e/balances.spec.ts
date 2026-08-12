@@ -2,7 +2,7 @@ import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { navigateToTab } from '../helpers'
 import { createExpenseViaAPI, createGroupViaAPI } from '../helpers/batch-api'
-import { AMOUNT_INPUT } from '../helpers/expense'
+import { AMOUNT_INPUT, expandMoreOptions } from '../helpers/expense'
 
 test('suggested reimbursements displayed', async ({ page }) => {
   await page.goto('/groups')
@@ -296,6 +296,7 @@ test('Create reimbursement expense', async ({ page }) => {
   await reimbPayerOption.click()
 
   // Check reimbursement checkbox
+  await expandMoreOptions(page)
   const reimbursementCheckbox = page.getByRole('checkbox', {
     name: /reimbursement/i,
   })

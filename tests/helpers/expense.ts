@@ -95,11 +95,18 @@ export async function setExpenseRecurrence(
  * first, or the locator waits 30 seconds for a field that is in the DOM but hidden.
  */
 export async function expandMoreOptions(page: Page): Promise<void> {
-  const trigger = page.getByRole('button', { name: /more options/i })
-  if ((await trigger.count()) === 0) return
+  const trigger = page.getByRole('button', { name: /more options/i }).first()
+  // `waitFor`, not `count()`: count does not auto-wait, so on a form that has not rendered yet it
+  // returns 0 and this would silently do nothing — leaving the caller to time out on a field it
+  // was supposed to reveal.
+  try {
+    await trigger.waitFor({ state: 'visible', timeout: 15000 })
+  } catch {
+    return // no collapsible on this form
+  }
   // The date field is the cheapest proxy for "the section is already open".
   if (await page.locator('input[type="date"]').first().isVisible()) return
-  await trigger.first().click()
+  await trigger.click()
   await page.locator('input[type="date"]').first().waitFor({ state: 'visible' })
 }
 
@@ -160,8 +167,9 @@ export async function fillExpenseForm(
     }
   }
 
-  // Optional: Check reimbursement checkbox
+  // Optional: Check reimbursement checkbox — also behind "More options".
   if (options.isReimbursement) {
+    await expandMoreOptions(page)
     const reimbursementLabel = page.getByText(/this is a reimbursement/i)
     await reimbursementLabel.click()
   }

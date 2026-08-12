@@ -23,15 +23,26 @@ const extendedAdapter: Adapter = {
   },
 }
 
+/**
+ * NextAuth's `pages` are absolute paths that it redirects to itself, so Next's `basePath` is not
+ * applied to them and they have to carry the prefix. It used to be spelled `/spliit` literally,
+ * which meant these redirects only resolved on a deployment that happened to use that prefix and
+ * 404'd on every other one — including the root, which is how the app is served under test.
+ *
+ * Read the same variable `next.config.mjs` reads, with `??` so an explicitly empty value means
+ * "serve at the root" rather than falling back.
+ */
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+
 export const authOptions: NextAuthOptions = {
   adapter: extendedAdapter,
   session: {
     strategy: 'database',
   },
   pages: {
-    signIn: '/spliit/auth/signin',
-    verifyRequest: '/spliit/auth/verify',
-    error: '/spliit/auth/error',
+    signIn: `${basePath}/auth/signin`,
+    verifyRequest: `${basePath}/auth/verify`,
+    error: `${basePath}/auth/error`,
   },
   callbacks: {
     async session({ session, user }) {

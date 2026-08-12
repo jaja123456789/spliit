@@ -477,9 +477,14 @@ export async function updateGroup(
             notIn: participantIdsToKeep,
           },
         },
-        // Update existing participants
+        // Update existing participants.
+        // Truthiness, not `!== undefined`: the group form appends a new participant with `id: ''`,
+        // which passed this filter and failed the whole save with "No 'Participant' record was
+        // found for a nested update", while also failing the `id === undefined` test below — so
+        // adding a participant in group settings neither updated nor created anything. This
+        // matches `participantIdsToKeep` above, which already treats an empty id as absent.
         update: groupFormValues.participants
-          .filter((p) => p.id !== undefined)
+          .filter((p) => !!p.id)
           .map((p) => ({
             where: { id: p.id },
             data: {
@@ -492,7 +497,7 @@ export async function updateGroup(
           })),
         // Create new participants
         create: groupFormValues.participants
-          .filter((p) => p.id === undefined)
+          .filter((p) => !p.id)
           .map((p) => ({
             id: randomId(),
             name: p.name,

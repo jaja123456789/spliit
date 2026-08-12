@@ -272,6 +272,7 @@ test.describe('Expense Editing', () => {
     await page.waitForURL(/\/groups\/[^/]+\/expenses\/[^/]+\/edit/)
 
     // Check reimbursement
+    await expandMoreOptions(page)
     const reimbursementCheckbox = page.getByRole('checkbox', {
       name: /reimbursement/i,
     })

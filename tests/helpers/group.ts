@@ -169,8 +169,8 @@ export async function removeParticipant(
  * Counts disabled remove buttons (protected participants) on settings page
  */
 export async function countProtectedParticipants(page: Page): Promise<number> {
-  const disabledRemoveButtons = page.locator(
-    'button[disabled] svg.lucide-trash-2',
-  )
-  return await disabledRemoveButtons.count()
+  // A protected participant's remove button is *enabled* and carries an explanation as its
+  // accessible name, so that tapping it opens a popover saying why. It used to be `disabled`,
+  // which was simply dead with no explanation — so counting disabled buttons now finds none.
+  return await page.getByRole('button', { name: /part of expenses/i }).count()
 }

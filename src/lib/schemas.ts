@@ -241,12 +241,17 @@ export const expenseFormSchema = z
         break
       }
       case 'BY_PERCENTAGE': {
+        // `shares` is a percentage here — 25 means 25% — whichever type it arrives as. It used to
+        // read a string as a percentage and a number as basis points, which made the schema
+        // disagree with itself: the `shares` union parses "25" into the number 25, so validating
+        // the schema's own output gave a different answer from validating its input. In practice
+        // the browser validated the typed strings and passed, then sent the parsed numbers, and
+        // the server rejected them with `percentageSum` — percentage splits could never be saved.
+        //
+        // Percent is the right unit to settle on: `api.ts` multiplies these by 100 on the way into
+        // the database, and the expense form divides by 100 on the way back out.
         const sum = expense.paidFor.reduce(
-          (sum, { shares }) =>
-            sum +
-            (typeof shares === 'string'
-              ? Math.round(Number(shares) * 100)
-              : Number(shares)),
+          (sum, { shares }) => sum + Math.round(Number(shares) * 100),
           0,
         )
         if (sum !== 10000) {

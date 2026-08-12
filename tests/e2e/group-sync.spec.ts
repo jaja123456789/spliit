@@ -50,11 +50,16 @@ test.describe('Group Cloud Sync', () => {
     await page.goto('/settings')
 
     // Find and enable the auto-sync toggle switch if not already enabled
-    const autoSyncToggle = page.locator('button[role="switch"]').first()
+    // By id, not `button[role="switch"]`.first(): the sync-preferences block renders a spinner
+    // until its query resolves, so `.first()` could bind to a different switch on the settings
+    // page entirely — which is why this only failed under parallel load.
+    const autoSyncToggle = page.locator('#sync-new')
     await expect(autoSyncToggle).toBeVisible()
 
-    const isChecked = await autoSyncToggle.getAttribute('data-state')
-    if (isChecked !== 'checked') {
+    // The switch is disabled until the preferences query resolves, and clicking it before then is
+    // a no-op that leaves it unchecked — which is how this test failed only under parallel load.
+    await expect(autoSyncToggle).toBeEnabled()
+    if ((await autoSyncToggle.getAttribute('data-state')) !== 'checked') {
       await autoSyncToggle.click()
     }
     await expect(autoSyncToggle).toHaveAttribute('data-state', 'checked')

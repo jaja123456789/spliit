@@ -1,6 +1,7 @@
 import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { createGroupViaAPI } from '../helpers/batch-api'
+import { expandMoreOptions } from '../helpers/expense'
 
 test('Theme selection persists after reload', async ({ page }) => {
   await page.goto('/groups')
@@ -54,6 +55,7 @@ test('Expense displays with selected category', async ({ page }) => {
   await page.getByRole('option', { name: 'Alice' }).click()
 
   // Verify default category is General and select a different one (Entertainment)
+  await expandMoreOptions(page)
   const categoryCombobox = page
     .getByRole('combobox')
     .filter({ hasText: 'General' })
@@ -105,6 +107,7 @@ test('Default category is General', async ({ page }) => {
   await page.waitForURL(/\/groups\/[^/]+\/expenses\/create$/)
 
   // Verify the category field defaults to "General"
+  await expandMoreOptions(page)
   const categoryCombobox = page
     .getByRole('combobox')
     .filter({ hasText: 'General' })
