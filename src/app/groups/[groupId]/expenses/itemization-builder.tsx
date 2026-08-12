@@ -1,5 +1,7 @@
 'use client'
 
+import { Money } from '@/components/money'
+import { ProfileAvatar } from '@/components/profile-avatar'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CalculatorInput } from '@/components/ui/calculator-input'
@@ -38,6 +40,60 @@ import { useState } from 'react'
 import { useFormContext } from 'react-hook-form'
 
 type Group = NonNullable<AppRouterOutput['groups']['get']['group']>
+
+/** How many marks fit before the stack starts counting instead of showing. */
+const STACK_LIMIT = 4
+
+/**
+ * Who shared a line, as overlapping marks rather than a list of names.
+ *
+ * A comma-separated list is fine for three people and unreadable for eight, and it grows the row
+ * every time the group does. This is fixed-width past four, and the active user's mark keeps its
+ * accent so you can see at a glance which lines are yours. Display only — assignment happens in
+ * the picker beside it.
+ */
+function ParticipantStack({
+  participantIds,
+  group,
+  activeUserId,
+}: {
+  participantIds: string[]
+  group: Group
+  activeUserId?: string | null
+}) {
+  if (participantIds.length === 0) return null
+  // The active user first, so their mark is never the one hidden behind the "+n".
+  const ordered = [...participantIds].sort((a, b) =>
+    a === activeUserId ? -1 : b === activeUserId ? 1 : 0,
+  )
+  const shown = ordered.slice(0, STACK_LIMIT)
+  const extra = ordered.length - shown.length
+
+  return (
+    <span className="flex shrink-0 items-center" aria-hidden="true">
+      {shown.map((id, index) => (
+        <span
+          key={id}
+          className={cn(
+            'rounded-[5px] ring-2 ring-card',
+            index > 0 && '-ml-1.5',
+          )}
+        >
+          <ProfileAvatar
+            name={group.participants.find((p) => p.id === id)?.name ?? '?'}
+            isActiveUser={!!activeUserId && id === activeUserId}
+            size={20}
+          />
+        </span>
+      ))}
+      {extra > 0 && (
+        <span className="-ml-1.5 grid h-5 min-w-5 place-items-center rounded-[5px] bg-muted px-1 font-mono text-[10px] font-semibold text-muted-foreground ring-2 ring-card">
+          +{extra}
+        </span>
+      )}
+    </span>
+  )
+}
 
 interface Props {
   group: Group
@@ -305,46 +361,48 @@ export function ItemizationBuilder({
                   </div>
                 </div>
 
-                {/* Status / Summary Row */}
-                <div className="flex items-center justify-between px-1 text-xs leading-tight min-h-[1.25rem]">
+                {/* Second line: who shared it, and what it costs you.
+                    It used to read "Alice, Bob will each pay $12.00" — a sentence that grows with
+                    the group, and a figure that is only your share when you happen to be on the
+                    line. The stack shows who without spending a line on names, and the figure is
+                    now explicitly yours: a dash when you are not on this item. */}
+                <div className="flex items-center justify-between gap-3 px-1 min-h-6">
                   {isExcluded ? (
-                    <span className="text-subtle-foreground italic flex items-center gap-1">
-                      Excluded (assign to include)
+                    <span className="text-xs text-subtle-foreground italic">
+                      {t('excludedHint')}
                     </span>
                   ) : (
                     <>
-                      <div className="text-muted-foreground truncate max-w-[70%]">
-                        <span
-                          className={cn(
-                            'font-medium',
-                            isMeInvolved
-                              ? 'text-primary font-bold'
-                              : 'text-foreground/80',
-                          )}
-                        >
+                      <div className="flex min-w-0 items-center gap-2">
+                        <ParticipantStack
+                          participantIds={participantIds}
+                          group={group}
+                          activeUserId={activeUserId}
+                        />
+                        <span className="truncate text-xs text-muted-foreground">
                           {summaryText}
                         </span>
-                        {participantIds.length > 1
-                          ? ' will each pay'
-                          : ' will pay'}
                       </div>
 
-                      {participantIds.length > 0 && itemPrice > 0 && (
-                        <div
-                          className={cn(
-                            'whitespace-nowrap transition-colors',
-                            isMeInvolved
-                              ? 'font-bold text-primary'
-                              : 'text-muted-foreground',
+                      {itemPrice > 0 && (
+                        <span className="flex shrink-0 items-baseline gap-1.5">
+                          <span className="text-xs text-subtle-foreground">
+                            {t('yourShare')}
+                          </span>
+                          {isMeInvolved ? (
+                            <Money
+                              currency={currency}
+                              amount={perPersonAmount}
+                              fractions
+                              className="text-xs text-credit"
+                              bold
+                            />
+                          ) : (
+                            <span className="font-mono text-xs text-subtle-foreground">
+                              —
+                            </span>
                           )}
-                        >
-                          {formatCurrency(
-                            currency,
-                            perPersonAmount,
-                            locale,
-                            true,
-                          )}
-                        </div>
+                        </span>
                       )}
                     </>
                   )}
@@ -399,27 +457,33 @@ export function ItemizationBuilder({
           </div>
         )}
 
-        {/* Add Item Button */}
+        {/* A row, not an 80px dashed slab. Typing a receipt in means using this repeatedly, and
+            each press used to push the line you had just filled in further off screen. The new
+            line inherits the previous line's people, because consecutive lines on a receipt are
+            usually shared by the same people — the exception is what needs the tap, not the rule. */}
         <Button
           type="button"
           variant="outline"
-          className="w-full border-dashed py-8 bg-background hover:bg-muted/50 transition-all flex flex-col gap-1"
+          data-testid="add-item"
+          className="w-full justify-center gap-2 border-dashed"
           onClick={() => {
             const nextAmount =
               unassignedRemainder > 0
                 ? Number(unassignedRemainder.toFixed(2))
                 : 0
+            const previous = watchedItems[watchedItems.length - 1]
+            const inherited = previous?.participantIds?.length
+              ? previous.participantIds
+              : group.participants.map((p) => p.id)
             append({
               name: '',
               price: nextAmount,
-              participantIds: group.participants.map((p) => p.id),
+              participantIds: inherited,
             })
           }}
         >
-          <Plus className="w-5 h-5" />
-          <span className="text-xs uppercase font-bold tracking-widest text-muted-foreground">
-            Add Item
-          </span>
+          <Plus className="w-4 h-4" />
+          {t('addLine')}
         </Button>
 
         {/* Global Items Array Error (e.g. "Items must sum to total") */}

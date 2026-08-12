@@ -14,6 +14,11 @@ type Props = {
   /** Credit / debt / settled ink. Independent of `signed`: a figure can carry one without the other. */
   colored?: boolean
   bold?: boolean
+  /**
+   * Set when `amount` is already in major units (12.50 rather than 1250). The itemisation builder
+   * works in major units throughout, because item prices are typed as decimals.
+   */
+  fractions?: boolean
   className?: string
 }
 
@@ -40,6 +45,7 @@ export function Money({
   signed = false,
   colored = false,
   bold = false,
+  fractions = false,
   className,
 }: Props) {
   const locale = useLocale()
@@ -69,8 +75,8 @@ export function Money({
         </span>
       )}
       {signed
-        ? formatCurrencyMagnitude(currency, amount, locale)
-        : formatCurrency(currency, amount, locale)}
+        ? formatCurrencyMagnitude(currency, amount, locale, fractions)
+        : formatCurrency(currency, amount, locale, fractions)}
     </span>
   )
 }

@@ -850,6 +850,16 @@ export function ExpenseForm({
     if (next === 'ITEMS') {
       // The effect above turns this into BY_AMOUNT; the mode is the itemisation's own business.
       setIsItemized(true)
+      // Land on a line to type into rather than on an empty list with an "add" button. It also
+      // keeps `isItemized` and `items.length > 0` saying the same thing, which is what makes the
+      // mode survive a reload.
+      if (form.getValues('items').length === 0) {
+        itemAppend({
+          name: '',
+          price: totalAmount || 0,
+          participantIds: group.participants.map((p) => p.id),
+        })
+      }
       return
     }
     setIsItemized(false)

@@ -341,7 +341,11 @@
       "splitEvenly": "Split evenly",
       "proportionalUnavailable": "Assign at least one item to someone first.",
       "remainderName": "Tax & service",
-      "remainderNameFor": "Tax & service · {name}"
+      "remainderNameFor": "Tax & service · {name}",
+      "yourShare": "your share",
+      "excludedHint": "Not shared by anyone — assign it to include it",
+      "sameAsAbove": "Same as above",
+      "addLine": "Add a line"
     },
     "Draft": {
       "prompt": "You have an unsaved expense from earlier.",
