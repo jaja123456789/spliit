@@ -208,6 +208,11 @@ function RecentGroupList_({
                 : 'text-debt',
             )}
           >
+            {/* The one figure in the app not in the figure face. The amount is interpolated into a
+                translated sentence ("You are owed {amount}") so that translators control the word
+                order, and next-intl only accepts a string there — `t.rich` renders a ReactNode
+                value at runtime but its own types forbid it, and all 23 locales carry `{amount}`,
+                so switching the message to tag syntax would break the 22 that are translated. */}
             {Math.abs(total) < 1
               ? t('Overall.settled')
               : t(total > 0 ? 'Overall.owedToYou' : 'Overall.youOwe', {

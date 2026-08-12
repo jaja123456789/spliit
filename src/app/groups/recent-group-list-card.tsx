@@ -255,7 +255,9 @@ export function RecentGroupListCard({
                     >
                       {Math.abs(balance) < 1
                         ? t('Card.settled')
-                        : t(balance > 0 ? 'Card.owedToYou' : 'Card.youOwe', {
+                        : // Interpolated into a translated sentence, so it stays a string and
+                          // stays in the body face. See the note in recent-group-list.tsx.
+                          t(balance > 0 ? 'Card.owedToYou' : 'Card.youOwe', {
                             amount: formatCurrency(
                               currency,
                               Math.abs(balance),
