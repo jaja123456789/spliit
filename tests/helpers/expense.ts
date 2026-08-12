@@ -141,18 +141,17 @@ export async function fillExpenseForm(
   await payerOption.waitFor({ state: 'visible', timeout: 5000 })
   await payerOption.click()
 
-  // Everything below except the date lives behind "More options", which starts closed.
-  if (options.category || options.notes || options.recurrence) {
+  // Everything below except the date and the category lives behind "More options", which starts
+  // closed.
+  if (options.notes || options.recurrence) {
     await expandMoreOptions(page)
   }
 
-  // Optional: Select category
+  // Optional: Select category. It is the icon beside the title, not a combobox behind More
+  // options — and it is an icon, so its accessible name is what identifies the selection.
   if (options.category) {
-    const categorySelects = page.locator('[role="combobox"]')
-    if ((await categorySelects.count()) >= 2) {
-      await categorySelects.nth(1).click()
-      await page.getByRole('option', { name: options.category }).click()
-    }
+    await page.getByTestId('category-trigger').click()
+    await page.getByRole('option', { name: options.category }).first().click()
   }
 
   // Optional: Set date

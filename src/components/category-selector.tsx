@@ -31,6 +31,14 @@ type Props = {
   /** Category ID to be selected by default. Overwriting this value will update current selection, too. */
   defaultValue: Category['id']
   isLoading: boolean
+  /**
+   * Replaces the default full-width combobox.
+   *
+   * The expense form puts the category next to the title, as a single icon: it is a label on the
+   * expense, not a decision the form should spend a whole row asking about. Mirrors
+   * `CurrencySelector`'s prop of the same name, for the same reason.
+   */
+  renderTrigger?: (category: Category) => React.ReactNode
 }
 
 export function CategorySelector({
@@ -38,6 +46,7 @@ export function CategorySelector({
   onValueChange,
   defaultValue,
   isLoading,
+  renderTrigger,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState<number>(defaultValue)
@@ -53,16 +62,20 @@ export function CategorySelector({
   const selectedCategory =
     categories.find((category) => category.id === value) ?? categories[0]
 
+  const trigger = renderTrigger ? (
+    renderTrigger(selectedCategory)
+  ) : (
+    <CategoryButton
+      category={selectedCategory}
+      open={open}
+      isLoading={isLoading}
+    />
+  )
+
   if (isDesktop) {
     return (
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <CategoryButton
-            category={selectedCategory}
-            open={open}
-            isLoading={isLoading}
-          />
-        </PopoverTrigger>
+        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
         <PopoverContent className="p-0" align="start">
           <CategoryCommand
             categories={categories}
@@ -79,13 +92,7 @@ export function CategorySelector({
 
   return (
     <Drawer open={open} onOpenChange={setOpen}>
-      <DrawerTrigger asChild>
-        <CategoryButton
-          category={selectedCategory}
-          open={open}
-          isLoading={isLoading}
-        />
-      </DrawerTrigger>
+      <DrawerTrigger asChild>{trigger}</DrawerTrigger>
       <DrawerContent className="p-0 max-h-[85vh]">
         <DrawerTitle className="sr-only">Select Category</DrawerTitle>
         <CategoryCommand

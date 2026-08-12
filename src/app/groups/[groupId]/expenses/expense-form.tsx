@@ -84,7 +84,15 @@ import {
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { RecurrenceRule } from '@prisma/client'
-import { Check, ChevronDown, Crown, Plus, Save, Trash2 } from 'lucide-react'
+import {
+  Check,
+  ChevronDown,
+  Crown,
+  Loader2,
+  Plus,
+  Save,
+  Trash2,
+} from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
@@ -98,6 +106,7 @@ import {
 import { match } from 'ts-pattern'
 import { DeletePopup } from '../../../../components/delete-popup'
 import { extractCategoryFromTitle } from '../../../../components/expense-form-actions'
+import { CategoryIcon } from './category-icon'
 import { ItemizationBuilder } from './itemization-builder' // Import new component
 
 // --- Helpers ---
@@ -230,6 +239,8 @@ export function ExpenseForm({
   runtimeFeatureFlags: RuntimeFeatureFlags
 }) {
   const t = useTranslations('ExpenseForm')
+  // The category trigger is an icon; its name has to come from the Categories namespace.
+  const tCategories = useTranslations('Categories')
   const locale = useLocale() as Locale
   const isCreate = expense === undefined
   const searchParams = useSearchParams()
@@ -438,9 +449,6 @@ export function ExpenseForm({
   )
   const isIncome = totalAmount < 0
   const isMultiPayer = payerFields.length > 1
-  // How wide the hero amount box needs to be, in glyphs. Never below 4, so an empty field is the
-  // width of its own "0.00" placeholder rather than collapsing to nothing.
-  const amountGlyphs = Math.max(4, String(paidByValues[0]?.amount ?? '').length)
   const sExpense = isIncome ? 'Income' : 'Expense'
   const maxAmount = Math.max(...paidByValues.map((p) => Number(p.amount) || 0))
 
@@ -1027,27 +1035,108 @@ export function ExpenseForm({
 
         <Card>
           <CardContent className="grid sm:grid-cols-2 gap-6 pt-6">
-            {/* The amount is what this screen exists for, so it is the thing you land on. It used
-                to be a 100px box wedged beside a select, at the same weight as the notes field. */}
-            {/* `min-w-0`: a grid item's min-content contribution sizes its track, so without it
-                `max-w-full` on the amount below resolves against a track the amount itself just
-                widened, and a long enough figure scrolls the whole page sideways instead of
-                scrolling inside its own box. */}
-            <div className="col-span-2 flex min-w-0 flex-col items-center gap-2 pb-2">
+            {/* Title over amount, each with the control that qualifies it in a tinted square to
+                its left, over a rule. The amount used to be a 48px figure centred on its own line
+                with the title centred under it — which is the concept's hero, and the concept's
+                hero is a statement of a total already agreed, not a field you are filling in. On
+                a form it read as a display, and it left the two things you actually type
+                competing for the middle of the screen.
+
+                The category and the currency each sit beside the field they qualify. Both were a
+                row apiece further down before, the category behind More options — two taps and a
+                scroll from the words that determine it. */}
+            <div className="col-span-2 flex min-w-0 flex-col gap-4">
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem className="space-y-0">
+                    <FormLabel className="sr-only">
+                      {t(`${sExpense}.TitleField.label`)}
+                    </FormLabel>
+                    <div className="flex items-center gap-3">
+                      <FormField
+                        control={form.control}
+                        name="category"
+                        render={({ field: categoryField }) => (
+                          <CategorySelector
+                            categories={categories}
+                            defaultValue={categoryField.value}
+                            onValueChange={categoryField.onChange}
+                            isLoading={isCategoryLoading}
+                            renderTrigger={(category) => (
+                              <button
+                                type="button"
+                                data-testid="category-trigger"
+                                title={tCategories(
+                                  `${category.grouping}.${category.name}`,
+                                )}
+                                aria-label={`${t(
+                                  'categoryField.label',
+                                )}: ${tCategories(
+                                  `${category.grouping}.${category.name}`,
+                                )}`}
+                                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
+                              >
+                                {isCategoryLoading ? (
+                                  <Loader2 className="h-5 w-5 animate-spin" />
+                                ) : (
+                                  <CategoryIcon
+                                    category={category}
+                                    className="h-5 w-5"
+                                  />
+                                )}
+                              </button>
+                            )}
+                          />
+                        )}
+                      />
+                      <div className="min-w-0 flex-1 border-b border-input transition-colors focus-within:border-primary">
+                        <FormControl>
+                          <Input
+                            placeholder={t(
+                              `${sExpense}.TitleField.placeholder`,
+                            )}
+                            className="h-11 border-0 bg-transparent px-1 text-lg shadow-none placeholder:font-normal placeholder:text-subtle-foreground focus-visible:ring-0"
+                            {...field}
+                            onBlur={async () => {
+                              field.onBlur()
+                              if (
+                                runtimeFeatureFlags.enableCategoryExtract &&
+                                field.value
+                              ) {
+                                setCategoryLoading(true)
+                                try {
+                                  const { categoryId } =
+                                    await extractCategoryFromTitle(field.value)
+                                  form.setValue('category', categoryId)
+                                } finally {
+                                  setCategoryLoading(false)
+                                }
+                              }
+                            }}
+                          />
+                        </FormControl>
+                      </div>
+                    </div>
+                    <FormMessage className="mt-1" />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="paidBy.0.amount"
                 render={({ field }) => (
-                  <FormItem className="w-full space-y-0">
+                  <FormItem className="space-y-0">
                     <FormLabel className="sr-only">
                       {t(`${sExpense}.amountLabel`)}
                     </FormLabel>
-                    <div className="flex items-baseline justify-center gap-1">
-                      {/* The symbol is the currency control. An expense can be entered in another
-                          currency than the group's, and that lived as a Select buried in More
-                          options - two taps and a scroll away from the number it applies to.
-                          Inert for a group with a custom symbol: there is no exchange rate to
-                          convert from, which is why the old Select was disabled there too. */}
+                    <div className="flex items-center gap-3">
+                      {/* An expense can be entered in another currency than the group's, and that
+                          lived as a Select buried in More options. Inert for a group with a custom
+                          symbol: there is no exchange rate to convert from, which is why the old
+                          Select was disabled there too. */}
                       {conversionAvailable ? (
                         <FormField
                           control={form.control}
@@ -1063,7 +1152,7 @@ export function ExpenseForm({
                                   type="button"
                                   data-testid="currency-trigger"
                                   title={t('changeCurrency')}
-                                  className="rounded-md px-1 font-mono text-2xl font-medium text-subtle-foreground transition-colors hover:bg-muted hover:text-foreground"
+                                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted font-mono text-lg font-medium text-muted-foreground transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
                                 >
                                   {expenseCurrency.symbol || group.currency}
                                 </button>
@@ -1072,109 +1161,55 @@ export function ExpenseForm({
                           )}
                         />
                       ) : (
-                        <span className="px-1 font-mono text-2xl font-medium text-subtle-foreground">
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted font-mono text-lg font-medium text-muted-foreground">
                           {expenseCurrency.symbol || group.currency}
                         </span>
                       )}
-                      {isMultiPayer ? (
-                        // Only several payers make the total a derived figure: it is their sum, so
-                        // there is nothing to type into it. An itemised bill is *not* such a case —
-                        // the total is what was paid, the lines are how it was shared, and the
-                        // difference between them is the tax the strip below offers to split. This
-                        // used to be derived for itemised expenses too, which left the one number
-                        // the reader typed invisible and uneditable on every itemised expense they
-                        // reopened.
-                        <span
-                          data-testid="derived-total"
-                          className="font-mono text-5xl font-semibold tabular-nums tracking-tight"
-                        >
-                          {formatCurrency(
-                            expenseCurrency,
-                            effectiveTotal,
-                            locale,
-                            true,
-                          ).replace(/^[^\d-]+/, '')}
-                        </span>
-                      ) : (
-                        <FormControl>
-                          {/* `h-auto` because InputGroup is `h-9` and this puts a 48px input in it:
-                              the text overflowed its own box and long amounts scrolled inside a
-                              124px window.
-
-                              The width tracks the value instead of being a fixed 12rem box. At a
-                              fixed width the centred digits sat ~90px from the symbol and the
-                              calculator floated off to the right, so the three read as three
-                              scattered controls rather than one figure. Mono + `tabular-nums`
-                              makes `1ch` exactly one glyph; `tracking-tight` is -0.025em per
-                              character, subtracted back out so the box ends where the digits do.
-                              `max-w-full` because a width that tracks the value has no ceiling of
-                              its own: measured at 412px, fourteen characters pushed the card to
-                              449px and scrolled the whole page sideways. Past that it goes back to
-                              scrolling inside its own box, which is the right trade at an amount
-                              nobody splits a bill for. */}
-                          <CalculatorInput
-                            placeholder="0.00"
-                            className="h-auto w-auto max-w-full border-0 bg-transparent dark:bg-transparent shadow-none"
-                            inputClassName="h-auto min-w-0 max-w-full border-0 bg-transparent p-0 text-left font-mono text-5xl font-semibold leading-none tabular-nums tracking-tight shadow-none focus-visible:ring-0"
-                            {...field}
-                            style={{
-                              width: `calc(${amountGlyphs}ch - ${
-                                amountGlyphs * 0.025
-                              }em)`,
-                            }}
-                            onValueChange={(val) =>
-                              handlePayerAmountChange(0, val)
-                            }
-                          />
-                        </FormControl>
-                      )}
+                      <div className="min-w-0 flex-1 border-b border-input transition-colors focus-within:border-primary">
+                        {isMultiPayer ? (
+                          // Only several payers make the total a derived figure: it is their sum,
+                          // so there is nothing to type into it. An itemised bill is not such a
+                          // case — the total is what was paid, the lines are how it was shared,
+                          // and the difference between them is the tax the strip below offers to
+                          // split. This used to be derived for itemised expenses too, which left
+                          // the one number the reader typed invisible and uneditable on every
+                          // itemised expense they reopened.
+                          <span
+                            data-testid="derived-total"
+                            className="flex h-11 items-center px-1 font-mono text-3xl font-semibold tabular-nums"
+                          >
+                            {formatCurrency(
+                              expenseCurrency,
+                              effectiveTotal,
+                              locale,
+                              true,
+                            ).replace(/^[^\d-]+/, '')}
+                          </span>
+                        ) : (
+                          <FormControl>
+                            <CalculatorInput
+                              placeholder="0.00"
+                              className="h-11 w-full border-0 bg-transparent shadow-none dark:bg-transparent"
+                              inputClassName="h-11 w-full border-0 bg-transparent px-1 font-mono text-3xl font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                              {...field}
+                              onValueChange={(val) =>
+                                handlePayerAmountChange(0, val)
+                              }
+                            />
+                          </FormControl>
+                        )}
+                      </div>
                     </div>
                     {isMultiPayer && (
-                      <p className="mt-1 text-center text-xs text-muted-foreground">
+                      <p className="mt-1 text-xs text-muted-foreground">
                         {t('derivedFromPayers', { count: payerFields.length })}
                       </p>
                     )}
-                    <FormMessage className="text-center" />
+                    <FormMessage className="mt-1" />
                   </FormItem>
                 )}
               />
             </div>
-
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem className="col-span-2 -mt-4">
-                  <FormLabel className="sr-only">
-                    {t(`${sExpense}.TitleField.label`)}
-                  </FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder={t(`${sExpense}.TitleField.placeholder`)}
-                      className="h-auto border-0 bg-transparent p-0 text-center text-base shadow-none placeholder:font-normal placeholder:text-subtle-foreground focus-visible:ring-0"
-                      {...field}
-                      onBlur={async () => {
-                        field.onBlur()
-                        if (
-                          runtimeFeatureFlags.enableCategoryExtract &&
-                          field.value
-                        ) {
-                          setCategoryLoading(true)
-                          try {
-                            const { categoryId } =
-                              await extractCategoryFromTitle(field.value)
-                            form.setValue('category', categoryId)
-                          } finally {
-                            setCategoryLoading(false)
-                          }
-                        }
-                      }}
-                    />
-                  </FormControl>
-                  <FormMessage className="text-center" />
-                </FormItem>
-              )}
-            />
 
             {/* Paid By Section.
 
@@ -1475,25 +1510,8 @@ export function ExpenseForm({
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="grid sm:grid-cols-2 gap-6 pt-4">
-                <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('categoryField.label')}</FormLabel>
-                      <CategorySelector
-                        categories={categories}
-                        defaultValue={field.value}
-                        onValueChange={field.onChange}
-                        isLoading={isCategoryLoading}
-                      />
-                      <FormDescription>
-                        {t(`${sExpense}.categoryFieldDescription`)}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* The category control is the icon beside the title now. Two controls writing
+                    one field is the mistake 09841a4 fixed for the split mode. */}
 
                 {/* The currency control is the symbol beside the amount now. Two controls
                     writing one field is the mistake 09841a4 fixed for the split mode; it does

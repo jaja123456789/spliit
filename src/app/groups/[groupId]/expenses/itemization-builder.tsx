@@ -358,7 +358,7 @@ export function ItemizationBuilder({
                 key={field.id}
                 data-testid={`item-row-${index}`}
                 className={cn(
-                  'border-b px-6 transition-colors',
+                  'border-b border-input px-6 transition-colors',
                   isRowSelected && 'bg-primary/5',
                   isOpen && 'bg-muted/30',
                   // The excluded line stays legible — it is still a line on the receipt, and its
@@ -379,8 +379,8 @@ export function ItemizationBuilder({
                   <div className="min-w-0 flex-1">
                     <div
                       className={cn(
-                        'flex items-center gap-2.5 pt-2.5',
-                        inlineMarks ? 'pb-2.5' : 'pb-0',
+                        'flex items-center gap-2.5 pt-3',
+                        inlineMarks ? 'pb-3' : 'pb-0.5',
                       )}
                     >
                       {/* Name and price are the receipt line. Borderless: a bordered box around each
@@ -527,7 +527,7 @@ export function ItemizationBuilder({
                         aria-expanded={isOpen}
                         disabled={isSelecting}
                         onClick={() => setOpenRowId(isOpen ? null : field.id)}
-                        className="-mx-2 flex min-h-[36px] w-full items-center gap-2 rounded-md px-2 py-1 text-left transition-colors hover:bg-muted/60 disabled:opacity-100 disabled:hover:bg-transparent"
+                        className="-mx-2 mb-1 flex min-h-[40px] w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted/60 disabled:opacity-100 disabled:hover:bg-transparent"
                       >
                         {/* The stack goes when the row is open: the grid below is the same set of
                         people at four times the size, and the concept's open row drops it too. */}

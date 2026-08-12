@@ -1,7 +1,6 @@
 import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { createGroupViaAPI } from '../helpers/batch-api'
-import { expandMoreOptions } from '../helpers/expense'
 
 test('Theme selection persists after reload', async ({ page }) => {
   await page.goto('/groups')
@@ -54,13 +53,11 @@ test('Expense displays with selected category', async ({ page }) => {
   await payerCombobox.click()
   await page.getByRole('option', { name: 'Alice' }).click()
 
-  // Verify default category is General and select a different one (Entertainment)
-  await expandMoreOptions(page)
-  const categoryCombobox = page
-    .getByRole('combobox')
-    .filter({ hasText: 'General' })
-  await expect(categoryCombobox).toBeVisible()
-  await categoryCombobox.click()
+  // The category is the icon beside the title. It carries no text, so the selection lives in its
+  // accessible name — which is also the only thing a screen reader or a hovering cursor gets.
+  const categoryTrigger = page.getByTestId('category-trigger')
+  await expect(categoryTrigger).toHaveAttribute('title', 'General')
+  await categoryTrigger.click()
 
   // Select Entertainment category
   const entertainmentOption = page.getByRole('option', {
@@ -106,14 +103,8 @@ test('Default category is General', async ({ page }) => {
   await createExpenseLink.click()
   await page.waitForURL(/\/groups\/[^/]+\/expenses\/create$/)
 
-  // Verify the category field defaults to "General"
-  await expandMoreOptions(page)
-  const categoryCombobox = page
-    .getByRole('combobox')
-    .filter({ hasText: 'General' })
-  await expect(categoryCombobox).toBeVisible()
-
-  // Verify it contains the text "General"
-  const categoryText = await categoryCombobox.textContent()
-  expect(categoryText).toContain('General')
+  // Verify the category defaults to "General"
+  const categoryTrigger = page.getByTestId('category-trigger')
+  await expect(categoryTrigger).toBeVisible()
+  await expect(categoryTrigger).toHaveAttribute('title', 'General')
 })
