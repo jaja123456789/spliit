@@ -1786,6 +1786,9 @@ function PaidForList({
 }) {
   const t = useTranslations('ExpenseForm')
   const locale = useLocale() as Locale
+  // Read here rather than threading a prop down: the mark is the only thing that needs it, and the
+  // hook is a localStorage read the parent already does.
+  const activeUserId = useActiveUser(group.id)
   const paidForValues = useWatch({ control: form.control, name: 'paidFor' })
   const paidByValues = useWatch({ control: form.control, name: 'paidBy' })
   const isReimbursement = useWatch({
@@ -1903,7 +1906,11 @@ function PaidForList({
                 />
               </FormControl>
               <FormLabel className="flex flex-1 items-center gap-3 text-sm font-normal">
-                <ProfileAvatar name={name} size={28} fontSize="text-[11px]" />
+                <ProfileAvatar
+                  name={name}
+                  isActiveUser={activeUserId === id}
+                  size={28}
+                />
                 <span className="flex-1">{name}</span>
                 {isSelected &&
                   !isReimbursement &&

@@ -52,8 +52,8 @@ export function BalancesList({
           >
             <ProfileAvatar
               name={participant.name}
+              isActiveUser={isYou}
               size={40}
-              fontSize="text-sm"
             />
 
             <div className="flex-1 min-w-0 flex flex-col gap-1">
