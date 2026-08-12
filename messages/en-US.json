@@ -385,7 +385,10 @@
     "itemizeField": {
       "label": "Split by item",
       "description": "Enter each line of the receipt and choose who shared it."
-    }
+    },
+    "derivedFromPayers": "{count, plural, one {sum of # payer} other {sum of # payers}}",
+    "derivedFromItems": "sum of the lines that are shared",
+    "changeCurrency": "Change currency"
   },
   "ExpenseDocumentsInput": {
     "TooBigToast": {

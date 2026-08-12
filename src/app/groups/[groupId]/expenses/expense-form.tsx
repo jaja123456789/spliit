@@ -5,7 +5,6 @@ import { CurrencySelector } from '@/components/currency-selector'
 import { ExpenseDocumentsInput } from '@/components/expense-documents-input'
 import { ProfileAvatar } from '@/components/profile-avatar'
 import { SubmitButton } from '@/components/submit-button'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CalculatorInput } from '@/components/ui/calculator-input'
 import {
@@ -1032,17 +1031,48 @@ export function ExpenseForm({
                       {t(`${sExpense}.amountLabel`)}
                     </FormLabel>
                     <div className="flex items-baseline justify-center gap-1">
-                      {/* Mono here too. This is the largest figure in the app; leaving it in the
-                          body face made the one number the screen exists for the only one not
-                          spoken in the figure voice — and the typed and derived variants below
-                          have to match each other exactly, which two faces cannot. */}
-                      <span className="text-3xl font-medium font-mono text-muted-foreground">
-                        {expenseCurrency.symbol || group.currency}
-                      </span>
+                      {/* The symbol is the currency control. An expense can be entered in another
+                          currency than the group's, and that lived as a Select buried in More
+                          options - two taps and a scroll away from the number it applies to.
+                          Inert for a group with a custom symbol: there is no exchange rate to
+                          convert from, which is why the old Select was disabled there too. */}
+                      {conversionAvailable ? (
+                        <FormField
+                          control={form.control}
+                          name="originalCurrency"
+                          render={({ field: currencyField }) => (
+                            <CurrencySelector
+                              currencies={defaultCurrencyList(locale, '')}
+                              defaultValue={currencyField.value ?? ''}
+                              isLoading={false}
+                              onValueChange={currencyField.onChange}
+                              renderTrigger={() => (
+                                <button
+                                  type="button"
+                                  data-testid="currency-trigger"
+                                  title={t('changeCurrency')}
+                                  className="rounded-md px-1 font-mono text-3xl font-medium text-muted-foreground underline decoration-dotted underline-offset-4 transition-colors hover:text-foreground"
+                                >
+                                  {expenseCurrency.symbol || group.currency}
+                                </button>
+                              )}
+                            />
+                          )}
+                        />
+                      ) : (
+                        <span className="font-mono text-3xl font-medium text-muted-foreground">
+                          {expenseCurrency.symbol || group.currency}
+                        </span>
+                      )}
                       {isMultiPayer || isItemized ? (
                         // With several payers or an itemised bill the total is derived, so it is
-                        // shown rather than typed — the parts are edited below.
-                        <span className="text-5xl font-semibold font-mono tabular-nums tracking-tight">
+                        // shown rather than typed. It used to look exactly like the editable one,
+                        // so the calculator button simply vanishing read as a fault - the caption
+                        // below says where the figure comes from instead.
+                        <span
+                          data-testid="derived-total"
+                          className="font-mono text-5xl font-semibold tabular-nums tracking-tight"
+                        >
                           {formatCurrency(
                             expenseCurrency,
                             effectiveTotal,
@@ -1052,10 +1082,13 @@ export function ExpenseForm({
                         </span>
                       ) : (
                         <FormControl>
+                          {/* `h-auto` because InputGroup is `h-9` and this puts a 48px input in it:
+                              the text overflowed its own box and long amounts scrolled inside a
+                              124px window. */}
                           <CalculatorInput
                             placeholder="0.00"
-                            className="w-auto max-w-[10rem] border-0 bg-transparent shadow-none"
-                            inputClassName="h-auto w-full border-0 bg-transparent p-0 text-center text-5xl font-semibold font-mono leading-none tabular-nums tracking-tight shadow-none focus-visible:ring-0"
+                            className="h-auto w-auto max-w-[12rem] border-0 bg-transparent shadow-none"
+                            inputClassName="h-auto w-full border-0 bg-transparent p-0 text-center font-mono text-5xl font-semibold leading-none tabular-nums tracking-tight shadow-none focus-visible:ring-0"
                             {...field}
                             onValueChange={(val) =>
                               handlePayerAmountChange(0, val)
@@ -1064,6 +1097,15 @@ export function ExpenseForm({
                         </FormControl>
                       )}
                     </div>
+                    {(isMultiPayer || isItemized) && (
+                      <p className="mt-1 text-center text-xs text-muted-foreground">
+                        {isItemized
+                          ? t('derivedFromItems')
+                          : t('derivedFromPayers', {
+                              count: payerFields.length,
+                            })}
+                      </p>
+                    )}
                     <FormMessage className="text-center" />
                   </FormItem>
                 )}
@@ -1108,17 +1150,7 @@ export function ExpenseForm({
 
             {/* Paid By Section */}
             <div className="col-span-2">
-              <FormLabel className="flex items-center gap-2">
-                {t(`${sExpense}.paidByField.label`)}
-                {isMultiPayer && (
-                  <Badge
-                    variant="secondary"
-                    className="text- h-4 px-1 uppercase tracking-tighter"
-                  >
-                    Multi-Payer Mode
-                  </Badge>
-                )}
-              </FormLabel>
+              <FormLabel>{t(`${sExpense}.paidByField.label`)}</FormLabel>
 
               <div className="flex flex-col gap-2 mt-2">
                 {payerFields.map((field, index) => {
@@ -1257,35 +1289,8 @@ export function ExpenseForm({
                   {/* The excluded amount used to be repeated here in amber, next to the itemisation
                       sheet that already reports it. One place, at the foot of that sheet. */}
 
-                  {/* Only worth showing when it differs from the hero: several payers summing to
-                      a total. An itemised bill reports its own totals in its strip. */}
-                  <div
-                    className={cn(
-                      !isMultiPayer && 'hidden',
-                      'text-right font-bold tabular-nums px-3 py-1 rounded-md transition-colors bg-muted text-foreground',
-                      // Red means "there is something to fix", so it follows validation rather
-                      // than the sign of the total. The previous `totalAmount <= 0` painted a
-                      // pristine form red before a single keystroke, and painted every legitimate
-                      // income expense red too — income is a supported case, not a mistake, and
-                      // `isIncome` elsewhere depends on exactly that negative total.
-                      // (`isDirty` is no good here either: the amount field round-trips through a
-                      // string, so the form reports itself dirty on mount without any input.)
-                      form.formState.errors.paidBy ||
-                        form.formState.errors.amount
-                        ? 'text-destructive'
-                        : '',
-                    )}
-                  >
-                    <span className="text-xs uppercase tracking-wider mr-2 align-middle">
-                      {t('groupExpense')}:
-                    </span>
-                    {formatCurrency(
-                      expenseCurrency,
-                      effectiveTotal,
-                      locale,
-                      true,
-                    )}
-                  </div>
+                  {/* "FINAL GROUP SPLIT" used to sit here, repeating the hero a few
+                      centimetres above it. The hero captions itself now. */}
                   {conversionRequired && (
                     <div className="text-right text-xs tabular-nums text-muted-foreground">
                       ≈{' '}
@@ -1426,40 +1431,9 @@ export function ExpenseForm({
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="originalCurrency"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
-                        {t(`${sExpense}.currencyField.label`)}
-                      </FormLabel>
-                      <FormControl>
-                        {group.currencyCode ? (
-                          <CurrencySelector
-                            currencies={defaultCurrencyList(locale, '')}
-                            defaultValue={field.value ?? ''}
-                            isLoading={false}
-                            onValueChange={field.onChange}
-                          />
-                        ) : (
-                          <Input
-                            className="text-base"
-                            disabled
-                            {...field}
-                            value={field.value ?? ''}
-                            placeholder={group.currency}
-                          />
-                        )}
-                      </FormControl>
-                      <FormDescription>
-                        {t(`${sExpense}.currencyField.description`)}{' '}
-                        {!group.currencyCode && t('conversionUnavailable')}
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {/* The currency control is the symbol beside the amount now. Two controls
+                    writing one field is the mistake 09841a4 fixed for the split mode; it does
+                    not become a different mistake one section further down. */}
                 <div
                   className={cn(
                     'col-span-2 sm:col-span-1 space-y-2',

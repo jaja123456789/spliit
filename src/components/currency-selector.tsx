@@ -30,6 +30,12 @@ type Props = {
   /** Currency code to be selected by default. Overwriting this value will update current selection, too. */
   defaultValue: Currency['code']
   isLoading: boolean
+  /**
+   * Replaces the default outline button. The expense form uses the currency symbol beside the
+   * amount as the trigger, because that is the thing the currency applies to; a full-width combobox
+   * makes no sense there.
+   */
+  renderTrigger?: (currency: Currency) => React.ReactNode
 }
 
 export function CurrencySelector({
@@ -37,6 +43,7 @@ export function CurrencySelector({
   onValueChange,
   defaultValue,
   isLoading,
+  renderTrigger,
 }: Props) {
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState<string>(defaultValue)
@@ -57,11 +64,13 @@ export function CurrencySelector({
     return (
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          <CurrencyButton
-            currency={selectedCurrency}
-            open={open}
-            isLoading={isLoading}
-          />
+          {renderTrigger?.(selectedCurrency) ?? (
+            <CurrencyButton
+              currency={selectedCurrency}
+              open={open}
+              isLoading={isLoading}
+            />
+          )}
         </PopoverTrigger>
         <PopoverContent className="p-0" align="start">
           <CurrencyCommand
@@ -80,11 +89,13 @@ export function CurrencySelector({
   return (
     <Drawer open={open} onOpenChange={setOpen}>
       <DrawerTrigger asChild>
-        <CurrencyButton
-          currency={selectedCurrency}
-          open={open}
-          isLoading={isLoading}
-        />
+        {renderTrigger?.(selectedCurrency) ?? (
+          <CurrencyButton
+            currency={selectedCurrency}
+            open={open}
+            isLoading={isLoading}
+          />
+        )}
       </DrawerTrigger>
       <DrawerContent className="p-0">
         <DrawerTitle className="sr-only">Select Currency</DrawerTitle>
