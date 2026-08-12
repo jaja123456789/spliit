@@ -416,7 +416,7 @@ export function ItemizationBuilder({
                           <CalculatorInput
                             {...field}
                             placeholder="0.00"
-                            className="h-8 w-full border-0 bg-transparent shadow-none"
+                            className="h-8 w-full border-0 bg-transparent dark:bg-transparent shadow-none"
                             inputClassName="h-8 border-0 bg-transparent px-0 text-right font-mono text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
                             onValueChange={(val) => {
                               field.onChange(val)

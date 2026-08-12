@@ -1105,7 +1105,7 @@ export function ExpenseForm({
                               character, subtracted back out so the box ends where the digits do. */}
                           <CalculatorInput
                             placeholder="0.00"
-                            className="h-auto w-auto border-0 bg-transparent shadow-none"
+                            className="h-auto w-auto border-0 bg-transparent dark:bg-transparent shadow-none"
                             inputClassName="h-auto border-0 bg-transparent p-0 text-left font-mono text-5xl font-semibold leading-none tabular-nums tracking-tight shadow-none focus-visible:ring-0"
                             {...field}
                             style={{
