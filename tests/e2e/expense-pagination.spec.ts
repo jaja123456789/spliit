@@ -175,10 +175,14 @@ test.describe('Expense List Pagination', () => {
     await expect(
       page.getByRole('heading', { name: 'Group total' }),
     ).toBeVisible()
+    // An empty group leads with inviting the others rather than with a sentence about the absence
+    // of expenses; adding the first one is still offered, just not first.
+    await expect(page.getByText('Nothing here yet')).toBeVisible()
     await expect(
-      page.getByText(
-        'Your group doesn’t contain any expense yet. Create the first one',
-      ),
+      page.getByRole('button', { name: /invite the others/i }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('link', { name: 'Create the first one' }),
     ).toBeVisible()
   })
 

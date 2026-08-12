@@ -2,6 +2,7 @@
 import { ExpenseCard } from '@/app/groups/[groupId]/expenses/expense-card'
 import { getGroupExpensesAction } from '@/app/groups/[groupId]/expenses/expense-list-fetch-action'
 import { ExpenseListTotal } from '@/app/groups/[groupId]/expenses/expense-list-total'
+import { ShareButton } from '@/app/groups/[groupId]/share-button'
 import { Button } from '@/components/ui/button'
 import { SearchBar } from '@/components/ui/search-bar'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -88,10 +89,16 @@ export function ExpenseList({ actions }: { actions?: ReactNode }) {
   return (
     <>
       <ExpenseListTotal actions={actions} />
-      <SearchBar onValueChange={(value) => setSearchText(value)} />
+      {/* The search box is rendered by the list, not above it: a group with nothing in it should
+          not offer to search it. Passed down rather than hoisted so that a search returning no
+          results still keeps the box — otherwise the control would vanish under the fingers of
+          whoever just typed into it. */}
       <ExpenseListForSearch
         groupId={groupId}
         searchText={debouncedSearchText}
+        searchBar={
+          <SearchBar onValueChange={(value) => setSearchText(value)} />
+        }
       />
     </>
   )
@@ -100,9 +107,11 @@ export function ExpenseList({ actions }: { actions?: ReactNode }) {
 const ExpenseListForSearch = ({
   groupId,
   searchText,
+  searchBar,
 }: {
   groupId: string
   searchText: string
+  searchBar: ReactNode
 }) => {
   const utils = trpc.useUtils()
   const { group } = useCurrentGroup()
@@ -114,6 +123,7 @@ const ExpenseListForSearch = ({
   }, [utils])
 
   const t = useTranslations('Expenses')
+  const tEmpty = useTranslations('Expenses.EmptyGroup')
   const { ref: loadingRef, inView } = useInView()
 
   const {
@@ -138,22 +148,50 @@ const ExpenseListForSearch = ({
     [expenses],
   )
 
-  if (isLoading) return <ExpensesLoading />
+  if (isLoading)
+    return (
+      <>
+        {searchBar}
+        <ExpensesLoading />
+      </>
+    )
 
+  // A search that found nothing is not an empty group, and must not be answered with "invite the
+  // others" — the box stays, so the search can be changed.
+  if (expenses.length === 0 && searchText)
+    return (
+      <>
+        {searchBar}
+        <p className="px-4 sm:px-6 py-10 text-center text-sm text-muted-foreground">
+          {t('noResults', { search: searchText })}
+        </p>
+      </>
+    )
+
+  // A group with no expenses is nearly always a group nobody has been invited to yet, so that is
+  // what it offers — rather than a sentence about the absence of expenses under a search box that
+  // has nothing to search. Adding an expense stays available; it is just not the first move.
   if (expenses.length === 0)
     return (
-      <p className="px-6 text-sm py-6">
-        {t('noExpenses')}{' '}
-        <Button variant="link" asChild className="-m-4">
-          <Link href={`/groups/${groupId}/expenses/create`}>
-            {t('createFirst')}
-          </Link>
-        </Button>
-      </p>
+      <div className="px-4 sm:px-6 py-10 text-center">
+        <p className="text-base font-medium">{tEmpty('title')}</p>
+        <p className="mx-auto mt-1 max-w-xs text-sm text-muted-foreground">
+          {tEmpty('inviteHint')}
+        </p>
+        <div className="mt-5 flex flex-col items-center gap-2">
+          {group && <ShareButton group={group} label={tEmpty('invite')} />}
+          <Button variant="link" asChild>
+            <Link href={`/groups/${groupId}/expenses/create`}>
+              {t('createFirst')}
+            </Link>
+          </Button>
+        </div>
+      </div>
     )
 
   return (
     <>
+      {searchBar}
       {Object.values(EXPENSE_GROUPS).map((expenseGroup: string) => {
         let groupExpenses = groupedExpensesByDate[expenseGroup]
         if (!groupExpenses || groupExpenses.length === 0) return null

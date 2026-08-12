@@ -1,9 +1,10 @@
 'use client'
 
-import { useToast } from '@/components/ui/use-toast'
+import { Button } from '@/components/ui/button'
 import { trpc } from '@/trpc/client'
 import { useTranslations } from 'next-intl'
-import { PropsWithChildren, useEffect } from 'react'
+import Link from 'next/link'
+import { PropsWithChildren } from 'react'
 import { CurrentGroupProvider } from './current-group-context'
 import { GroupHeader } from './group-header'
 import { SaveGroupLocally } from './save-recent-group'
@@ -14,16 +15,22 @@ export function GroupLayoutClient({
 }: PropsWithChildren<{ groupId: string }>) {
   const { data, isLoading } = trpc.groups.get.useQuery({ groupId })
   const t = useTranslations('Groups.NotFound')
-  const { toast } = useToast()
 
-  useEffect(() => {
-    if (data && !data.group) {
-      toast({
-        description: t('text'),
-        variant: 'destructive',
-      })
-    }
-  }, [data, toast, t])
+  // A group can genuinely disappear — deletion shipped, and a shared link can be stale. This used
+  // to render the whole group: header, tab strip, an Expenses tab, a Balances tab, all of them
+  // empty, with a red toast that scrolled away after a few seconds. Say it on the page instead,
+  // and offer the one thing that can still be done from here.
+  if (data && !data.group) {
+    return (
+      <div className="mx-auto max-w-md px-4 py-16 text-center">
+        <h1 className="text-xl font-semibold tracking-tight">{t('title')}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{t('description')}</p>
+        <Button asChild className="mt-6">
+          <Link href="/groups">{t('link')}</Link>
+        </Button>
+      </div>
+    )
+  }
 
   const props =
     isLoading || !data?.group

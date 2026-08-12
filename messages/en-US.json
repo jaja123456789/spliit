@@ -44,7 +44,13 @@
       "earlierThisYear": "Earlier this year",
       "lastYear": "Last year",
       "older": "Older"
-    }
+    },
+    "EmptyGroup": {
+      "title": "Nothing here yet",
+      "invite": "Invite the others",
+      "inviteHint": "Share the link so everyone can add what they paid for."
+    },
+    "noResults": "No expense matches “{search}”."
   },
   "ExpenseCard": {
     "paidBy": "Paid by <strong>{paidBy}</strong> for <paidFor></paidFor>",
@@ -119,7 +125,9 @@
     },
     "NotFound": {
       "text": "This group does not exist.",
-      "link": "Go to recently visited groups"
+      "link": "Go to recently visited groups",
+      "title": "This group no longer exists",
+      "description": "Someone deleted it, or the link was wrong. Nothing here can be recovered from this device."
     },
     "Overall": {
       "all": "Across all your groups",
