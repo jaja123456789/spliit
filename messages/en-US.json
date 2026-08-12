@@ -429,7 +429,22 @@
       "title": "Error while uploading document",
       "description": "Something wrong happened when uploading the document. Please retry later or select a different file.",
       "retry": "Retry"
-    }
+    },
+    "reviewTitle": "Check what was read",
+    "reviewHint": "Reading a receipt is a guess. Correct anything wrong on the next screen.",
+    "preview": "Receipt preview",
+    "fieldTitle": "Title",
+    "fieldAmount": "Total",
+    "fieldDate": "Date",
+    "fieldCategory": "Category",
+    "fieldItems": "Lines",
+    "itemCount": "{count, plural, one {# line} other {# lines}}",
+    "noItems": "None read",
+    "back": "Back",
+    "linesMatch": "The lines add up to the total.",
+    "linesShort": "The lines add up to {sum}, which is {difference} less than the total. Usually tax and service — you can split it on the next screen.",
+    "linesOver": "The lines add up to {sum}, which is {difference} more than the total. Something was probably read twice.",
+    "linesNone": "No lines were read, so only the total is going through."
   },
   "Balances": {
     "title": "Balances",

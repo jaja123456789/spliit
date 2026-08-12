@@ -27,6 +27,7 @@ import { useToast } from '@/components/ui/use-toast'
 import { Locale } from '@/i18n/request'
 import { getCurrency, normalizeCurrencyCode } from '@/lib/currency'
 import { useMediaQuery } from '@/lib/hooks'
+import { checkReceiptLines } from '@/lib/receipt-lines'
 import {
   FROM_SHARE_PARAM,
   clearPendingShareImage,
@@ -34,6 +35,7 @@ import {
   readPendingShareImage,
 } from '@/lib/share-target'
 import {
+  cn,
   formatCurrency,
   formatDate,
   formatFileSize,
@@ -42,8 +44,10 @@ import {
 import { trpc } from '@/trpc/client'
 import {
   Camera,
+  Check,
   FileQuestion,
   ImagePlus,
+  Info,
   Loader2,
   Receipt,
   Trash2,
@@ -365,6 +369,19 @@ function ReceiptDialogContent({
     ? getCurrency(receiptCurrencyCode, locale as Locale)
     : undefined
 
+  // Extracted so the arithmetic is testable — see receipt-lines.test.ts, which covers the
+  // shortfall, the double-read, sub-unit rounding, and a currency with no minor unit.
+  const linesCheck =
+    receiptInfo && group
+      ? checkReceiptLines(
+          Number(receiptInfo.amount) || 0,
+          (receiptInfo.items ?? []).map((item) => Number(item.price) || 0),
+          receiptCurrency ?? getCurrencyFromGroup(group),
+        )
+      : null
+  const linesCurrency =
+    receiptCurrency ?? (group ? getCurrencyFromGroup(group) : undefined)
+
   return (
     <div className="prose prose-sm dark:prose-invert">
       {/* Hidden Inputs */}
@@ -388,7 +405,7 @@ function ReceiptDialogContent({
       <p>{t('Dialog.body')}</p>
 
       {/* --- STAGE 1: Image Selection --- */}
-      {receiptInfo === null && (
+      {receiptInfo === null && !pending && (
         <div className="flex flex-col gap-4">
           {draftImages.length === 0 ? (
             // Empty State Buttons
@@ -486,6 +503,44 @@ function ReceiptDialogContent({
         </div>
       )}
 
+      {/* --- STAGE 1b: Reading ---
+          The wait used to be a spinner inside the Analyze button, with the pile of thumbnails still
+          on screen: nothing said what was happening or how much of it there would be. This is the
+          review screen with the answers missing, so the shape of what is coming is already there
+          when it arrives. */}
+      {pending && (
+        <div data-testid="receipt-reading" className="animate-pulse">
+          <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            {t('analyzing')}
+          </div>
+          <div className="mb-6 grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-3">
+            <div className="relative aspect-video overflow-hidden rounded-lg border bg-muted sm:row-span-3 sm:aspect-[3/4]">
+              {draftImages[0] && (
+                <Image
+                  src={draftImages[0].blobUrl}
+                  fill
+                  className="object-contain opacity-40"
+                  alt={t('preview')}
+                />
+              )}
+            </div>
+            <div className="space-y-4 sm:col-span-2">
+              <div className="h-5 w-2/3 rounded bg-muted" />
+              <div className="grid grid-cols-2 gap-4">
+                {[0, 1, 2, 3].map((index) => (
+                  <div key={index} className="space-y-1.5">
+                    <div className="h-2.5 w-12 rounded bg-muted" />
+                    <div className="h-4 w-20 rounded bg-muted" />
+                  </div>
+                ))}
+              </div>
+              <div className="h-9 w-full rounded-lg bg-muted" />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* --- STAGE 2: Analysis Result --- */}
       {receiptInfo && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -497,7 +552,7 @@ function ReceiptDialogContent({
                   src={draftImages[0].blobUrl}
                   fill
                   className="object-contain"
-                  alt="Receipt Preview"
+                  alt={t('preview')}
                 />
               )}
               {draftImages.length > 1 && (
@@ -561,7 +616,7 @@ function ReceiptDialogContent({
                 </div>
                 <div>
                   <strong className="text-xs uppercase text-muted-foreground tracking-wider block mb-1">
-                    Category
+                    {t('fieldCategory')}
                   </strong>
                   <div>
                     {receiptInfoCategory ? (
@@ -583,20 +638,54 @@ function ReceiptDialogContent({
 
               <div>
                 <strong className="text-xs uppercase text-muted-foreground tracking-wider block mb-1">
-                  Items Extracted
+                  {t('fieldItems')}
                 </strong>
                 {receiptInfo.items?.length ? (
                   <Badge variant="secondary">
-                    {receiptInfo.items.length} items
+                    {t('itemCount', { count: receiptInfo.items.length })}
                   </Badge>
                 ) : (
                   <span className="text-muted-foreground text-sm italic">
-                    None
+                    {t('noItems')}
                   </span>
                 )}
               </div>
             </div>
           </div>
+
+          {/* The one thing this screen can check for itself. Everything above is what the reader
+              was told; this is whether it is self-consistent. */}
+          {linesCheck && (
+            <div
+              data-testid="lines-check"
+              className={cn(
+                'mb-4 flex items-start gap-2 rounded-lg px-3 py-2.5 text-sm',
+                linesCheck.kind === 'over'
+                  ? 'bg-debt/10 text-debt'
+                  : 'bg-muted text-muted-foreground',
+              )}
+            >
+              {linesCheck.kind === 'match' ? (
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-credit" />
+              ) : (
+                <Info className="mt-0.5 h-4 w-4 shrink-0" />
+              )}
+              <span>
+                {linesCheck.kind === 'match' && t('linesMatch')}
+                {linesCheck.kind === 'none' && t('linesNone')}
+                {(linesCheck.kind === 'short' || linesCheck.kind === 'over') &&
+                  linesCurrency &&
+                  t(linesCheck.kind === 'short' ? 'linesShort' : 'linesOver', {
+                    sum: formatCurrency(linesCurrency, linesCheck.sum, locale),
+                    difference: formatCurrency(
+                      linesCurrency,
+                      linesCheck.difference,
+                      locale,
+                    ),
+                  })}
+              </span>
+            </div>
+          )}
 
           <div className="flex gap-2">
             <Button
@@ -607,7 +696,7 @@ function ReceiptDialogContent({
                 // keep images to retry or add more
               }}
             >
-              Back
+              {t('back')}
             </Button>
             <Button
               className="flex-[2]"
