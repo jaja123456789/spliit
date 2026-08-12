@@ -1,4 +1,4 @@
-import { randomId } from '@/lib/api'
+import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { navigateToTab, setActiveUser } from '../helpers'
 import { createExpenseViaAPI, createGroupViaAPI } from '../helpers/batch-api'
@@ -16,11 +16,9 @@ test('View statistics page', async ({ page }) => {
 
   await navigateToTab(page, 'Stats')
 
-  // Verify the Totals heading is visible
-  await expect(page.getByRole('heading', { name: 'Totals' })).toBeVisible()
-
-  // Verify the group total label is present
-  await expect(page.getByText('Group total')).toBeVisible()
+  // The sheet leads with the figure it is about, so its heading is the label for that figure.
+  // There is no separate "Totals" title above it any more.
+  await expect(page.getByRole('heading', { name: 'Group total' })).toBeVisible()
 })
 
 test('Verify Group Total', async ({ page }) => {

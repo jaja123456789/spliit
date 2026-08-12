@@ -1,4 +1,4 @@
-import { randomId } from '@/lib/api'
+import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { navigateToGroup, navigateToTab } from '../helpers'
 import {
@@ -6,6 +6,7 @@ import {
   createExpensesViaAPI,
   createGroupViaAPI,
 } from '../helpers/batch-api'
+import { AMOUNT_INPUT } from '../helpers/expense'
 
 test('View activity page', async ({ page }) => {
   // Setup: Create group with 3 participants and immediately create an expense
@@ -110,7 +111,7 @@ test('Log shows update', async ({ page }) => {
   await titleInput.fill(updatedTitle)
 
   // Update the amount
-  const amountInput = page.locator('input[name="amount"]')
+  const amountInput = page.locator(AMOUNT_INPUT)
   await expect(amountInput).toBeVisible()
   await amountInput.clear()
   await amountInput.fill(updatedAmount)
@@ -125,8 +126,10 @@ test('Log shows update', async ({ page }) => {
   // Note: After editing and saving, ensure we're on the expenses page first
   await navigateToTab(page, 'Activity')
 
-  // Wait for updated expense title to appear in activity
-  await expect(page.getByText(updatedTitle)).toBeVisible()
+  // Wait for updated expense title to appear in activity. `.first()` because an update entry now
+  // shows the title twice: once in the summary sentence and once as the new value in the diff
+  // underneath it.
+  await expect(page.getByText(updatedTitle).first()).toBeVisible()
 
   // Verify "updated" or "edit" action text appears (e.g., "Alice updated Updated Expense")
   await expect(page.getByText(/updated|edit/i)).toBeVisible()

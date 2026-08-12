@@ -1,4 +1,4 @@
-import { randomId } from '@/lib/api'
+import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { createExpenseViaAPI, createGroupViaAPI } from '../helpers/batch-api'
 
@@ -91,7 +91,9 @@ test.describe('Expense Deletion', () => {
 
     // Verify expense still exists
     await expect(page.getByText('Expense to Keep')).toBeVisible()
-    await expect(page.getByText('$75.00')).toBeVisible()
+    await expect(
+      page.getByTestId('expense-amount').filter({ hasText: '$75.00' }),
+    ).toBeVisible()
   })
 
   test('deletes one of multiple expenses', async ({ page }) => {
@@ -148,9 +150,15 @@ test.describe('Expense Deletion', () => {
     await expect(page.getByText('Third Expense')).toBeVisible()
 
     // Verify amounts of remaining expenses
-    await expect(page.getByText('$100.00')).toBeVisible()
-    await expect(page.getByText('$200.00')).not.toBeVisible()
-    await expect(page.getByText('$300.00')).toBeVisible()
+    await expect(
+      page.getByTestId('expense-amount').filter({ hasText: '$100.00' }),
+    ).toBeVisible()
+    await expect(
+      page.getByTestId('expense-amount').filter({ hasText: '$200.00' }),
+    ).not.toBeVisible()
+    await expect(
+      page.getByTestId('expense-amount').filter({ hasText: '$300.00' }),
+    ).toBeVisible()
   })
 
   test('deletes reimbursement expense', async ({ page }) => {

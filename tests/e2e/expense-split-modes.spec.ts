@@ -1,7 +1,8 @@
-import { randomId } from '@/lib/api'
+import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { navigateToTab } from '../helpers'
 import { createGroupViaAPI } from '../helpers/batch-api'
+import { AMOUNT_INPUT } from '../helpers/expense'
 
 test('Create expense - evenly split (most common flow)', async ({ page }) => {
   const groupName = `split modes ${randomId(4)}`
@@ -36,13 +37,11 @@ test('Create expense - evenly split (most common flow)', async ({ page }) => {
   await expenseTitle.fill('Team Dinner')
 
   // Step 4: Fill amount: 300.00
-  const amountInput = page.locator('input[name="amount"]')
+  const amountInput = page.locator(AMOUNT_INPUT)
   await amountInput.fill('300.00')
 
   // Step 5: Select payer: Alice
-  const paidBySelect = page
-    .getByRole('combobox')
-    .filter({ hasText: 'Select a participant' })
+  const paidBySelect = page.getByTestId('paid-by-select-0')
   await paidBySelect.waitFor({ state: 'visible' })
   await paidBySelect.click()
 
@@ -120,13 +119,11 @@ test('Create expense - by shares split mode', async ({ page }) => {
 
   // Step 3: Fill title and amount
   await expenseTitle.fill('Team Dinner Shares')
-  const amountInput = page.locator('input[name="amount"]')
+  const amountInput = page.locator(AMOUNT_INPUT)
   await amountInput.fill('300.00')
 
   // Step 4: Select payer: Alice
-  const paidBySelect = page
-    .getByRole('combobox')
-    .filter({ hasText: 'Select a participant' })
+  const paidBySelect = page.getByTestId('paid-by-select-0')
   await paidBySelect.waitFor({ state: 'visible' })
   await paidBySelect.click()
 
@@ -227,13 +224,11 @@ test('Create expense - by percentage split mode', async ({ page }) => {
 
   // Step 3: Fill title and amount
   await expenseTitle.fill('Team Dinner Percentage')
-  const amountInput = page.locator('input[name="amount"]')
+  const amountInput = page.locator(AMOUNT_INPUT)
   await amountInput.fill('300.00')
 
   // Step 4: Select payer: Alice
-  const paidBySelect = page
-    .getByRole('combobox')
-    .filter({ hasText: 'Select a participant' })
+  const paidBySelect = page.getByTestId('paid-by-select-0')
   await paidBySelect.waitFor({ state: 'visible' })
   await paidBySelect.click()
 
@@ -331,13 +326,11 @@ test('Create expense - by amount split mode', async ({ page }) => {
 
   // Step 3: Fill title and total amount
   await expenseTitle.fill('Team Dinner Amounts')
-  const amountInput = page.locator('input[name="amount"]')
+  const amountInput = page.locator(AMOUNT_INPUT)
   await amountInput.fill('300.00')
 
   // Step 4: Select payer: Alice
-  const paidBySelect = page
-    .getByRole('combobox')
-    .filter({ hasText: 'Select a participant' })
+  const paidBySelect = page.getByTestId('paid-by-select-0')
   await paidBySelect.waitFor({ state: 'visible' })
   await paidBySelect.click()
   await page.getByRole('option', { name: participantA }).click()

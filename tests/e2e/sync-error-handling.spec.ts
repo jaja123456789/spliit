@@ -1,4 +1,4 @@
-import { randomId } from '@/lib/api'
+import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { signInWithMagicLink } from '../helpers/auth'
 import { createGroupViaAPI } from '../helpers/batch-api'

@@ -1,4 +1,4 @@
-import { randomId } from '@/lib/api'
+import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { navigateToGroup } from '../helpers'
 import { createExpenseViaAPI, createGroupViaAPI } from '../helpers/batch-api'
@@ -196,9 +196,15 @@ test.describe('Expense List Filtering', () => {
     await expect(page.getByText('Lunch Break')).not.toBeVisible()
 
     // Verify amounts of visible expenses
-    await expect(page.getByText('$80.00')).toBeVisible()
-    await expect(page.getByText('$65.00')).toBeVisible()
-    await expect(page.getByText('$25.00')).not.toBeVisible()
+    await expect(
+      page.getByTestId('expense-amount').filter({ hasText: '$80.00' }),
+    ).toBeVisible()
+    await expect(
+      page.getByTestId('expense-amount').filter({ hasText: '$65.00' }),
+    ).toBeVisible()
+    await expect(
+      page.getByTestId('expense-amount').filter({ hasText: '$25.00' }),
+    ).not.toBeVisible()
   })
 
   test('clear search with x button', async ({ page }) => {

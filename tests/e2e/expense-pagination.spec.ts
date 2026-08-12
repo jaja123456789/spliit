@@ -1,4 +1,4 @@
-import { randomId } from '@/lib/api'
+import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import {
   createExpensesViaAPI,
@@ -171,8 +171,9 @@ test.describe('Expense List Pagination', () => {
     await navigateToGroup(page, groupId)
 
     // Should show empty state or "create first" message
+    // The sheet header stays when the list is empty, so an empty group still reports its total.
     await expect(
-      page.getByText('Here are the expenses that you created for your group'),
+      page.getByRole('heading', { name: 'Group total' }),
     ).toBeVisible()
     await expect(
       page.getByText(
@@ -221,7 +222,9 @@ test.describe('Expense List Pagination', () => {
     await navigateToGroup(page, groupId)
 
     // Expense 25 should have amount 25 * 100 + 1000 = 3500 cents = $35.00
-    await expect(page.getByText('$35.00')).toBeVisible()
+    await expect(
+      page.getByTestId('expense-amount').filter({ hasText: '$35.00' }),
+    ).toBeVisible()
 
     // Scroll to load all
     await page.evaluate(() => {

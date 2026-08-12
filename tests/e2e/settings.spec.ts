@@ -1,4 +1,4 @@
-import { randomId } from '@/lib/api'
+import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { createGroupViaAPI } from '../helpers/batch-api'
 
@@ -49,9 +49,7 @@ test('Expense displays with selected category', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Amount' }).fill('40.00')
 
   // Select payer
-  const payerCombobox = page
-    .getByRole('combobox')
-    .filter({ hasText: 'Select a participant' })
+  const payerCombobox = page.getByTestId('paid-by-select-0')
   await payerCombobox.click()
   await page.getByRole('option', { name: 'Alice' }).click()
 

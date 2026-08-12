@@ -1,7 +1,8 @@
-import { randomId } from '@/lib/api'
+import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { navigateToTab } from '../helpers'
 import { createExpenseViaAPI, createGroupViaAPI } from '../helpers/batch-api'
+import { AMOUNT_INPUT } from '../helpers/expense'
 
 test('suggested reimbursements displayed', async ({ page }) => {
   await page.goto('/groups')
@@ -33,9 +34,9 @@ test('suggested reimbursements displayed', async ({ page }) => {
   await page.waitForLoadState('networkidle')
 
   // Verify Suggested reimbursements section is visible
-  const reimbursementsHeading = page.getByRole('heading', {
-    name: 'Suggested reimbursements',
-  })
+  // A section rule inside the balances sheet, not a heading of its own card: Balances and
+  // Suggested reimbursements are two views of the same arithmetic and share one sheet.
+  const reimbursementsHeading = page.getByText('Suggested reimbursements')
   await expect(reimbursementsHeading).toBeVisible()
 
   // Verify reimbursements list is displayed
@@ -240,9 +241,9 @@ test('Suggested reimbursements minimized', async ({ page }) => {
   await page.waitForLoadState('networkidle')
 
   // Verify suggested reimbursements section exists
-  const reimbursementsHeading = page.getByRole('heading', {
-    name: 'Suggested reimbursements',
-  })
+  // A section rule inside the balances sheet, not a heading of its own card: Balances and
+  // Suggested reimbursements are two views of the same arithmetic and share one sheet.
+  const reimbursementsHeading = page.getByText('Suggested reimbursements')
   await expect(reimbursementsHeading).toBeVisible()
 
   // Verify reimbursements list is displayed
@@ -285,12 +286,10 @@ test('Create reimbursement expense', async ({ page }) => {
   await page.getByLabel(/title/i).fill('Reimbursement from Bob')
 
   // Use the amount field with name="amount" specifically
-  await page.locator('input[name="amount"]').fill('100')
+  await page.locator(AMOUNT_INPUT).fill('100')
 
   // Select payer
-  const payBySelect = page
-    .getByRole('combobox')
-    .filter({ hasText: 'Select a participant' })
+  const payBySelect = page.getByTestId('paid-by-select-0')
   await payBySelect.click()
 
   const reimbPayerOption = page.getByRole('option', { name: 'Bob' })

@@ -1,5 +1,18 @@
 import { expect, type Page } from '@playwright/test'
 
+/**
+ * The amount field's name.
+ *
+ * It was `amount` until the expense form was rebuilt around a hero amount; the field is now the
+ * first payer's amount, because an expense can have several payers and the total is their sum.
+ * Named here rather than repeated, since three helpers need it.
+ *
+ * Note this is only an `<input>` in the single-payer, non-itemised case. With several payers or an
+ * itemised bill the total is derived and rendered as text, so a helper that types into it will not
+ * find it — the parts are edited further down the form instead.
+ */
+export const AMOUNT_INPUT = 'input[name="paidBy.0.amount"]'
+
 export interface CreateExpenseOptions {
   title: string
   amount: string
@@ -74,6 +87,23 @@ export async function setExpenseRecurrence(
 }
 
 /**
+ * Opens the "More options" section if it is closed.
+ *
+ * The form leads with the amount and keeps category, date, notes, recurrence and the currency
+ * fields behind a collapsible, which starts closed when creating an expense (open when editing,
+ * where those fields usually already have values). Anything filling one of them has to open it
+ * first, or the locator waits 30 seconds for a field that is in the DOM but hidden.
+ */
+export async function expandMoreOptions(page: Page): Promise<void> {
+  const trigger = page.getByRole('button', { name: /more options/i })
+  if ((await trigger.count()) === 0) return
+  // The date field is the cheapest proxy for "the section is already open".
+  if (await page.locator('input[type="date"]').first().isVisible()) return
+  await trigger.first().click()
+  await page.locator('input[type="date"]').first().waitFor({ state: 'visible' })
+}
+
+/**
  * Fills the expense form with the provided options
  */
 export async function fillExpenseForm(
@@ -88,19 +118,22 @@ export async function fillExpenseForm(
   await expenseTitle.fill(options.title)
 
   // Fill amount
-  const amountInput = page.locator('input[name="amount"]')
+  const amountInput = page.locator(AMOUNT_INPUT)
   await amountInput.fill(options.amount)
 
   // Select payer
-  const paidBySelect = page
-    .getByRole('combobox')
-    .filter({ hasText: 'Select a participant' })
+  const paidBySelect = page.getByTestId('paid-by-select-0')
   await paidBySelect.waitFor({ state: 'visible' })
   await paidBySelect.click()
 
   const payerOption = page.getByRole('option', { name: options.payer })
   await payerOption.waitFor({ state: 'visible', timeout: 5000 })
   await payerOption.click()
+
+  // Everything below lives behind "More options", which is closed on the create form.
+  if (options.category || options.date || options.notes || options.recurrence) {
+    await expandMoreOptions(page)
+  }
 
   // Optional: Select category
   if (options.category) {
@@ -224,9 +257,13 @@ export async function updateExpense(
 
   // Update amount if provided
   if (updates.amount) {
-    const amountInput = page.locator('input[name="amount"]')
+    const amountInput = page.locator(AMOUNT_INPUT)
     await amountInput.clear()
     await amountInput.fill(updates.amount)
+  }
+
+  if (updates.date || updates.notes !== undefined) {
+    await expandMoreOptions(page)
   }
 
   // Update date if provided
@@ -266,9 +303,7 @@ export async function verifyExpenseValues(
     )
   }
   if (expected.amount) {
-    await expect(page.locator('input[name="amount"]')).toHaveValue(
-      expected.amount,
-    )
+    await expect(page.locator(AMOUNT_INPUT)).toHaveValue(expected.amount)
   }
   if (expected.date) {
     await expect(page.locator('input[type="date"]')).toHaveValue(expected.date)

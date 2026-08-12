@@ -1,6 +1,7 @@
-import { randomId } from '@/lib/api'
+import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { createExpenseViaAPI, createGroupViaAPI } from '../helpers/batch-api'
+import { AMOUNT_INPUT, expandMoreOptions } from '../helpers/expense'
 
 test.describe('Expense Editing', () => {
   test('updates expense title and amount', async ({ page }) => {
@@ -31,7 +32,7 @@ test.describe('Expense Editing', () => {
 
     // Update amount
     const newAmount = '250.00'
-    const amountInput = page.locator('input[name="amount"]')
+    const amountInput = page.locator(AMOUNT_INPUT)
     await amountInput.clear()
     await amountInput.fill(newAmount)
 
@@ -42,7 +43,9 @@ test.describe('Expense Editing', () => {
 
     // Verify updated values in list
     await expect(page.getByText(newTitle)).toBeVisible()
-    await expect(page.getByText('$250.00')).toBeVisible()
+    await expect(
+      page.getByTestId('expense-amount').filter({ hasText: '$250.00' }),
+    ).toBeVisible()
     await expect(page.getByText('Original Expense')).not.toBeVisible()
   })
 
@@ -109,6 +112,7 @@ test.describe('Expense Editing', () => {
     await page.waitForURL(/\/groups\/[^/]+\/expenses\/[^/]+\/edit/)
 
     // Verify original date
+    await expandMoreOptions(page)
     await expect(page.locator('input[type="date"]')).toHaveValue(originalDate)
 
     // Update date
@@ -152,6 +156,7 @@ test.describe('Expense Editing', () => {
     await page.waitForURL(/\/groups\/[^/]+\/expenses\/[^/]+\/edit/)
 
     // Verify original notes
+    await expandMoreOptions(page)
     await expect(page.locator('textarea')).toHaveValue(originalNotes)
 
     // Update notes
@@ -204,9 +209,10 @@ test.describe('Expense Editing', () => {
     await page.locator('input[name="title"]').clear()
     await page.locator('input[name="title"]').fill(newTitle)
 
-    await page.locator('input[name="amount"]').clear()
-    await page.locator('input[name="amount"]').fill(newAmount)
+    await page.locator(AMOUNT_INPUT).clear()
+    await page.locator(AMOUNT_INPUT).fill(newAmount)
 
+    await expandMoreOptions(page)
     await page.locator('input[type="date"]').fill(newDate)
 
     await page.locator('textarea').clear()
@@ -224,7 +230,9 @@ test.describe('Expense Editing', () => {
 
     // Verify in list
     await expect(page.getByText(newTitle)).toBeVisible()
-    await expect(page.getByText('$350.00')).toBeVisible()
+    await expect(
+      page.getByTestId('expense-amount').filter({ hasText: '$350.00' }),
+    ).toBeVisible()
     await expect(page.getByText('Initial Full Test')).not.toBeVisible()
 
     // Click to verify all values persisted
@@ -233,7 +241,7 @@ test.describe('Expense Editing', () => {
 
     await expect(page.locator('input[name="title"]')).toHaveValue(newTitle)
     // Amount may lose trailing zeros
-    await expect(page.locator('input[name="amount"]')).toHaveValue(/350(\.00)?/)
+    await expect(page.locator(AMOUNT_INPUT)).toHaveValue(/350(\.00)?/)
     await expect(page.locator('input[type="date"]')).toHaveValue(newDate)
     await expect(page.locator('textarea')).toHaveValue(newNotes)
     await expect(
@@ -280,6 +288,7 @@ test.describe('Expense Editing', () => {
     await page.getByText('Reimbursement Toggle Test').click()
     await page.waitForURL(/\/groups\/[^/]+\/expenses\/[^/]+\/edit/)
 
+    await expandMoreOptions(page)
     await expect(
       page.getByRole('checkbox', { name: /reimbursement/i }),
     ).toBeChecked()

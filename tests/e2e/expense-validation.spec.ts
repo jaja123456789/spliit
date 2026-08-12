@@ -1,7 +1,8 @@
-import { randomId } from '@/lib/api'
+import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { navigateToExpenseCreate } from '../helpers'
 import { createGroupViaAPI } from '../helpers/batch-api'
+import { AMOUNT_INPUT, expandMoreOptions } from '../helpers/expense'
 
 test.describe('Expense Form Validation', () => {
   test('prevents submission with empty title', async ({ page }) => {
@@ -16,11 +17,9 @@ test.describe('Expense Form Validation', () => {
     await navigateToExpenseCreate(page)
 
     // Fill amount and payer, but leave title empty
-    await page.locator('input[name="amount"]').fill('50.00')
+    await page.locator(AMOUNT_INPUT).fill('50.00')
 
-    const paidBySelect = page
-      .getByRole('combobox')
-      .filter({ hasText: 'Select a participant' })
+    const paidBySelect = page.getByTestId('paid-by-select-0')
     await paidBySelect.click()
     await page.getByRole('option', { name: 'Alice' }).click()
 
@@ -48,7 +47,7 @@ test.describe('Expense Form Validation', () => {
 
     // Fill title and amount, but don't select payer
     await page.locator('input[name="title"]').fill('Test Expense')
-    await page.locator('input[name="amount"]').fill('75.00')
+    await page.locator(AMOUNT_INPUT).fill('75.00')
 
     // Try to submit without selecting payer
     await page.locator('button[type="submit"]').click()
@@ -70,11 +69,9 @@ test.describe('Expense Form Validation', () => {
 
     // Fill title, zero amount, and payer
     await page.locator('input[name="title"]').fill('Zero Amount Test')
-    await page.locator('input[name="amount"]').fill('0')
+    await page.locator(AMOUNT_INPUT).fill('0')
 
-    const paidBySelect = page
-      .getByRole('combobox')
-      .filter({ hasText: 'Select a participant' })
+    const paidBySelect = page.getByTestId('paid-by-select-0')
     await paidBySelect.click()
     await page.getByRole('option', { name: 'Alice' }).click()
 
@@ -100,14 +97,12 @@ test.describe('Expense Form Validation', () => {
     await page.locator('input[name="title"]').fill('Income Entry')
 
     // Select payer BEFORE entering negative amount (form changes label when negative)
-    const paidBySelect = page
-      .getByRole('combobox')
-      .filter({ hasText: 'Select a participant' })
+    const paidBySelect = page.getByTestId('paid-by-select-0')
     await paidBySelect.click()
     await page.getByRole('option', { name: 'Alice' }).click()
 
     // Now fill with negative amount (income)
-    await page.locator('input[name="amount"]').fill('-100.00')
+    await page.locator(AMOUNT_INPUT).fill('-100.00')
 
     // Submit
     await page.locator('button[type="submit"]').click()
@@ -135,11 +130,9 @@ test.describe('Expense Form Validation', () => {
 
     // Fill all required fields
     await page.locator('input[name="title"]').fill(expenseTitle)
-    await page.locator('input[name="amount"]').fill(expenseAmount)
+    await page.locator(AMOUNT_INPUT).fill(expenseAmount)
 
-    const paidBySelect = page
-      .getByRole('combobox')
-      .filter({ hasText: 'Select a participant' })
+    const paidBySelect = page.getByTestId('paid-by-select-0')
     await paidBySelect.click()
     await page.getByRole('option', { name: 'Alice' }).click()
 
@@ -151,7 +144,9 @@ test.describe('Expense Form Validation', () => {
 
     // Verify expense created
     await expect(page.getByText(expenseTitle)).toBeVisible()
-    await expect(page.getByText('$123.45')).toBeVisible()
+    await expect(
+      page.getByTestId('expense-amount').filter({ hasText: '$123.45' }),
+    ).toBeVisible()
   })
 
   test('sanitizes amount input to valid decimal', async ({ page }) => {
@@ -166,7 +161,7 @@ test.describe('Expense Form Validation', () => {
     await navigateToExpenseCreate(page)
 
     // Fill with non-numeric characters
-    const amountInput = page.locator('input[name="amount"]')
+    const amountInput = page.locator(AMOUNT_INPUT)
     await page.locator('input[name="title"]').fill('Sanitize Test')
 
     // Type amount with extra characters
@@ -176,9 +171,7 @@ test.describe('Expense Form Validation', () => {
     await expect(amountInput).toHaveValue('50.99')
 
     // Complete the form
-    const paidBySelect = page
-      .getByRole('combobox')
-      .filter({ hasText: 'Select a participant' })
+    const paidBySelect = page.getByTestId('paid-by-select-0')
     await paidBySelect.click()
     await page.getByRole('option', { name: 'Alice' }).click()
 
@@ -187,7 +180,9 @@ test.describe('Expense Form Validation', () => {
     await page.waitForURL(/\/groups\/[^/]+\/expenses$/)
 
     // Verify the correct amount was saved
-    await expect(page.getByText('$50.99')).toBeVisible()
+    await expect(
+      page.getByTestId('expense-amount').filter({ hasText: '$50.99' }),
+    ).toBeVisible()
   })
 
   test('validates date is not in invalid format', async ({ page }) => {
@@ -205,15 +200,14 @@ test.describe('Expense Form Validation', () => {
 
     // Fill required fields
     await page.locator('input[name="title"]').fill(expenseTitle)
-    await page.locator('input[name="amount"]').fill('45.00')
+    await page.locator(AMOUNT_INPUT).fill('45.00')
 
-    const paidBySelect = page
-      .getByRole('combobox')
-      .filter({ hasText: 'Select a participant' })
+    const paidBySelect = page.getByTestId('paid-by-select-0')
     await paidBySelect.click()
     await page.getByRole('option', { name: 'Alice' }).click()
 
     // Set a valid date
+    await expandMoreOptions(page)
     const dateInput = page.locator('input[type="date"]')
     await dateInput.fill('2024-03-15')
 
@@ -244,7 +238,7 @@ test.describe('Expense Form Validation', () => {
 
     // Form should still be visible (not navigated away)
     await expect(page.locator('input[name="title"]')).toBeVisible()
-    await expect(page.locator('input[name="amount"]')).toBeVisible()
+    await expect(page.locator(AMOUNT_INPUT)).toBeVisible()
   })
 
   test('whitespace-only title is invalid', async ({ page }) => {
@@ -260,11 +254,9 @@ test.describe('Expense Form Validation', () => {
 
     // Fill with whitespace-only title
     await page.locator('input[name="title"]').fill('   ')
-    await page.locator('input[name="amount"]').fill('50.00')
+    await page.locator(AMOUNT_INPUT).fill('50.00')
 
-    const paidBySelect = page
-      .getByRole('combobox')
-      .filter({ hasText: 'Select a participant' })
+    const paidBySelect = page.getByTestId('paid-by-select-0')
     await paidBySelect.click()
     await page.getByRole('option', { name: 'Alice' }).click()
 

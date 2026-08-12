@@ -1,4 +1,4 @@
-import { randomId } from '@/lib/api'
+import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import * as fs from 'fs'
 import { createExpenseViaAPI, createGroupViaAPI } from '../helpers/batch-api'

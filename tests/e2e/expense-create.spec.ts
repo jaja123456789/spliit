@@ -1,7 +1,8 @@
-import { randomId } from '@/lib/api'
+import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { createExpense, navigateToExpenseCreate } from '../helpers'
 import { createGroupViaAPI } from '../helpers/batch-api'
+import { AMOUNT_INPUT, expandMoreOptions } from '../helpers/expense'
 
 test.describe('Expense Creation', () => {
   test('creates basic expense with correct values', async ({ page }) => {
@@ -28,7 +29,9 @@ test.describe('Expense Creation', () => {
     await expect(expenseCard).toBeVisible()
 
     // Verify amount is displayed correctly (formatted with currency)
-    await expect(page.getByText('$150.00')).toBeVisible()
+    await expect(
+      page.getByTestId('expense-amount').filter({ hasText: '$150.00' }),
+    ).toBeVisible()
 
     // Verify payer info is shown
     await expect(page.getByText(/paid by/i).first()).toBeVisible()
@@ -50,12 +53,10 @@ test.describe('Expense Creation', () => {
 
     // Fill expense form
     await page.locator('input[name="title"]').fill(expenseTitle)
-    await page.locator('input[name="amount"]').fill(expenseAmount)
+    await page.locator(AMOUNT_INPUT).fill(expenseAmount)
 
     // Select payer
-    const paidBySelect = page
-      .getByRole('combobox')
-      .filter({ hasText: 'Select a participant' })
+    const paidBySelect = page.getByTestId('paid-by-select-0')
     await paidBySelect.click()
     await page.getByRole('option', { name: 'Alice' }).click()
 
@@ -77,7 +78,9 @@ test.describe('Expense Creation', () => {
 
     // Verify expense created
     await expect(page.getByText(expenseTitle)).toBeVisible()
-    await expect(page.getByText('$85.50')).toBeVisible()
+    await expect(
+      page.getByTestId('expense-amount').filter({ hasText: '$85.50' }),
+    ).toBeVisible()
   })
 
   test('creates expense with specific date', async ({ page }) => {
@@ -96,16 +99,15 @@ test.describe('Expense Creation', () => {
 
     // Fill expense form
     await page.locator('input[name="title"]').fill(expenseTitle)
-    await page.locator('input[name="amount"]').fill(expenseAmount)
+    await page.locator(AMOUNT_INPUT).fill(expenseAmount)
 
     // Select payer
-    const paidBySelect = page
-      .getByRole('combobox')
-      .filter({ hasText: 'Select a participant' })
+    const paidBySelect = page.getByTestId('paid-by-select-0')
     await paidBySelect.click()
     await page.getByRole('option', { name: 'Alice' }).click()
 
     // Set date
+    await expandMoreOptions(page)
     await page.locator('input[type="date"]').fill(testDate)
 
     // Submit
@@ -139,16 +141,15 @@ test.describe('Expense Creation', () => {
 
     // Fill expense form
     await page.locator('input[name="title"]').fill(expenseTitle)
-    await page.locator('input[name="amount"]').fill(expenseAmount)
+    await page.locator(AMOUNT_INPUT).fill(expenseAmount)
 
     // Select payer
-    const paidBySelect = page
-      .getByRole('combobox')
-      .filter({ hasText: 'Select a participant' })
+    const paidBySelect = page.getByTestId('paid-by-select-0')
     await paidBySelect.click()
     await page.getByRole('option', { name: 'Alice' }).click()
 
     // Add notes
+    await expandMoreOptions(page)
     await page.locator('textarea').fill(expenseNotes)
 
     // Submit
@@ -190,12 +191,10 @@ test.describe('Expense Creation', () => {
     const reimbursementAmount = '100.00'
 
     await page.locator('input[name="title"]').fill(reimbursementTitle)
-    await page.locator('input[name="amount"]').fill(reimbursementAmount)
+    await page.locator(AMOUNT_INPUT).fill(reimbursementAmount)
 
     // Select Bob as payer
-    const paidBySelect = page
-      .getByRole('combobox')
-      .filter({ hasText: 'Select a participant' })
+    const paidBySelect = page.getByTestId('paid-by-select-0')
     await paidBySelect.click()
     await page.getByRole('option', { name: 'Bob' }).click()
 
@@ -211,7 +210,9 @@ test.describe('Expense Creation', () => {
 
     // Verify reimbursement created (should appear in italics)
     await expect(page.getByText(reimbursementTitle)).toBeVisible()
-    await expect(page.getByText('$100.00')).toBeVisible()
+    await expect(
+      page.getByTestId('expense-amount').filter({ hasText: '$100.00' }),
+    ).toBeVisible()
   })
 
   test('verifies expense data persists after creation', async ({ page }) => {
@@ -233,14 +234,13 @@ test.describe('Expense Creation', () => {
 
     // Fill all fields
     await page.locator('input[name="title"]').fill(expenseTitle)
-    await page.locator('input[name="amount"]').fill(expenseAmount)
+    await page.locator(AMOUNT_INPUT).fill(expenseAmount)
+    await expandMoreOptions(page)
     await page.locator('input[type="date"]').fill(expenseDate)
     await page.locator('textarea').fill(expenseNotes)
 
     // Select payer
-    const paidBySelect = page
-      .getByRole('combobox')
-      .filter({ hasText: 'Select a participant' })
+    const paidBySelect = page.getByTestId('paid-by-select-0')
     await paidBySelect.click()
     await page.getByRole('option', { name: 'Bob' }).click()
 
@@ -254,9 +254,7 @@ test.describe('Expense Creation', () => {
 
     // Verify all values persisted correctly
     await expect(page.locator('input[name="title"]')).toHaveValue(expenseTitle)
-    await expect(page.locator('input[name="amount"]')).toHaveValue(
-      expenseAmount,
-    )
+    await expect(page.locator(AMOUNT_INPUT)).toHaveValue(expenseAmount)
     await expect(page.locator('input[type="date"]')).toHaveValue(expenseDate)
     await expect(page.locator('textarea')).toHaveValue(expenseNotes)
 

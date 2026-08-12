@@ -1,5 +1,5 @@
-import { randomId } from '@/lib/api'
 import { prisma } from '@/lib/prisma'
+import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { createGroup, navigateToGroup } from '../helpers'
 

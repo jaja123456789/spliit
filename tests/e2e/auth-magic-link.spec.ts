@@ -1,6 +1,7 @@
-import { randomId } from '@/lib/api'
+import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { isSignedIn, signInWithMagicLink, signOut } from '../helpers/auth'
+import { appPath } from '../helpers/base-path'
 
 test.describe('Magic Link Authentication', () => {
   test('sign in with magic link from .mail/ folder', async ({ page }) => {
@@ -58,10 +59,10 @@ test.describe('Magic Link Authentication', () => {
     // token timestamp in the database or use a test-only short expiry.
 
     // For now, we just verify the error page exists
-    await page.goto('/spliit/auth/error')
+    await page.goto(appPath('/auth/error'))
 
     // The error page should be accessible
-    expect(page.url()).toContain('/spliit/auth/error')
+    expect(page.url()).toContain(appPath('/auth/error'))
   })
 
   test('can sign in on different device (browser context)', async ({

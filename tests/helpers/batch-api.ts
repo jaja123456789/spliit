@@ -1,15 +1,26 @@
+import { amountAsDecimal, getCurrencyFromGroup } from '@/lib/utils'
 import type { AppRouter } from '@/trpc/routers/_app'
 import type { Page } from '@playwright/test'
 import { RecurrenceRule, SplitMode } from '@prisma/client'
 import { createTRPCClient, httpBatchLink } from '@trpc/client'
 import superjson from 'superjson'
+import { BASE_PATH } from './base-path'
 
 interface ExpenseFormValues {
   expenseDate: Date
   title: string
   category: number
   amount: number
-  paidBy: string
+  /**
+   * An expense can have several payers, so this is a list and the total is their sum. It was a
+   * bare participant id until multiple payers shipped; the schema has rejected the old shape ever
+   * since ("Expected array, received string"), which was every API-backed spec's first failure.
+   *
+   * Amounts here are in *major* units — `api.ts` runs them through `amountAsMinorUnits` before
+   * storing — whereas this module's own helpers take cents. `toMajorUnits` below does the
+   * conversion with the group's own currency rather than assuming two decimals.
+   */
+  paidBy: Array<{ participant: string; amount: number }>
   paidFor: Array<{ participant: string; shares: number }>
   splitMode: SplitMode
   isReimbursement: boolean
@@ -31,7 +42,7 @@ function createTrpcClient(page: Page) {
   return createTRPCClient<AppRouter>({
     links: [
       httpBatchLink({
-        url: `${new URL(page.url()).origin}/spliit/api/trpc`,
+        url: `${new URL(page.url()).origin}${BASE_PATH}/api/trpc`,
         async headers() {
           return {
             cookie: await page.evaluate(() => document.cookie),
@@ -117,6 +128,11 @@ export async function createExpensesViaAPI(
     throw new Error('Group participants not found')
   }
 
+  // This module's callers pass minor units; the schema wants major ones.
+  const currency = getCurrencyFromGroup(groupData.group!)
+  const toMajorUnits = (minorUnits: number) =>
+    amountAsDecimal(minorUnits, currency)
+
   // Handle legacy signature: createExpensesViaAPI(page, groupId, count, payerNames)
   let expensesToCreate: Array<{
     title: string
@@ -183,7 +199,7 @@ export async function createExpensesViaAPI(
       title: expense.title,
       category: expense.category ?? 0,
       amount: expense.amount,
-      paidBy: payer.id,
+      paidBy: [{ participant: payer.id, amount: toMajorUnits(expense.amount) }],
       paidFor,
       splitMode: expense.splitMode || SplitMode.EVENLY,
       isReimbursement: expense.isReimbursement || false,

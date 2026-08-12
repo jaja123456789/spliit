@@ -1,4 +1,4 @@
-import { randomId } from '@/lib/api'
+import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { navigateToGroup, switchLocale } from '../helpers'
 import { createExpenseViaAPI, createGroupViaAPI } from '../helpers/batch-api'
@@ -43,7 +43,7 @@ test('Mobile navigation uses hamburger menu', async ({ page }) => {
 
   // Verify we navigated to Stats
   await page.waitForURL(/\/stats$/)
-  await expect(page.getByRole('heading', { name: 'Totals' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Group total' })).toBeVisible()
 })
 
 test('Desktop view displays full layout', async ({ page }) => {

@@ -52,6 +52,9 @@ export function ReimbursementList({
 
         return (
           <div
+            // Dropped by 4943192 when payment links were added; three e2e assertions have been
+            // looking for it ever since, on a suite that could not start to report it.
+            data-testid={`reimbursement-row-${fromName}-${toName}`}
             className="py-4 flex flex-col gap-2 border-b last:border-0"
             key={`${reimbursement.from}-${reimbursement.to}`}
           >

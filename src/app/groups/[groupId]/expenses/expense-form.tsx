@@ -1094,7 +1094,10 @@ export function ExpenseForm({
                               defaultValue={field.value}
                             >
                               <FormControl>
+                                {/* The payer is pre-selected rather than showing a placeholder, so
+                                    there is no stable text to find this control by. */}
                                 <SelectTrigger
+                                  data-testid={`paid-by-select-${index}`}
                                   className={cn(
                                     isHighest && 'border-primary/30',
                                   )}

@@ -1,5 +1,6 @@
 // Re-export all helpers for convenient importing
 export * from './auth'
+export * from './base-path'
 export * from './batch-api'
 export * from './expense'
 export * from './form'
