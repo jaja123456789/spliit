@@ -396,7 +396,13 @@ export function ItemizationBuilder({
                                 printed text. A soft fill is the lightest thing that still says
                                 "field" without putting a bordered control back in every row —
                                 the box is the shape, the border is what made it a slab. */}
-                            <div className="rounded-t-sm border-b border-input transition-colors focus-within:border-primary focus-within:bg-muted/40">
+                            {/* Dotted, and the rule between rows solid. Both were 1px of
+                                `--input` and a row ended up carrying three parallel hairlines of
+                                identical weight — the two field rules read as dividers in the
+                                wrong places. Making the field rule lighter only weakened it; a
+                                different *kind* of line separates them outright, and dotted is
+                                the older and plainer signal for somewhere you write. */}
+                            <div className="rounded-t-sm border-b border-dotted border-input transition-colors focus-within:border-primary focus-within:bg-muted/40">
                               <FormControl>
                                 <Input
                                   {...field}
@@ -457,7 +463,7 @@ export function ItemizationBuilder({
                                 so the decimal point lands in the same column whatever the
                                 value's length — only the symbol moves, which is what it does on
                                 a printed statement too. */}
-                            <div className="flex items-center rounded-t-sm border-b border-input pl-1.5 transition-colors focus-within:border-primary focus-within:bg-muted/40 [&_button]:h-7 [&_button]:w-7">
+                            <div className="flex items-center rounded-t-sm border-b border-dotted border-input pl-1.5 transition-colors focus-within:border-primary focus-within:bg-muted/40 [&_button]:h-7 [&_button]:w-7">
                               <span className="font-mono text-xs text-subtle-foreground">
                                 {currency.symbol || group.currency}
                               </span>
