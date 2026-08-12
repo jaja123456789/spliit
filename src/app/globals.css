@@ -3,77 +3,96 @@
 @tailwind utilities;
 
 @layer base {
+  /* Three surfaces and three inks, in both themes.
+     Surfaces: --background is the ground, --card the sheet raised off it, --muted/--secondary the
+     sunken step for totals, inputs and hover. Light previously had --background and --card both at
+     pure white, so "raised" was not expressible at all and every list ended up as a card inside a
+     card to fake it.
+     Inks: --foreground, --muted-foreground and --subtle-foreground. The third step replaces
+     `text-muted-foreground/60`, which composited to #A3A9A7 — 2.39:1 on white, a tertiary ink that
+     failed AA outright.
+     Every ratio in the comments below was computed from the triplets as written (not from the
+     source palette they were rounded from) against the surface the ink actually lands on. */
   :root {
-    /* Neutrals carry a slight bias toward --primary (hue 160) rather than the stock shadcn blue
-       (hue 240). At 5-8% saturation nobody names the colour; it just stops reading as a cool grey
-       ground under a warm green accent. --muted-foreground is also darkened: at the old value it
-       measured 4.39:1 on --muted, under AA, and it is used for secondary text on muted panels. */
-    --background: 0 0% 100%;
-    --foreground: 160 10% 4%;
-    --card: 0 0% 100%;
-    --card-foreground: 160 10% 4%;
+    --background: 30 20% 98%; /* ground  #FBFAF9 */
+    --card: 0 0% 100%; /* sheet   #FFFFFF */
     --popover: 0 0% 100%;
-    --popover-foreground: 160 10% 4%;
-    --primary: 163 94% 24%;
-    --primary-foreground: 0 100% 100%;
-    --secondary: 160 8% 96%;
-    --secondary-foreground: 160 6% 10%;
-    --muted: 160 8% 96%;
-    --muted-foreground: 160 5% 42%;
-    --accent: 160 8% 96%;
-    --accent-foreground: 160 6% 10%;
+    --muted: 36 15% 93.5%; /* sunken  #F1EFEC */
+    --secondary: 36 15% 93.5%;
+    --accent: 36 15% 93.5%; /* shadcn's hover surface, not the brand accent */
+
+    /* ground / sheet / sunken: 16.42 · 17.12 · 14.92 */
+    --foreground: 171 14% 10%;
+    --card-foreground: 171 14% 10%;
+    --popover-foreground: 171 14% 10%;
+    --secondary-foreground: 171 14% 10%;
+    --accent-foreground: 171 14% 10%;
+    /* 6.52 · 6.80 · 5.92. Darker than the palette this came from: the tertiary step below is pinned
+       at ~41% lightness by the AA floor on the sunken surface, so a secondary at 40% left the two
+       steps 1.14:1 apart — not a step at all. At 34% they are 1.30:1 apart and both clear AA. */
+    --muted-foreground: 165 8% 34%;
+    /* 5.00 · 5.21 · 4.54 — the floor. Meta, dates, counts. */
+    --subtle-foreground: 160 5.5% 41.4%;
+
+    --primary: 162 88% 24%;
+    --primary-foreground: 0 0% 100%; /* 5.86 on the fill */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 160 8% 90%;
-    --input: 160 8% 90%;
-    --ring: 142.1 76.2% 36.3%;
+    --border: 43 12% 88%; /* rule    #E4E2DD */
+    --input: 42 9% 79%; /* rule-2  #CFCCC5, a stronger edge for fields */
+    --ring: 162 88% 24%;
     --radius: 0.75rem;
+
     /* Money direction. Semantic state, like --destructive, not decoration: "you are owed" and
        "you owe" were previously spelled with four different greens and two oranges taken straight
-       from the Tailwind palette. Both are contrast-checked against --background (4.56:1 and
-       4.99:1); the emerald-600 they replace measured 2.54:1, below even the large-text floor.
+       from the Tailwind palette.
        --debt stays orange-red rather than folding into --destructive: owing money is a state,
-       deleting a record is a consequence.
-       --credit is darker than the 28% first shipped: at 28% it measured 4.00:1 as text on its own
-       10% tint (the "All set" pill, the excluded-items panel), under AA. At 24% it clears AA on all
-       three surfaces it actually lands on — 5.85:1 on --background, 5.38:1 on --muted, 5.07:1 on
-       bg-credit/10. */
-    --credit: 162 88% 24%;
-    --debt: 16 88% 42%;
+       deleting a record is a consequence. It is darker than the 42% previously shipped, which was
+       measured against a white ground only; on the sunken surface it fell to 4.36:1 and on its own
+       10% tint to 4.15:1. At 39.5% the worst of the five surfaces it lands on is 4.59:1. */
+    --credit: 162 88% 24%; /* 5.62 · 5.86 · 5.10, and 4.86 at worst on bg-credit/10 */
+    --debt: 16 88% 39.5%; /* 5.31 · 5.53 · 4.82, and 4.59 at worst on bg-debt/10 */
     /* Chart marks. Deliberately a separate step from --primary: the dark --primary is tuned for
        small UI accents and glares as a large area fill, so each mode gets a step chosen for its
        own surface (both validated for lightness band, chroma and >=3:1 contrast). */
-    --chart-1: 163 94% 24%;
+    --chart-1: 162 88% 24%;
   }
 
+  /* Designed rather than inverted. The previous dark theme was a warm brown-black (#0C0A09) with a
+     near-neon mint (S=90%) on it, and no elevation: ground, card and row were within a hair of each
+     other, so nothing read as raised. The problem was never contrast — those values passed loudly.
+     It was saturation, and two neon hues fighting each other. */
   .dark {
-    --background: 20 14.3% 4.1%;
-    --foreground: 0 0% 95%;
-    --card: 24 9.8% 10%;
-    --card-foreground: 0 0% 95%;
-    --popover: 0 0% 9%;
-    --popover-foreground: 0 0% 95%;
-    --primary: 161 90% 45%;
-    --primary-foreground: 144.9 80.4% 10%;
-    --secondary: 24 6% 16%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 15%;
-    --muted-foreground: 24 5% 65%;
-    --accent: 12 6.5% 15.1%;
-    --accent-foreground: 0 0% 98%;
-    /* --destructive: 0 62.8% 30.6%; */
+    --background: 165 11% 7%; /* ground  #101413 */
+    --card: 156 9% 11%; /* sheet   #1A1F1D */
+    --popover: 156 9% 11%;
+    --muted: 170 8% 15%; /* sunken  #232928 */
+    --secondary: 170 8% 15%;
+    --accent: 170 8% 15%;
+
+    /* ground / sheet / sunken: 16.01 · 14.40 · 12.76 */
+    --foreground: 165 11% 93%;
+    --card-foreground: 165 11% 93%;
+    --popover-foreground: 165 11% 93%;
+    --secondary-foreground: 165 11% 93%;
+    --accent-foreground: 165 11% 93%;
+    --muted-foreground: 164 7% 68%; /* 8.61 · 7.74 · 6.86 */
+    /* 5.66 · 5.09 · 4.51 — lightened from the palette's own tertiary, which measured 4.21 on the
+       sunken surface. */
+    --subtle-foreground: 164 6% 54%;
+
+    --primary: 160 45% 58%; /* #64C4A4 — the same hue at half the old saturation */
+    --primary-foreground: 166 26% 10%; /* 7.97 on the fill */
     --destructive: 0 87% 47%;
     --destructive-foreground: 0 85.7% 97.3%;
-    /* These three were the only blue-leaning tokens in an otherwise warm dark palette
-       (--background 20, --card 24, --accent 12). Brought into line with that palette rather than
-       re-hued to 160: the dark theme's warm neutral is deliberate and is left as the author set it. */
-    --border: 24 6% 16%;
-    --input: 24 6% 16%;
-    --ring: 142.4 71.8% 29.2%;
-    --chart-1: 161 93% 30%;
-    /* Checked against --card, the surface these actually sit on: 10.29:1 and 6.77:1. */
-    --credit: 158 72% 56%;
-    --debt: 20 90% 62%;
+    --border: 163 8% 17%; /* rule    #282F2D */
+    --input: 165 7% 22%; /* rule-2  #343C3A */
+    --ring: 160 45% 58%;
+    --chart-1: 160 45% 45%; /* 5.57 vs the sheet */
+    /* Sage and clay rather than mint and safety-orange: same directions, half the saturation, and
+       they stop competing with each other when they sit in the same column. */
+    --credit: 158 48% 66%; /* 10.40 · 9.36 · 8.29, and 7.59 at worst on bg-credit/10 */
+    --debt: 22 72% 64%; /* 7.61 · 6.85 · 6.07, and 5.85 at worst on bg-debt/10 */
   }
 }
 

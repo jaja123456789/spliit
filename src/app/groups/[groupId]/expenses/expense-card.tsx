@@ -165,7 +165,7 @@ export function ExpenseCard({
 
             <div className="flex flex-col items-end gap-1 ml-2">
               <div
-                className="text-xs uppercase tracking-wider text-muted-foreground/60 font-medium"
+                className="text-xs uppercase tracking-wider text-subtle-foreground font-medium"
                 data-testid="expense-date"
               >
                 {formatDateOnly(expense.expenseDate, locale, {

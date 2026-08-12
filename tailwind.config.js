@@ -51,6 +51,11 @@ module.exports = {
           DEFAULT: 'hsl(var(--muted))',
           foreground: 'hsl(var(--muted-foreground))',
         },
+        // The third ink step: meta, dates, counts. Has no surface of its own — it is only ever
+        // text — so unlike the pairs above it is a foreground with no DEFAULT.
+        subtle: {
+          foreground: 'hsl(var(--subtle-foreground))',
+        },
         accent: {
           DEFAULT: 'hsl(var(--accent))',
           foreground: 'hsl(var(--accent-foreground))',

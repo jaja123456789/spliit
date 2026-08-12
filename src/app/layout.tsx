@@ -203,7 +203,10 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <ApplePwaSplash icon={`${basePath}/logo-with-text.png`} color="#027756" />
-      <body className="min-h-[100dvh] flex flex-col items-stretch bg-muted/30 dark:bg-background">
+      {/* `bg-muted/30 dark:bg-background` until now: light --background was pure white, the same
+          value as --card, so the ground had to be faked with a tinted muted. It is its own token
+          in both themes now. */}
+      <body className="min-h-[100dvh] flex flex-col items-stretch bg-background">
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider
             attribute="class"

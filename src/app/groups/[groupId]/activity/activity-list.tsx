@@ -122,9 +122,9 @@ export function ActivityList() {
         return (
           <div key={dateGroup} data-testid={`activity-date-group-${dateGroup}`}>
             <div
-              className={
-                'text-muted-foreground text-xs py-1 font-semibold sticky top-16 bg-white dark:bg-[#1b1917]'
-              }
+              // Was `bg-white dark:bg-[#1b1917]` — a hard-coded pair that froze the old dark card
+              // colour into the markup. The sticky header has to match whatever it scrolls over.
+              className="text-muted-foreground text-xs py-1 font-semibold sticky top-16 bg-card"
             >
               {t(`Groups.${dateGroup}`)}
             </div>

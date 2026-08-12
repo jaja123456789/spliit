@@ -308,7 +308,7 @@ export function ItemizationBuilder({
                 {/* Status / Summary Row */}
                 <div className="flex items-center justify-between px-1 text-xs leading-tight min-h-[1.25rem]">
                   {isExcluded ? (
-                    <span className="text-muted-foreground/60 italic flex items-center gap-1">
+                    <span className="text-subtle-foreground italic flex items-center gap-1">
                       Excluded (assign to include)
                     </span>
                   ) : (
