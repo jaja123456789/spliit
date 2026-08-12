@@ -1,13 +1,35 @@
 import { createGroup, createPayments, getGroupExpenses } from './api'
+import { prisma } from './prisma'
+
+/**
+ * These tests write to the database the suite is pointed at, which on a dev machine is the same one
+ * the app uses. `api.test.ts` cleans up after every case for that reason; so does this.
+ */
+const createdGroupIds: string[] = []
+
+async function makeGroup(name: string, participants: string[]) {
+  const group = await createGroup({
+    name,
+    currency: '$',
+    currencyCode: 'USD',
+    participants: participants.map((p) => ({ name: p })),
+  } as any)
+  createdGroupIds.push(group.id)
+  return group
+}
+
+afterEach(async () => {
+  for (const groupId of createdGroupIds.splice(0)) {
+    await prisma.expense.deleteMany({ where: { groupId } })
+    await prisma.activity.deleteMany({ where: { groupId } })
+    await prisma.participant.deleteMany({ where: { groupId } })
+    await prisma.group.delete({ where: { id: groupId } })
+  }
+})
 
 describe('createPayments', () => {
   it('records every payment or none of them', async () => {
-    const group = await createGroup({
-      name: 'settle atomicity',
-      currency: '$',
-      currencyCode: 'USD',
-      participants: [{ name: 'Alice' }, { name: 'Bob' }, { name: 'Carol' }],
-    } as any)
+    const group = await makeGroup('settle atomicity', ['Alice', 'Bob', 'Carol'])
     const [alice, bob, carol] = group.participants
 
     // A batch where the last entry names someone outside the group. If this were a loop of
@@ -35,12 +57,7 @@ describe('createPayments', () => {
   })
 
   it('rolls back a write that fails part way through the batch', async () => {
-    const group = await createGroup({
-      name: 'settle rollback',
-      currency: '$',
-      currencyCode: 'USD',
-      participants: [{ name: 'Alice' }, { name: 'Bob' }],
-    } as any)
+    const group = await makeGroup('settle rollback', ['Alice', 'Bob'])
     const [alice, bob] = group.participants
 
     // The third amount overflows the column's 32-bit integer. Every participant is valid, so this
