@@ -1332,7 +1332,7 @@ export function ExpenseForm({
                                     column, figure right-aligned and tabular so the decimals line
                                     up down the column, the box tracking its value, and the
                                     calculator inside the field rather than beside it. */}
-                                <div className="flex items-center border-b border-input pb-0.5 pl-1.5 transition-colors focus-within:border-primary [&_button]:h-7 [&_button]:w-7">
+                                <div className="flex items-center gap-1 border-b border-input pb-0.5 pl-1.5 transition-colors focus-within:border-primary [&_button]:h-7 [&_button]:w-7">
                                   <span className="font-mono text-xs text-subtle-foreground">
                                     {expenseCurrency.symbol || group.currency}
                                   </span>
