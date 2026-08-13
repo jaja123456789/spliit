@@ -1091,13 +1091,13 @@ export function ExpenseForm({
                           />
                         )}
                       />
-                      <div className="min-w-0 flex-1 border-b border-input pb-0.5 transition-colors focus-within:border-primary">
+                      <div className="min-w-0 flex-1 rounded-md border border-input p-0.5 transition-colors focus-within:border-primary">
                         <FormControl>
                           <Input
                             placeholder={t(
                               `${sExpense}.TitleField.placeholder`,
                             )}
-                            className="h-11 border-0 bg-transparent px-1 text-lg shadow-none placeholder:font-normal placeholder:text-subtle-foreground focus-visible:ring-0"
+                            className="h-10 border-0 bg-transparent px-2.5 text-lg shadow-none placeholder:font-normal placeholder:text-subtle-foreground focus-visible:ring-0"
                             {...field}
                             onBlur={async () => {
                               field.onBlur()
@@ -1165,7 +1165,7 @@ export function ExpenseForm({
                           {expenseCurrency.symbol || group.currency}
                         </span>
                       )}
-                      <div className="min-w-0 flex-1 border-b border-input pb-0.5 transition-colors focus-within:border-primary">
+                      <div className="min-w-0 flex-1 rounded-md border border-input p-0.5 transition-colors focus-within:border-primary">
                         {isMultiPayer ? (
                           // Only several payers make the total a derived figure: it is their sum,
                           // so there is nothing to type into it. An itemised bill is not such a
@@ -1176,7 +1176,7 @@ export function ExpenseForm({
                           // itemised expense they reopened.
                           <span
                             data-testid="derived-total"
-                            className="flex h-11 items-center px-1 font-mono text-3xl font-semibold tabular-nums"
+                            className="flex h-10 items-center px-2.5 font-mono text-3xl font-semibold tabular-nums"
                           >
                             {formatCurrency(
                               expenseCurrency,
@@ -1189,8 +1189,8 @@ export function ExpenseForm({
                           <FormControl>
                             <CalculatorInput
                               placeholder="0.00"
-                              className="h-11 w-full border-0 bg-transparent shadow-none"
-                              inputClassName="h-11 w-full border-0 bg-transparent px-1 font-mono text-3xl font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                              className="h-10 w-full border-0 bg-transparent shadow-none"
+                              inputClassName="h-10 w-full border-0 bg-transparent px-2.5 font-mono text-3xl font-semibold tabular-nums shadow-none focus-visible:ring-0"
                               {...field}
                               onValueChange={(val) =>
                                 handlePayerAmountChange(0, val)
@@ -1332,24 +1332,16 @@ export function ExpenseForm({
                                     column, figure right-aligned and tabular so the decimals line
                                     up down the column, the box tracking its value, and the
                                     calculator inside the field rather than beside it. */}
-                                <div className="flex items-center gap-1 border-b border-input pb-0.5 pl-1.5 transition-colors focus-within:border-primary [&_button]:h-7 [&_button]:w-7">
+                                <div className="flex w-[116px] items-center gap-1 rounded-md border border-input p-0.5 transition-colors focus-within:border-primary pl-2 [&_button]:h-7 [&_button]:w-7">
                                   <span className="font-mono text-xs text-subtle-foreground">
                                     {expenseCurrency.symbol || group.currency}
                                   </span>
                                   <FormControl>
                                     <CalculatorInput
                                       placeholder="0.00"
-                                      className="h-8 w-auto border-0 bg-transparent shadow-none"
-                                      inputClassName="h-8 max-w-[7rem] border-0 bg-transparent px-0 text-right font-mono text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                                      className="h-8 min-w-0 flex-1 border-0 bg-transparent shadow-none"
+                                      inputClassName="h-8 w-full border-0 bg-transparent px-0 text-right font-mono text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
                                       {...field}
-                                      style={{
-                                        width: `${Math.max(
-                                          4,
-                                          String(
-                                            paidByValues[index]?.amount ?? '',
-                                          ).length,
-                                        )}ch`,
-                                      }}
                                       onValueChange={(val) => {
                                         handlePayerAmountChange(index, val)
                                       }}
@@ -1625,10 +1617,10 @@ export function ExpenseForm({
                           rounded bordered box filled with `--background`, which is the *ground*
                           colour sitting on a `--card` sheet — a faintly grey panel on white, and
                           the only field here that had one. */}
-                      <div className="border-b border-input pb-0.5 transition-colors focus-within:border-primary">
+                      <div className="rounded-md border border-input p-0.5 transition-colors focus-within:border-primary">
                         <FormControl>
                           <Textarea
-                            className="min-h-[60px] resize-none rounded-none border-0 bg-transparent px-1 text-base shadow-none focus-visible:ring-0"
+                            className="min-h-[60px] resize-none rounded-[8px] border-0 bg-transparent px-2.5 py-2 text-base shadow-none focus-visible:ring-0"
                             {...field}
                           />
                         </FormControl>

@@ -407,7 +407,7 @@ export function ItemizationBuilder({
                                 `--divider` at 1.62, less than half the contrast, and full-bleed
                                 where this one is inset. Tone and extent, not a different kind of
                                 line. */}
-                            <div className="border-b border-input pb-0.5 transition-colors focus-within:border-primary">
+                            <div className="rounded-md border border-input p-0.5 transition-colors focus-within:border-primary">
                               <FormControl>
                                 <Input
                                   {...field}
@@ -468,7 +468,7 @@ export function ItemizationBuilder({
                                 so the decimal point lands in the same column whatever the
                                 value's length — only the symbol moves, which is what it does on
                                 a printed statement too. */}
-                            <div className="flex items-center gap-1 border-b border-input pb-0.5 pl-1.5 transition-colors focus-within:border-primary [&_button]:h-7 [&_button]:w-7">
+                            <div className="flex w-[116px] items-center gap-1 rounded-md border border-input p-0.5 transition-colors focus-within:border-primary pl-2 [&_button]:h-7 [&_button]:w-7">
                               <span className="font-mono text-xs text-subtle-foreground">
                                 {currency.symbol || group.currency}
                               </span>
@@ -476,14 +476,8 @@ export function ItemizationBuilder({
                                 <CalculatorInput
                                   {...field}
                                   placeholder="0.00"
-                                  className="h-8 w-auto border-0 bg-transparent shadow-none"
-                                  inputClassName="h-8 max-w-[7rem] border-0 bg-transparent px-0 text-right font-mono text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
-                                  style={{
-                                    width: `${Math.max(
-                                      4,
-                                      String(currentItem.price ?? '').length,
-                                    )}ch`,
-                                  }}
+                                  className="h-8 min-w-0 flex-1 border-0 bg-transparent shadow-none"
+                                  inputClassName="h-8 w-full border-0 bg-transparent px-0 text-right font-mono text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
                                   onValueChange={(val: string) => {
                                     field.onChange(val)
                                     trigger('items')
