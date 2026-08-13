@@ -407,7 +407,7 @@ export function ItemizationBuilder({
                                 `--divider` at 1.62, less than half the contrast, and full-bleed
                                 where this one is inset. Tone and extent, not a different kind of
                                 line. */}
-                            <div className="border-b border-input transition-colors focus-within:border-primary">
+                            <div className="border-b border-input pb-0.5 transition-colors focus-within:border-primary">
                               <FormControl>
                                 <Input
                                   {...field}
@@ -468,7 +468,7 @@ export function ItemizationBuilder({
                                 so the decimal point lands in the same column whatever the
                                 value's length — only the symbol moves, which is what it does on
                                 a printed statement too. */}
-                            <div className="flex items-center border-b border-input pl-1.5 transition-colors focus-within:border-primary [&_button]:h-7 [&_button]:w-7">
+                            <div className="flex items-center border-b border-input pb-0.5 pl-1.5 transition-colors focus-within:border-primary [&_button]:h-7 [&_button]:w-7">
                               <span className="font-mono text-xs text-subtle-foreground">
                                 {currency.symbol || group.currency}
                               </span>

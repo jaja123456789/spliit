@@ -1091,7 +1091,7 @@ export function ExpenseForm({
                           />
                         )}
                       />
-                      <div className="min-w-0 flex-1 border-b border-input transition-colors focus-within:border-primary">
+                      <div className="min-w-0 flex-1 border-b border-input pb-0.5 transition-colors focus-within:border-primary">
                         <FormControl>
                           <Input
                             placeholder={t(
@@ -1165,7 +1165,7 @@ export function ExpenseForm({
                           {expenseCurrency.symbol || group.currency}
                         </span>
                       )}
-                      <div className="min-w-0 flex-1 border-b border-input transition-colors focus-within:border-primary">
+                      <div className="min-w-0 flex-1 border-b border-input pb-0.5 transition-colors focus-within:border-primary">
                         {isMultiPayer ? (
                           // Only several payers make the total a derived figure: it is their sum,
                           // so there is nothing to type into it. An itemised bill is not such a
@@ -1332,7 +1332,7 @@ export function ExpenseForm({
                                     column, figure right-aligned and tabular so the decimals line
                                     up down the column, the box tracking its value, and the
                                     calculator inside the field rather than beside it. */}
-                                <div className="flex items-center border-b border-input pl-1.5 transition-colors focus-within:border-primary [&_button]:h-7 [&_button]:w-7">
+                                <div className="flex items-center border-b border-input pb-0.5 pl-1.5 transition-colors focus-within:border-primary [&_button]:h-7 [&_button]:w-7">
                                   <span className="font-mono text-xs text-subtle-foreground">
                                     {expenseCurrency.symbol || group.currency}
                                   </span>
@@ -1502,16 +1502,15 @@ export function ExpenseForm({
                 <Button
                   type="button"
                   variant="ghost"
-                  size="sm"
-                  className="-ml-2 text-muted-foreground"
+                  className="-mx-6 h-10 w-[calc(100%+3rem)] justify-between rounded-none border-b px-6 text-xs font-normal text-muted-foreground hover:text-foreground"
                 >
+                  {t('moreOptions')}
                   <ChevronDown
                     className={cn(
-                      'w-4 h-4 mr-1 transition-transform',
+                      'h-4 w-4 opacity-40 transition-transform',
                       showMoreOptions && 'rotate-180',
                     )}
                   />
-                  {t('moreOptions')}
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent className="grid sm:grid-cols-2 gap-6 pt-4">
@@ -1618,11 +1617,22 @@ export function ExpenseForm({
                   control={form.control}
                   name="notes"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('notesField.label')}</FormLabel>
-                      <FormControl>
-                        <Textarea className="text-base" {...field} />
-                      </FormControl>
+                    <FormItem className="space-y-1">
+                      <FormLabel className="text-xs font-normal text-muted-foreground">
+                        {t('notesField.label')}
+                      </FormLabel>
+                      {/* A line field like every other place you type on this form. It was a
+                          rounded bordered box filled with `--background`, which is the *ground*
+                          colour sitting on a `--card` sheet — a faintly grey panel on white, and
+                          the only field here that had one. */}
+                      <div className="border-b border-input pb-0.5 transition-colors focus-within:border-primary">
+                        <FormControl>
+                          <Textarea
+                            className="min-h-[60px] resize-none rounded-none border-0 bg-transparent px-1 text-base shadow-none focus-visible:ring-0"
+                            {...field}
+                          />
+                        </FormControl>
+                      </div>
                     </FormItem>
                   )}
                 />
@@ -1631,15 +1641,17 @@ export function ExpenseForm({
                   control={form.control}
                   name="recurrenceRule"
                   render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>
+                    <FormItem className="-mx-6 flex items-center justify-between gap-2 space-y-0 border-b px-6">
+                      {/* One choice, one value: the same row as Paid by and the date rather than
+                          a full-width combobox under a heading. */}
+                      <FormLabel className="text-xs font-normal text-muted-foreground">
                         {t(`${sExpense}.recurrenceRule.label`)}
                       </FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
-                        <SelectTrigger>
+                        <SelectTrigger className="h-10 w-auto justify-end gap-1 border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0 [&>svg]:opacity-40">
                           <SelectValue placeholder="NONE" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1657,9 +1669,6 @@ export function ExpenseForm({
                           </SelectItem>
                         </SelectContent>
                       </Select>
-                      <FormDescription>
-                        {t(`${sExpense}.recurrenceRule.description`)}
-                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -1670,18 +1679,16 @@ export function ExpenseForm({
                     control={form.control}
                     name="isReimbursement"
                     render={({ field }) => (
-                      <FormItem className="col-span-2 flex flex-row gap-2 items-center space-y-0">
+                      <FormItem className="-mx-6 col-span-2 flex min-h-10 flex-row items-center justify-between gap-2 space-y-0 border-b px-6">
+                        <FormLabel className="text-xs font-normal text-muted-foreground">
+                          {t('isReimbursementField.label')}
+                        </FormLabel>
                         <FormControl>
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
                           />
                         </FormControl>
-                        <div>
-                          <FormLabel>
-                            {t('isReimbursementField.label')}
-                          </FormLabel>
-                        </div>
                       </FormItem>
                     )}
                   />
@@ -1694,18 +1701,16 @@ export function ExpenseForm({
                   control={form.control}
                   name="saveDefaultSplittingOptions"
                   render={({ field }) => (
-                    <FormItem className="col-span-2 flex flex-row gap-2 items-center space-y-0">
+                    <FormItem className="-mx-6 col-span-2 flex min-h-10 flex-row items-center justify-between gap-2 space-y-0 border-b px-6">
+                      <FormLabel className="text-xs font-normal text-muted-foreground">
+                        {t('SplitModeField.saveAsDefault')}
+                      </FormLabel>
                       <FormControl>
                         <Checkbox
                           checked={field.value}
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
-                      <div>
-                        <FormLabel>
-                          {t('SplitModeField.saveAsDefault')}
-                        </FormLabel>
-                      </div>
                     </FormItem>
                   )}
                 />
@@ -2033,8 +2038,11 @@ function PaidForList({
             key={id}
             data-id={`${id}/${splitMode}/${group.currency}`}
             className={cn(
-              'flex flex-wrap gap-y-3 items-center rounded-lg border p-3 transition-colors',
-              isSelected ? 'border-primary/40 bg-primary/5' : 'bg-transparent',
+              // A ruled row, not a card that tints when selected: the checkbox already says
+              // whether this person is in, and a bordered tinted box per participant was the last
+              // surface on this screen still speaking the old language.
+              'flex flex-wrap items-center gap-y-3 border-b px-1 py-2 transition-colors',
+              !isSelected && 'opacity-60',
             )}
           >
             <FormItem className="flex-1 flex flex-row items-center space-x-3 space-y-0">
