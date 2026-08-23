@@ -567,6 +567,51 @@ export async function getGroupExpenses(
 }
 
 /**
+ * The payments already recorded in a group, newest first.
+ *
+ * Deliberately *not* built on `getGroupExpenses`, for two reasons. That function materialises due
+ * recurring expenses before it reads, so rendering the Balances tab would turn into a write; and its
+ * only filter is free text over the title, so "the payments" would have to be sifted out on the
+ * client — which, against a paginated list, gives you the payments that happen to be on page one and
+ * looks right while being wrong.
+ *
+ * A payment recorded on the payment screen is one payer and one payee. One created through the old
+ * expense form with the reimbursement box ticked need not be, so `from`/`to` are the first of each
+ * and `isSimple` says whether that is the whole story — a row that is not simple falls back to its
+ * title rather than claiming a direction it does not have.
+ */
+export async function getGroupPayments(
+  groupId: string,
+  options?: { limit?: number },
+) {
+  const payments = await prisma.expense.findMany({
+    select: {
+      id: true,
+      title: true,
+      amount: true,
+      expenseDate: true,
+      notes: true,
+      paidBy: { select: { participantId: true } },
+      paidFor: { select: { participant: { select: { id: true } } } },
+    },
+    where: { groupId, isReimbursement: true },
+    orderBy: [{ expenseDate: 'desc' }, { createdAt: 'desc' }],
+    take: options?.limit,
+  })
+
+  return payments.map((payment) => ({
+    id: payment.id,
+    title: payment.title,
+    amount: payment.amount,
+    expenseDate: payment.expenseDate,
+    notes: payment.notes,
+    from: payment.paidBy[0]?.participantId ?? null,
+    to: payment.paidFor[0]?.participant.id ?? null,
+    isSimple: payment.paidBy.length === 1 && payment.paidFor.length === 1,
+  }))
+}
+
+/**
  * Balances for several groups in one pass, for the group list's "what do I owe" figures.
  *
  * Deliberately *not* built on `getGroupExpenses`: that materialises due recurring expenses first,
