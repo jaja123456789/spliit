@@ -35,6 +35,7 @@ import {
   readPendingShareImage,
 } from '@/lib/share-target'
 import {
+  amountAsMinorUnits,
   cn,
   formatCurrency,
   formatDate,
@@ -374,7 +375,15 @@ function ReceiptDialogContent({
   const linesCheck =
     receiptInfo && group
       ? checkReceiptLines(
-          Number(receiptInfo.amount) || 0,
+          // Minor units. The extractor reports the total in major units like every other figure it
+          // returns, and handing that straight over compared the lines against a total a hundred
+          // times too small: a EUR 87.40 receipt with EUR 71.80 of lines reported them as "EUR 70.93
+          // more than the total" — over rather than short, and the screen contradicting the total
+          // printed directly above it.
+          amountAsMinorUnits(
+            Number(receiptInfo.amount) || 0,
+            receiptCurrency ?? getCurrencyFromGroup(group),
+          ),
           (receiptInfo.items ?? []).map((item) => Number(item.price) || 0),
           receiptCurrency ?? getCurrencyFromGroup(group),
         )

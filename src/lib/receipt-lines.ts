@@ -17,12 +17,15 @@ export type ReceiptLinesCheck =
  * service, which the itemisation sheet already knows how to split. `over` is the suspicious one —
  * lines summing to more than the total generally means something was read twice.
  *
- * @param total the receipt total, in minor units
+ * @param totalInMinorUnits the receipt total. Named for its unit because the extractor reports
+ *   the total in *major* units, so every caller has to convert — and a caller that forgets compares
+ *   against a total a hundred times too small, which reads as "the lines are over" rather than as a
+ *   mistake.
  * @param prices line prices in major units, as the extractor reports them
  * @returns amounts in minor units, so the caller formats them with its own currency
  */
 export function checkReceiptLines(
-  total: number,
+  totalInMinorUnits: number,
   prices: number[],
   currency: Currency,
 ): ReceiptLinesCheck {
@@ -33,7 +36,7 @@ export function checkReceiptLines(
       running + amountAsMinorUnits(Number(price) || 0, currency),
     0,
   )
-  const difference = total - sum
+  const difference = totalInMinorUnits - sum
   // Under one minor unit is rounding, not disagreement.
   if (Math.abs(difference) < 1) return { kind: 'match' }
   return {
