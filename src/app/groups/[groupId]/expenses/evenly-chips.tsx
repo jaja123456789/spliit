@@ -131,7 +131,9 @@ export function EvenlyChips({
         type="button"
         variant="link"
         size="sm"
-        className="mt-1 h-auto px-0 text-xs font-normal text-muted-foreground"
+        // Small type, but not a small target: 16px of link under a row of 44px chips was the
+        // same inconsistency this pass exists to remove.
+        className="mt-1 h-auto min-h-11 px-0 text-xs font-normal text-muted-foreground"
         data-testid="evenly-chips-toggle-all"
         onClick={() => {
           const options = {

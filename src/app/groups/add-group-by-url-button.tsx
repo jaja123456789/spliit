@@ -142,7 +142,7 @@ export function AddGroupByUrlButton({ reload }: Props) {
               type="url"
               required
               placeholder="https://spliit.app/..."
-              className="flex-1 min-w-[200px] text-base"
+              className="flex-1 min-w-[200px] text-base sm:text-base"
               value={url}
               disabled={pending}
               onChange={(event) => {

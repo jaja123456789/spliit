@@ -190,8 +190,8 @@ export function PaymentForm({ group }: { group: Group }) {
                   name="paymentAmount"
                   value={amount}
                   onValueChange={setAmount}
-                  className="h-10 w-full border-0 bg-transparent shadow-none"
-                  inputClassName="h-10 w-full border-0 bg-transparent px-2.5 font-mono text-3xl font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                  className="h-11 sm:h-10 w-full border-0 bg-transparent shadow-none"
+                  inputClassName="h-11 sm:h-10 w-full border-0 bg-transparent px-2.5 font-mono text-3xl sm:text-3xl font-semibold tabular-nums shadow-none focus-visible:ring-0"
                 />
               </div>
             </div>
@@ -209,7 +209,7 @@ export function PaymentForm({ group }: { group: Group }) {
               <SelectTrigger
                 id="payment-from"
                 data-testid="payment-from"
-                className="h-8 border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0 focus:ring-offset-0"
+                className="h-11 sm:h-8 border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0 focus:ring-offset-0"
               >
                 <SelectValue />
               </SelectTrigger>
@@ -228,7 +228,7 @@ export function PaymentForm({ group }: { group: Group }) {
               <SelectTrigger
                 id="payment-to"
                 data-testid="payment-to"
-                className="h-8 border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0 focus:ring-offset-0"
+                className="h-11 sm:h-8 border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0 focus:ring-offset-0"
               >
                 <SelectValue />
               </SelectTrigger>
@@ -274,7 +274,7 @@ export function PaymentForm({ group }: { group: Group }) {
               type="date"
               value={date}
               onChange={(event) => setDate(event.target.value)}
-              className="h-8 border-0 bg-transparent px-0 font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="h-11 sm:h-8 border-0 bg-transparent px-0 font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
             />
           </PickRow>
           <PickRow label={t('notes')} htmlFor="payment-notes">
@@ -283,7 +283,7 @@ export function PaymentForm({ group }: { group: Group }) {
               placeholder={t('notesPlaceholder')}
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
-              className="h-8 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+              className="h-11 sm:h-8 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
             />
           </PickRow>
         </CardContent>

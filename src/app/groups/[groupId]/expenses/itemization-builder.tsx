@@ -426,7 +426,7 @@ export function ItemizationBuilder({
                                   {...field}
                                   placeholder={t('itemNamePlaceholder')}
                                   className={cn(
-                                    'h-8 border-0 bg-transparent px-2.5 text-sm font-medium shadow-none focus-visible:ring-0',
+                                    'h-11 sm:h-8 border-0 bg-transparent px-2.5 text-base sm:text-sm font-medium shadow-none focus-visible:ring-0',
                                     isExcluded && 'line-through',
                                   )}
                                 />
@@ -502,8 +502,8 @@ export function ItemizationBuilder({
                                 <CalculatorInput
                                   {...field}
                                   placeholder="0.00"
-                                  className="h-8 min-w-0 flex-1 border-0 bg-transparent shadow-none"
-                                  inputClassName="h-8 w-full border-0 bg-transparent px-0 text-right font-mono text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                                  className="h-11 sm:h-8 min-w-0 flex-1 border-0 bg-transparent shadow-none"
+                                  inputClassName="h-11 sm:h-8 w-full border-0 bg-transparent px-0 text-right font-mono text-base sm:text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
                                   onValueChange={(val: string) => {
                                     field.onChange(val)
                                     trigger('items')

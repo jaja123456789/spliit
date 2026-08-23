@@ -126,7 +126,7 @@ export function McpTokens() {
           onChange={(event) => setName(event.target.value)}
           placeholder={t('namePlaceholder')}
           maxLength={60}
-          className="text-base"
+          className="text-base sm:text-base"
         />
         <Button
           type="submit"

@@ -26,7 +26,9 @@ const SearchBar = React.forwardRef<HTMLInputElement, InputProps>(
         <Input
           type={type}
           className={cn(
-            'pl-10 text-sm focus:text-base bg-muted border-none text-muted-foreground',
+            // Was `text-sm focus:text-base` — a hand-rolled dodge for iOS zooming a field under
+            // 16px on focus. `Input` carries that now, for every field.
+            'pl-10 bg-muted border-none text-muted-foreground',
             className,
           )}
           ref={ref}

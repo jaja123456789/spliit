@@ -117,7 +117,7 @@ export function CalculatorInput({
           /* DESKTOP: POPOVER */
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9">
+              <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-9 sm:w-9">
                 <Calculator className="h-4 w-4 text-muted-foreground" />
               </Button>
             </PopoverTrigger>
@@ -133,7 +133,7 @@ export function CalculatorInput({
             onOpenChange={setOpen}
           >
             <DrawerTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-9 w-9">
+              <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-9 sm:w-9">
                 <Calculator className="h-4 w-4 text-muted-foreground" />
               </Button>
             </DrawerTrigger>

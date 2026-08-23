@@ -1115,7 +1115,7 @@ export function ExpenseForm({
                             placeholder={t(
                               `${sExpense}.TitleField.placeholder`,
                             )}
-                            className="h-10 border-0 bg-transparent px-2.5 text-lg shadow-none placeholder:font-normal placeholder:text-subtle-foreground focus-visible:ring-0"
+                            className="h-11 sm:h-10 border-0 bg-transparent px-2.5 text-lg sm:text-lg shadow-none placeholder:font-normal placeholder:text-subtle-foreground focus-visible:ring-0"
                             {...field}
                             onBlur={async () => {
                               field.onBlur()
@@ -1207,8 +1207,8 @@ export function ExpenseForm({
                           <FormControl>
                             <CalculatorInput
                               placeholder="0.00"
-                              className="h-10 w-full border-0 bg-transparent shadow-none"
-                              inputClassName="h-10 w-full border-0 bg-transparent px-2.5 font-mono text-3xl font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                              className="h-11 sm:h-10 w-full border-0 bg-transparent shadow-none"
+                              inputClassName="h-11 sm:h-10 w-full border-0 bg-transparent px-2.5 font-mono text-3xl sm:text-3xl font-semibold tabular-nums shadow-none focus-visible:ring-0"
                               {...field}
                               onValueChange={(val) =>
                                 handlePayerAmountChange(0, val)
@@ -1300,7 +1300,7 @@ export function ExpenseForm({
                                       // is a picture of a value and this one opens a picker, and a
                                       // control that looks like static text is the fault the
                                       // assign strip had.
-                                      'h-10 gap-1 border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0 [&>svg]:opacity-40',
+                                      'h-11 sm:h-10 gap-1 border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0 [&>svg]:opacity-40',
                                       // With one payer the target is everything right of the
                                       // label; with several the name leads the row.
                                       isMultiPayer
@@ -1357,8 +1357,8 @@ export function ExpenseForm({
                                   <FormControl>
                                     <CalculatorInput
                                       placeholder="0.00"
-                                      className="h-8 min-w-0 flex-1 border-0 bg-transparent shadow-none"
-                                      inputClassName="h-8 w-full border-0 bg-transparent px-0 text-right font-mono text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                                      className="h-11 sm:h-8 min-w-0 flex-1 border-0 bg-transparent shadow-none"
+                                      inputClassName="h-11 sm:h-8 w-full border-0 bg-transparent px-0 text-right font-mono text-base sm:text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
                                       {...field}
                                       onValueChange={(val) => {
                                         handlePayerAmountChange(index, val)
@@ -1398,7 +1398,7 @@ export function ExpenseForm({
                   type="button"
                   variant="ghost"
                   onClick={handleAddPayer}
-                  className="h-10 w-full justify-start rounded-none px-6 text-xs font-normal text-muted-foreground hover:text-foreground"
+                  className="h-11 sm:h-10 w-full justify-start rounded-none px-6 text-xs font-normal text-muted-foreground hover:text-foreground"
                 >
                   <Plus className="mr-1.5 h-3.5 w-3.5" />
                   {t('addPayer')}
@@ -1418,7 +1418,7 @@ export function ExpenseForm({
                     </FormLabel>
                     <FormControl>
                       <Input
-                        className="date-base h-10 w-auto border-0 bg-transparent px-0 text-right font-medium shadow-none focus-visible:ring-0"
+                        className="date-base h-11 sm:h-10 w-auto border-0 bg-transparent px-0 text-right font-medium shadow-none focus-visible:ring-0"
                         name="expenseDate"
                         type="date"
                         value={formatDate(field.value)}
@@ -1549,7 +1549,7 @@ export function ExpenseForm({
                 <Button
                   type="button"
                   variant="ghost"
-                  className="-mx-6 h-10 w-[calc(100%+3rem)] justify-between rounded-none border-b px-6 text-xs font-normal text-muted-foreground hover:text-foreground"
+                  className="-mx-6 h-11 sm:h-10 w-[calc(100%+3rem)] justify-between rounded-none border-b px-6 text-xs font-normal text-muted-foreground hover:text-foreground"
                 >
                   {t('moreOptions')}
                   <ChevronDown
@@ -1642,7 +1642,7 @@ export function ExpenseForm({
                               </span>
                               <FormControl>
                                 <Input
-                                  className="text-base max-w-"
+                                  className="text-base sm:text-base max-w-"
                                   type="text"
                                   inputMode="decimal"
                                   placeholder="0.00"
@@ -1679,7 +1679,7 @@ export function ExpenseForm({
                       <div className="rounded-md border border-input p-0.5 transition-colors focus-within:border-primary">
                         <FormControl>
                           <Textarea
-                            className="min-h-[60px] resize-none rounded-[8px] border-0 bg-transparent px-2.5 py-2 text-base shadow-none focus-visible:ring-0"
+                            className="min-h-[60px] resize-none rounded-[8px] border-0 bg-transparent px-2.5 py-2 text-base sm:text-base shadow-none focus-visible:ring-0"
                             {...field}
                           />
                         </FormControl>
@@ -1702,7 +1702,7 @@ export function ExpenseForm({
                         onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
-                        <SelectTrigger className="h-10 w-auto justify-end gap-1 border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0 [&>svg]:opacity-40">
+                        <SelectTrigger className="h-11 sm:h-10 w-auto justify-end gap-1 border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0 [&>svg]:opacity-40">
                           <SelectValue placeholder="NONE" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1968,7 +1968,7 @@ export function ExpenseForm({
             and hunting for Save at the bottom was the last thing left of the old scroll. */}
         <div className="sticky bottom-0 z-30 -mx-4 mt-4 flex gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:backdrop-blur-none">
           <SubmitButton
-            className="flex-1 sm:flex-none"
+            className="h-11 flex-1 sm:h-10 sm:flex-none"
             loadingContent={t(isCreate ? 'creating' : 'saving')}
           >
             <Save className="w-4 h-4 mr-2" />
@@ -1979,7 +1979,7 @@ export function ExpenseForm({
               onDelete={() => onDelete(activeUserId ?? undefined)}
             ></DeletePopup>
           )}
-          <Button variant="ghost" asChild>
+          <Button variant="ghost" className="h-11 sm:h-10" asChild>
             <Link href={`/groups/${group.id}`}>{t('cancel')}</Link>
           </Button>
         </div>
@@ -2163,7 +2163,7 @@ function PaidForList({
                     )}
                     <FormControl>
                       <CalculatorInput
-                        inputClassName="text-base w-[80px] -my-2"
+                        inputClassName="text-base sm:text-base w-[80px] -my-2"
                         placeholder="0.00"
                         decimalPlaces={expenseCurrency.decimal_digits}
                         value={currentShare}

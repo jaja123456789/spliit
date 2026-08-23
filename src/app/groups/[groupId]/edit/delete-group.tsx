@@ -102,7 +102,7 @@ export function DeleteGroup({
               </Label>
               <Input
                 id="delete-group-confirm"
-                className="text-base"
+                className="text-base sm:text-base"
                 autoComplete="off"
                 value={typed}
                 onChange={(event) => setTyped(event.target.value)}

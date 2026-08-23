@@ -149,7 +149,7 @@ export function GroupForm({
                   <FormLabel>{t('NameField.label')}</FormLabel>
                   <FormControl>
                     <Input
-                      className="text-base"
+                      className="text-base sm:text-base"
                       placeholder={t('NameField.placeholder')}
                       {...field}
                     />
@@ -209,7 +209,7 @@ export function GroupForm({
                   <FormLabel>{t('CurrencyField.label')}</FormLabel>
                   <FormControl>
                     <Input
-                      className="text-base"
+                      className="text-base sm:text-base"
                       placeholder={t('CurrencyField.placeholder')}
                       max={5}
                       {...field}
@@ -233,7 +233,7 @@ export function GroupForm({
                     <FormControl>
                       <Textarea
                         rows={2}
-                        className="text-base"
+                        className="text-base sm:text-base"
                         {...field}
                         placeholder={t('InformationField.placeholder')}
                       />
@@ -290,7 +290,7 @@ export function GroupForm({
                         <FormControl>
                           <div className="flex gap-2">
                             <Input
-                              className="text-base"
+                              className="text-base sm:text-base"
                               {...field}
                               placeholder={t('Participants.new')}
                             />
@@ -385,7 +385,7 @@ export function GroupForm({
                                               <div className="col-span-2">
                                                 <FormControl>
                                                   <Input
-                                                    className="h-8 text-sm"
+                                                    className="h-11 sm:h-8 text-base sm:text-sm"
                                                     placeholder="username"
                                                     {...field}
                                                     value={
@@ -421,7 +421,7 @@ export function GroupForm({
                                             <div className="col-span-2">
                                               <FormControl>
                                                 <Input
-                                                  className="h-8 text-sm"
+                                                  className="h-11 sm:h-8 text-base sm:text-sm"
                                                   placeholder="+1 234..."
                                                   {...field}
                                                   value={
