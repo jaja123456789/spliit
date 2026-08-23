@@ -21,12 +21,12 @@ test.describe('Recording a payment', () => {
 
     await expect(page.getByTestId('reimbursement-row-Bob-Alice')).toBeVisible()
     await page
-      .getByRole('link', { name: /mark as paid/i })
-      .first()
+      .getByTestId('reimbursement-row-Bob-Alice')
+      .getByRole('link', { name: /settle/i })
       .click()
     await page.waitForURL(/\/payments\/create/)
 
-    // The pill knows who owes whom and how much, and the screen arrives filled in.
+    // The pill knows who owes whom and how much, and the sheet arrives filled in.
     await expect(page.getByTestId('payment-from')).toContainText('Bob')
     await expect(page.getByTestId('payment-to')).toContainText('Alice')
     await expect(page.locator('input[name="paymentAmount"]')).toHaveValue('30')
@@ -38,6 +38,42 @@ test.describe('Recording a payment', () => {
     await expect(page.getByTestId('no-reimbursements')).toBeVisible()
     await expect(page.getByTestId('balance-row-Bob')).toContainText('$0.00')
     await expect(page.getByTestId('balance-row-Alice')).toContainText('$0.00')
+  })
+
+  test('lists what has been paid, not only what is left', async ({ page }) => {
+    // Payments used to exist only as italic rows in the expense list. The Balances sheet now shows
+    // them under the suggestions they cancel out.
+    await page.goto('/groups')
+    const groupId = await createGroupViaAPI(page, `paid ${randomId(4)}`, [
+      'Alice',
+      'Bob',
+    ])
+    await createExpenseViaAPI(page, groupId, {
+      title: 'Dinner',
+      amount: 6000,
+      payerName: 'Alice',
+    })
+
+    await page.goto(`/groups/${groupId}/balances`)
+    await expect(page.getByTestId('payments-list')).toContainText(
+      'No payments recorded yet.',
+    )
+
+    await page
+      .getByTestId('reimbursement-row-Bob-Alice')
+      .getByRole('link', { name: /settle/i })
+      .click()
+    await page.waitForURL(/\/payments\/create/)
+    await page.getByTestId('payment-save').click()
+    await page.waitForURL(/\/balances/)
+
+    const payments = page.getByTestId('payments-list')
+    await expect(payments).toContainText('Bob → Alice')
+    await expect(payments).toContainText('$30.00')
+    // And it leads somewhere: the expense it is stored as, which is the only way to unpick it.
+    await expect(
+      payments.locator('[data-testid^="payment-row-"]').first(),
+    ).toHaveAttribute('href', /\/expenses\/.+\/edit/)
   })
 
   test('is reachable when the group is already settled', async ({ page }) => {

@@ -1,19 +1,17 @@
 'use client'
 
 import { BalancesList } from '@/app/groups/[groupId]/balances-list'
+import { PaymentList } from '@/app/groups/[groupId]/payment-list'
 import { ReimbursementList } from '@/app/groups/[groupId]/reimbursement-list'
 import { SettleAllButton } from '@/app/groups/[groupId]/settle-all-button'
 import { Money } from '@/components/money'
 import { SheetHeader } from '@/components/sheet-header'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useActiveUser } from '@/lib/hooks'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
-import { Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import Link from 'next/link'
 import { useEffect } from 'react'
 import { match } from 'ts-pattern'
 import { useCurrentGroup } from '../current-group-context'
@@ -34,6 +32,9 @@ export default function BalancesAndReimbursements() {
     // Until we use tRPC more widely and can invalidate the cache on expense
     // update, it's easier and safer to invalidate the cache on page load.
     utils.groups.balances.invalidate()
+    // Payments are edited and deleted through the expense screens, which know nothing about this
+    // list, so it is stale on every return trip unless the page asks again.
+    utils.groups.payments.invalidate()
   }, [utils])
 
   const isLoading = balancesAreLoading || !balancesData || !group
@@ -108,31 +109,8 @@ export default function BalancesAndReimbursements() {
         )}
       </CardContent>
 
-      <div className="flex items-center justify-between gap-3 px-4 sm:px-6 pt-5 pb-1">
-        <span className="font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
-          {t('Reimbursements.title')}
-        </span>
-        <div className="flex items-center gap-2">
-          {!isLoading && (
-            <SettleAllButton
-              groupId={groupId}
-              reimbursements={balancesData.reimbursements}
-              participants={group.participants}
-              activeUserId={activeUserId}
-            />
-          )}
-          {/* Recording a payment used to be reachable only from a suggested-reimbursement row, so
-              a settled group offered no way to record one — which is precisely the moment you want
-              to record the payment that settled it. */}
-          <Button variant="outline" size="sm" asChild className="h-8">
-            <Link href={`/groups/${groupId}/payments/create`}>
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
-              {t('recordPayment')}
-            </Link>
-          </Button>
-        </div>
-      </div>
-      <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
+      <SectionRule>{t('Reimbursements.title')}</SectionRule>
+      <CardContent className="px-4 sm:px-6 pb-0">
         {isLoading ? (
           <ReimbursementsLoading
             participantCount={group?.participants.length}
@@ -146,10 +124,54 @@ export default function BalancesAndReimbursements() {
           />
         )}
       </CardContent>
+      {/* The batch action sits under the rows it acts on rather than beside the section's name.
+          Above them it was an instruction with nothing yet to apply to; here it is the last line of
+          a list, which is where "…and all of them" belongs. */}
+      {!isLoading && balancesData.reimbursements.length > 1 && (
+        <div className="mt-4 flex justify-end border-y bg-muted/40 px-4 py-2.5 sm:px-6">
+          <SettleAllButton
+            groupId={groupId}
+            reimbursements={balancesData.reimbursements}
+            participants={group.participants}
+            activeUserId={activeUserId}
+          />
+        </div>
+      )}
+
+      {/* Money that already moved. Recording a payment used to be reachable only from a suggested
+          reimbursement, so a settled group offered no way to record one — which is precisely the
+          moment you want to record the payment that settled it. It lives here instead, where it is
+          true whatever the balances say, and the payments themselves finally have somewhere to be
+          other than italic rows among the expenses. */}
+      <SectionRule>{t('Payments.title')}</SectionRule>
+      <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
+        {isLoading || !currency ? (
+          <PaymentsLoading />
+        ) : (
+          <PaymentList
+            groupId={groupId}
+            participants={group.participants}
+            currency={currency}
+          />
+        )}
+      </CardContent>
     </Card>
   )
 }
 
+/**
+ * The rule between two parts of one sheet. Not a heading of its own card — the whole point of the
+ * sheet is that these are all views of the same arithmetic.
+ */
+const SectionRule = ({ children }: { children: React.ReactNode }) => (
+  <div className="px-4 sm:px-6 pt-5 pb-1">
+    <h3 className="font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
+      {children}
+    </h3>
+  </div>
+)
+
+/** The reimbursement row with the content taken out: mark, two lines, figure, pill. */
 const ReimbursementsLoading = ({
   participantCount = 3,
 }: {
@@ -157,20 +179,39 @@ const ReimbursementsLoading = ({
 }) => {
   return (
     <div className="flex flex-col">
-      {Array(participantCount - 1)
+      {Array(Math.max(participantCount - 1, 1))
         .fill(undefined)
         .map((_, index) => (
-          <div key={index} className="flex justify-between py-5">
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              <Skeleton className="h-3 w-32" />
-              <Skeleton className="h-3 w-24" />
+          <div
+            key={index}
+            className="flex items-center gap-3 py-3 border-b last:border-0"
+          >
+            <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
+            <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+              <Skeleton className="h-3.5 w-32" />
+              <Skeleton className="h-3 w-16" />
             </div>
-            <Skeleton className="h-3 w-16" />
+            <Skeleton className="h-3.5 w-16" />
+            <Skeleton className="h-7 w-16 shrink-0 rounded-full" />
           </div>
         ))}
     </div>
   )
 }
+
+const PaymentsLoading = () => (
+  <div className="flex flex-col">
+    <div className="flex items-center gap-3 py-3 border-b">
+      <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
+      <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+        <Skeleton className="h-3.5 w-28" />
+        <Skeleton className="h-3 w-16" />
+      </div>
+      <Skeleton className="h-3.5 w-16" />
+    </div>
+    <Skeleton className="my-3 h-4 w-32" />
+  </div>
+)
 
 /**
  * The balance rows with the content taken out, rather than a different shape that happens to be

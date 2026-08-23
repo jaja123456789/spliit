@@ -33,10 +33,14 @@ test('suggested reimbursements displayed', async ({ page }) => {
   await navigateToTab(page, 'Balances')
   await page.waitForLoadState('networkidle')
 
-  // Verify Suggested reimbursements section is visible
-  // A section rule inside the balances sheet, not a heading of its own card: Balances and
-  // Suggested reimbursements are two views of the same arithmetic and share one sheet.
-  const reimbursementsHeading = page.getByText('Suggested reimbursements')
+  // Verify the To settle section is visible
+  // A section rule inside the balances sheet, not a heading of its own card: Balances and the
+  // payments that would clear them are two views of the same arithmetic and share one sheet.
+  // By role, not by text: the sheet header's own context line says "N payments to settle".
+  const reimbursementsHeading = page.getByRole('heading', {
+    name: 'To settle',
+    exact: true,
+  })
   await expect(reimbursementsHeading).toBeVisible()
 
   // Verify reimbursements list is displayed
@@ -46,20 +50,20 @@ test('suggested reimbursements displayed', async ({ page }) => {
   // Verify specific reimbursement rows with expected visible content
   const bobOwesAlice = page.getByTestId('reimbursement-row-Bob-Alice')
   await expect(bobOwesAlice).toBeVisible()
-  await expect(bobOwesAlice).toContainText('Bob owes Alice')
+  await expect(bobOwesAlice).toContainText('Bob → Alice')
   await expect(bobOwesAlice).toContainText('$40.00')
 
   const charlieOwesAlice = page.getByTestId('reimbursement-row-Charlie-Alice')
   await expect(charlieOwesAlice).toBeVisible()
-  await expect(charlieOwesAlice).toContainText('Charlie owes Alice')
+  await expect(charlieOwesAlice).toContainText('Charlie → Alice')
   await expect(charlieOwesAlice).toContainText('$70.00')
 
-  // Verify Mark as paid links exist and are clickable
+  // Verify the Settle pill exists and is clickable
   await expect(
-    bobOwesAlice.getByRole('link', { name: /mark as paid/i }),
+    bobOwesAlice.getByRole('link', { name: /settle/i }),
   ).toBeVisible()
   await expect(
-    charlieOwesAlice.getByRole('link', { name: /mark as paid/i }),
+    charlieOwesAlice.getByRole('link', { name: /settle/i }),
   ).toBeVisible()
 })
 
@@ -207,11 +211,11 @@ test('Balances match expected from expenses', async ({ page }) => {
   // Charlie should owe Alice $150
   const charlieOwesAlice = page.getByTestId('reimbursement-row-Charlie-Alice')
   await expect(charlieOwesAlice).toBeVisible()
-  await expect(charlieOwesAlice).toContainText('Charlie owes Alice')
+  await expect(charlieOwesAlice).toContainText('Charlie → Alice')
   await expect(charlieOwesAlice).toContainText('$150.00')
 })
 
-test('Suggested reimbursements minimized', async ({ page }) => {
+test('suggested payments minimized', async ({ page }) => {
   await page.goto('/groups')
   const groupId = await createGroupViaAPI(
     page,
@@ -240,10 +244,13 @@ test('Suggested reimbursements minimized', async ({ page }) => {
   await navigateToTab(page, 'Balances')
   await page.waitForLoadState('networkidle')
 
-  // Verify suggested reimbursements section exists
-  // A section rule inside the balances sheet, not a heading of its own card: Balances and
-  // Suggested reimbursements are two views of the same arithmetic and share one sheet.
-  const reimbursementsHeading = page.getByText('Suggested reimbursements')
+  // Verify the To settle section exists
+  // A section rule inside the balances sheet, not a heading of its own card: Balances and the
+  // payments that would clear them are two views of the same arithmetic and share one sheet.
+  const reimbursementsHeading = page.getByRole('heading', {
+    name: 'To settle',
+    exact: true,
+  })
   await expect(reimbursementsHeading).toBeVisible()
 
   // Verify reimbursements list is displayed

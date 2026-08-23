@@ -1,5 +1,7 @@
 'use client'
 
+import { PaymentOptionButton } from '@/components/payment-option-button'
+import { SheetHeader } from '@/components/sheet-header'
 import { Button } from '@/components/ui/button'
 import { CalculatorInput } from '@/components/ui/calculator-input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -12,17 +14,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
 import { readActiveUser } from '@/lib/active-user'
 import { Currency } from '@/lib/currency'
-import { amountAsDecimal, getCurrencyFromGroup } from '@/lib/utils'
+import { PaymentProfile, getPaymentOptions } from '@/lib/payment-links'
+import {
+  amountAsDecimal,
+  formatCurrency,
+  getCurrencyFromGroup,
+} from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { AppRouterOutput } from '@/trpc/routers/_app'
-import { Loader2, Save } from 'lucide-react'
-import { useTranslations } from 'next-intl'
+import { Loader2 } from 'lucide-react'
+import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { ReactNode, useEffect, useState } from 'react'
 
 type Group = NonNullable<AppRouterOutput['groups']['get']['group']>
 
@@ -33,7 +39,7 @@ function todayAsInputValue() {
 }
 
 /**
- * Recording money that has already moved.
+ * Recording money that has already moved — and, right beside it, the way to move it.
  *
  * This used to be a query string into the expense form —
  * `?reimbursement=yes&from=…&to=…&amount=…` — which meant the screen for settling up was the screen
@@ -41,15 +47,19 @@ function todayAsInputValue() {
  * recurrence and document attachments, none of which mean anything for a payment, and the field
  * that made it a payment at all was a checkbox inside "More options".
  *
- * Worse, that link only existed on a suggested-reimbursement row. In a settled group there were no
- * such rows, so there was no way to record a payment at all — which is exactly when you want to
- * record the one that settled it.
+ * The sheet answers two different questions, so it has two sections. **Paying** leaves the app for
+ * Venmo or PayPal and settles nothing here; **recording** is bookkeeping for money that has already
+ * moved. The pay-with handles used to be chips on a balance row, where they were a fifth thing
+ * competing for one line and nobody discovered that Spliit could open Venmo at all.
+ *
+ * The amount is the sheet's figure and stays editable, because a part-payment is ordinary.
  *
  * It still writes an ordinary expense with `isReimbursement`, so there is no migration and every
  * balance calculation already understands it.
  */
 export function PaymentForm({ group }: { group: Group }) {
   const t = useTranslations('Payment')
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
   const utils = trpc.useUtils()
@@ -61,6 +71,7 @@ export function PaymentForm({ group }: { group: Group }) {
   // Prefilled by the Settle pill, which knows who owes whom and how much. Amounts arrive in minor
   // units, because that is what balances are computed in.
   const prefilledAmount = searchParams.get('amount')
+  const isPrefilled = !!searchParams.get('from')
   const [from, setFrom] = useState(
     () => searchParams.get('from') ?? participants[0]?.id ?? '',
   )
@@ -91,6 +102,31 @@ export function PaymentForm({ group }: { group: Group }) {
     )
   }, [group.id, participants, searchParams])
 
+  const nameOf = (id: string) =>
+    participants.find((p) => p.id === id)?.name ?? ''
+  const fromName = nameOf(from)
+  const toName = nameOf(to)
+
+  // Minor units, to match what `getPaymentOptions` and the balances both work in. A typed "30"
+  // means 30.00, so it has to be scaled the same way the expense form scales it.
+  const amountInMinorUnits = Math.round(
+    (Number(amount) || 0) * 10 ** currency.decimal_digits,
+  )
+  // Only handles the recipient has actually filled in appear; an empty profile yields nothing, and
+  // then the sheet is purely about recording.
+  const paymentOptions =
+    from === to
+      ? []
+      : getPaymentOptions(
+          participants.find((p) => p.id === to)
+            ?.paymentProfile as PaymentProfile | null,
+          amountInMinorUnits,
+          currency,
+          fromName
+            ? t('defaultTitle', { from: fromName, to: toName })
+            : 'Spliit',
+        )
+
   const submit = async () => {
     if (from === to) {
       setError(t('sameParticipant'))
@@ -98,8 +134,6 @@ export function PaymentForm({ group }: { group: Group }) {
     }
     setError(null)
     setIsSaving(true)
-    const fromName = participants.find((p) => p.id === from)?.name ?? ''
-    const toName = participants.find((p) => p.id === to)?.name ?? ''
 
     await mutateAsync({
       groupId: group.id,
@@ -121,6 +155,9 @@ export function PaymentForm({ group }: { group: Group }) {
     })
     utils.groups.expenses.invalidate()
     utils.groups.balances.invalidate()
+    // The Payments list is its own query, so recording one has to say so — otherwise the sheet
+    // saves, the balances move, and the list of payments still says there are none.
+    utils.groups.payments.invalidate()
     router.push(`/groups/${group.id}/balances`)
   }
 
@@ -134,20 +171,46 @@ export function PaymentForm({ group }: { group: Group }) {
   return (
     <form onSubmit={onSubmit}>
       <Card className="mb-4">
-        <CardContent className="grid gap-5 pt-6 sm:grid-cols-2">
-          <div className="sm:col-span-2">
-            <h1 className="text-xl font-semibold tracking-tight">
-              {t('title')}
-            </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
-              {t('description')}
-            </p>
-          </div>
+        <SheetHeader
+          label={isPrefilled ? t('settleTitle') : t('title')}
+          figure={
+            // The same amount idiom as the expense form: the currency on a plate beside the field
+            // rather than inside it, so the caret never lands on the symbol.
+            <div className="flex items-center gap-3">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted font-mono text-lg font-medium text-muted-foreground">
+                {currency.symbol || group.currency}
+              </span>
+              <div className="min-w-0 flex-1 rounded-md border border-input p-0.5 transition-colors focus-within:border-primary">
+                <Label htmlFor="payment-amount" className="sr-only">
+                  {t('amount')}
+                </Label>
+                <CalculatorInput
+                  id="payment-amount"
+                  data-testid="payment-amount"
+                  name="paymentAmount"
+                  value={amount}
+                  onValueChange={setAmount}
+                  className="h-10 w-full border-0 bg-transparent shadow-none"
+                  inputClassName="h-10 w-full border-0 bg-transparent px-2.5 font-mono text-3xl font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                />
+              </div>
+            </div>
+          }
+          context={
+            isPrefilled && fromName && toName
+              ? `${fromName} → ${toName} · ${t('suggested')}`
+              : t('description')
+          }
+        />
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="payment-from">{t('from')}</Label>
+        <CardContent className="px-0 pb-0">
+          <PickRow label={t('from')} htmlFor="payment-from">
             <Select value={from} onValueChange={setFrom}>
-              <SelectTrigger id="payment-from" data-testid="payment-from">
+              <SelectTrigger
+                id="payment-from"
+                data-testid="payment-from"
+                className="h-8 border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0 focus:ring-offset-0"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -158,12 +221,15 @@ export function PaymentForm({ group }: { group: Group }) {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </PickRow>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="payment-to">{t('to')}</Label>
+          <PickRow label={t('to')} htmlFor="payment-to">
             <Select value={to} onValueChange={setTo}>
-              <SelectTrigger id="payment-to" data-testid="payment-to">
+              <SelectTrigger
+                id="payment-to"
+                data-testid="payment-to"
+                className="h-8 border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0 focus:ring-offset-0"
+              >
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -174,71 +240,98 @@ export function PaymentForm({ group }: { group: Group }) {
                 ))}
               </SelectContent>
             </Select>
-          </div>
+          </PickRow>
+        </CardContent>
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="payment-amount">{t('amount')}</Label>
-            <CalculatorInput
-              id="payment-amount"
-              data-testid="payment-amount"
-              name="paymentAmount"
-              value={amount}
-              onValueChange={setAmount}
-              inputClassName="font-mono tabular-nums"
-            />
-          </div>
+        {/* Paying leaves the app. It is offered first because it is the step that has to happen
+            before there is anything to record — and it is skipped entirely by anyone settling a
+            payment that already happened. */}
+        {paymentOptions.length > 0 && (
+          <>
+            <SectionRule>{t('payNow', { name: toName })}</SectionRule>
+            <div
+              className="flex flex-col gap-2 px-4 sm:px-6"
+              data-testid="pay-with-options"
+            >
+              {paymentOptions.map((option, index) => (
+                <PaymentOptionButton key={index} option={option} />
+              ))}
+            </div>
+            <p className="px-4 pt-2 text-xs text-subtle-foreground sm:px-6">
+              {t('payNowHint', {
+                amount: formatCurrency(currency, amountInMinorUnits, locale),
+                name: toName,
+              })}
+            </p>
+          </>
+        )}
 
-          <div className="grid gap-1.5">
-            <Label htmlFor="payment-date">{t('date')}</Label>
+        <SectionRule>{t('alreadyPaid')}</SectionRule>
+        <CardContent className="px-0 pb-0">
+          <PickRow label={t('date')} htmlFor="payment-date">
             <Input
               id="payment-date"
               type="date"
               value={date}
               onChange={(event) => setDate(event.target.value)}
+              className="h-8 border-0 bg-transparent px-0 font-medium shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
             />
-          </div>
-
-          <div className="grid gap-1.5 sm:col-span-2">
-            <Label htmlFor="payment-notes">{t('notes')}</Label>
-            <Textarea
+          </PickRow>
+          <PickRow label={t('notes')} htmlFor="payment-notes">
+            <Input
               id="payment-notes"
               placeholder={t('notesPlaceholder')}
               value={notes}
               onChange={(event) => setNotes(event.target.value)}
+              className="h-8 border-0 bg-transparent px-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
             />
-          </div>
+          </PickRow>
+        </CardContent>
 
+        <CardContent className="flex flex-col gap-3 px-4 pt-4 pb-4 sm:px-6 sm:pb-6">
           {error && (
-            <p className="sm:col-span-2 text-sm font-medium text-destructive">
-              {error}
-            </p>
+            <p className="text-sm font-medium text-destructive">{error}</p>
           )}
-
-          <div className="sm:col-span-2 flex gap-2">
-            <Button
-              type="submit"
-              className="flex-1 sm:flex-none"
-              disabled={isSaving}
-              data-testid="payment-save"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {t('saving')}
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  {t('save')}
-                </>
-              )}
-            </Button>
-            <Button variant="ghost" asChild>
-              <Link href={`/groups/${group.id}/balances`}>{t('cancel')}</Link>
-            </Button>
-          </div>
+          <Button type="submit" disabled={isSaving} data-testid="payment-save">
+            {isSaving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isSaving ? t('saving') : t('save')}
+          </Button>
+          <Button variant="ghost" asChild>
+            <Link href={`/groups/${group.id}/balances`}>{t('cancel')}</Link>
+          </Button>
         </CardContent>
       </Card>
     </form>
   )
 }
+
+/** A ruled row whose right-hand side is a control: label, value, rule. */
+const PickRow = ({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: ReactNode
+  htmlFor: string
+  children: ReactNode
+}) => (
+  <div className="flex items-center gap-3 border-b px-4 py-2 sm:px-6">
+    <Label
+      htmlFor={htmlFor}
+      // Wide enough for "Who received it" on one line; a longer locale wraps, and the row is
+      // centred so it stays tidy when it does.
+      className="w-32 shrink-0 text-sm font-normal leading-tight text-muted-foreground"
+    >
+      {label}
+    </Label>
+    <div className="min-w-0 flex-1">{children}</div>
+  </div>
+)
+
+const SectionRule = ({ children }: { children: ReactNode }) => (
+  <div className="px-4 pt-5 pb-2 sm:px-6">
+    <h3 className="font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
+      {children}
+    </h3>
+  </div>
+)

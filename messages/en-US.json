@@ -469,11 +469,19 @@
     "settledUp": "settled up",
     "owes": "owes",
     "Reimbursements": {
-      "title": "Suggested reimbursements",
+      "title": "To settle",
       "description": "Here are suggestions for optimized reimbursements between participants.",
       "noImbursements": "It looks like your group doesn’t need any reimbursement 😁",
       "owes": "<strong>{from}</strong> owes <strong>{to}</strong>",
-      "markAsPaid": "Mark as paid"
+      "markAsPaid": "Mark as paid",
+      "suggested": "suggested",
+      "settle": "Settle",
+      "settleAria": "Settle {from} → {to}"
+    },
+    "Payments": {
+      "title": "Payments",
+      "none": "No payments recorded yet.",
+      "more": "Only the most recent payments are shown."
     },
     "recordPayment": "Record a payment"
   },
@@ -787,7 +795,9 @@
   },
   "Payment": {
     "title": "Record a payment",
-    "description": "Money that has already changed hands. It settles a balance rather than adding to it.",
+    "settleTitle": "Settle up",
+    "suggested": "suggested",
+    "description": "Money that has already changed hands.",
     "from": "Who paid",
     "to": "Who received it",
     "amount": "Amount",
@@ -802,6 +812,9 @@
     "defaultTitle": "Payment from {from} to {to}",
     "payWith": "Pay with",
     "payWithHint": "Opens {app}. Recording it here is separate.",
+    "payNow": "Pay {name} now",
+    "payNowHint": "Opens the app with {amount} to {name} filled in. Come back here to record it.",
+    "alreadyPaid": "Already paid?",
     "settleAll": "Settle all {count}",
     "settleAllConfirmTitle": "Record {count} payments?",
     "settleAllConfirmBody": "This records every suggested payment at once, as if each had already been made. Nothing leaves the app.",

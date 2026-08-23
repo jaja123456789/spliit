@@ -74,6 +74,7 @@ export function SettleAllButton({
       })
       utils.groups.expenses.invalidate()
       utils.groups.balances.invalidate()
+      utils.groups.payments.invalidate()
       setOpen(false)
     } catch {
       // The write is transactional, so "nothing was recorded" is a promise the server can keep.

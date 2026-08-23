@@ -31,13 +31,13 @@ test('Active user changes balance view', async ({ page }) => {
   await page.goto(`/groups/${groupId}/expenses`)
   await navigateToTab(page, 'Balances')
 
-  // Verify the reimbursements list is displayed with Mark as paid link
+  // Verify the reimbursements list is displayed with a Settle pill
   const reimbursementsList = page.getByTestId('reimbursements-list')
   await expect(reimbursementsList).toBeVisible()
 
-  // Get the Mark as paid link and verify it contains reimbursement query params
-  const markAsPaidLink = page
-    .getByRole('link', { name: 'Mark as paid' })
+  // Get the Settle pill and verify it contains reimbursement query params
+  const markAsPaidLink = reimbursementsList
+    .getByRole('link', { name: /settle/i })
     .first()
   await expect(markAsPaidLink).toBeVisible()
 
@@ -48,8 +48,8 @@ test('Active user changes balance view', async ({ page }) => {
   expect(hrefBefore).toMatch(/\bto=/)
   expect(hrefBefore).toMatch(/\bamount=/)
 
-  // Verify Mark as paid link text is visible (confirms it's rendered)
-  await expect(markAsPaidLink).toContainText('Mark as paid')
+  // Verify the pill's own text is visible (confirms it's rendered)
+  await expect(markAsPaidLink).toContainText('Settle')
 
   // Clicking a participant row should set the active context
   const participantRow = page.getByTestId(`balance-row-${participantB}`)
