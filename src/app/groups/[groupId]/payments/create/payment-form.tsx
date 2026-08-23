@@ -170,7 +170,7 @@ export function PaymentForm({ group }: { group: Group }) {
 
   return (
     <form onSubmit={onSubmit}>
-      <Card className="mb-4">
+      <Card bleed className="mb-4">
         <SheetHeader
           label={isPrefilled ? t('settleTitle') : t('title')}
           figure={

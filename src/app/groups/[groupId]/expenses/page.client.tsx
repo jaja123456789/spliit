@@ -46,7 +46,7 @@ export default function GroupExpensesPageClient({
           with two competing edges around every expense.
           `mb-20` is load-bearing on mobile: it is the clearance that stops the FAB covering the
           last row. */}
-      <Card className="mb-20 sm:mb-4 rounded-none -mx-4 border-x-0 sm:border-x sm:rounded-lg sm:mx-0 shadow-sm overflow-hidden">
+      <Card bleed className="mb-20 sm:mb-4 overflow-hidden">
         <CardContent className="p-0 flex flex-col gap-3 pb-4 sm:pb-6 relative min-h-[300px]">
           <ExpenseList
             actions={

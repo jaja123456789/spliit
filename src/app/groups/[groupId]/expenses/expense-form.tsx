@@ -1033,7 +1033,7 @@ export function ExpenseForm({
           </div>
         )}
 
-        <Card>
+        <Card bleed>
           <CardContent className="grid sm:grid-cols-2 gap-6 pt-6">
             {/* Title over amount, each with the control that qualifies it in a tinted square to
                 its left, over a rule. The amount used to be a 48px figure centred on its own line
@@ -1714,7 +1714,7 @@ export function ExpenseForm({
             into the form, and the header repeated, word for word, the hint the split control
             directly above it already shows. */}
         {isItemized ? (
-          <Card className="mt-4">
+          <Card bleed className="mt-4">
             <CardContent className="pt-0">
               <ItemizationBuilder
                 group={group}
@@ -1729,7 +1729,7 @@ export function ExpenseForm({
           </Card>
         ) : (
           // Standard "Paid For" Card
-          <Card className="mt-4">
+          <Card bleed className="mt-4">
             <CardHeader>
               <CardTitle className="flex justify-between">
                 <span>{t(`${sExpense}.paidFor.title`)}</span>
@@ -1806,7 +1806,7 @@ export function ExpenseForm({
           </Card>
         )}
         {runtimeFeatureFlags.enableExpenseDocuments && (
-          <Card className="mt-4">
+          <Card bleed className="mt-4">
             <CardHeader>
               <CardTitle className="flex justify-between">
                 <span>{t('attachDocuments')}</span>

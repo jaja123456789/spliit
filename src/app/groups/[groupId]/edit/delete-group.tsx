@@ -74,7 +74,7 @@ export function DeleteGroup({
   }
 
   return (
-    <Card className="mb-4 border-destructive/40">
+    <Card bleed className="mb-4 border-destructive/40">
       <CardHeader>
         <CardTitle className="text-destructive">{t('title')}</CardTitle>
         <CardDescription>{t('description')}</CardDescription>

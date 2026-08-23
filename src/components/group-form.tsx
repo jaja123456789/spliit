@@ -136,7 +136,7 @@ export function GroupForm({
           await onSubmit(values, activeParticipantId())
         })}
       >
-        <Card className="mb-4">
+        <Card bleed className="mb-4">
           <CardHeader>
             <CardTitle>{t('title')}</CardTitle>
           </CardHeader>
@@ -270,7 +270,7 @@ export function GroupForm({
           </CardContent>
         </Card>
 
-        <Card className="mb-4">
+        <Card bleed className="mb-4">
           <CardHeader>
             <CardTitle>{t('Participants.title')}</CardTitle>
             <CardDescription>{t('Participants.description')}</CardDescription>
@@ -472,7 +472,7 @@ export function GroupForm({
           </CardFooter>
         </Card>
 
-        <Card className="mb-4">
+        <Card bleed className="mb-4">
           <CardHeader>
             <CardTitle>{t('Settings.title')}</CardTitle>
             <CardDescription>{t('Settings.description')}</CardDescription>

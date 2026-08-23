@@ -54,7 +54,7 @@ function ChartCard({
   children: React.ReactElement
 }) {
   return (
-    <Card className={className}>
+    <Card bleed className={className}>
       {/* Same header as every other sheet: the chart's name is a caps label, not a headline. A
           20px title over a sentence above each of three charts was three times as much chrome as
           chart. */}

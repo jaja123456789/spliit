@@ -38,7 +38,7 @@ export function TotalsPageClient() {
     <div className="space-y-4">
       {/* One sheet. `Totals` owns its own header now, so there is no CardHeader here repeating the
           tab name over a sentence explaining that a summary is a summary. */}
-      <Card className="pb-2">
+      <Card bleed className="pb-2">
         <Totals />
       </Card>
 
@@ -47,7 +47,7 @@ export function TotalsPageClient() {
       {!data || !group ? (
         <ChartsSkeleton />
       ) : data.categorySpending.length === 0 ? (
-        <Card>
+        <Card bleed>
           <CardContent className="py-10 text-center text-sm text-muted-foreground">
             {t('Charts.noData')}
           </CardContent>

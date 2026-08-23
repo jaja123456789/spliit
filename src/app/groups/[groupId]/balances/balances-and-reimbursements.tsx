@@ -50,7 +50,7 @@ export default function BalancesAndReimbursements() {
   const isSettled = yourBalance !== undefined && yourBalance === 0
 
   return (
-    <Card className="mb-4">
+    <Card bleed className="mb-4">
       {/* One sheet, not two cards. "Balances" and "Suggested reimbursements" are two views of the
           same arithmetic — a heading, a paragraph and a second border between them made them look
           like unrelated screens that happened to share a tab. */}
