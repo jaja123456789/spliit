@@ -1,6 +1,6 @@
 import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
-import { navigateToTab } from '../helpers'
+import { navigateToGroup, navigateToTab } from '../helpers'
 import { createGroupViaAPI } from '../helpers/batch-api'
 import { AMOUNT_INPUT } from '../helpers/expense'
 
@@ -52,10 +52,14 @@ test('Create expense - evenly split (most common flow)', async ({ page }) => {
   // Step 6: Verify split section is visible (evenly split is the default when all are checked)
   // The form doesn't explicitly show "Evenly" text, but by default all participants are checked
 
-  // Step 7: Verify all 3 participants are included
-  const participantCheckboxes = page.getByRole('checkbox')
-  const checkedCount = await participantCheckboxes.count()
-  expect(checkedCount).toBeGreaterThanOrEqual(3)
+  // Step 7: Verify all 3 participants are included. Evenly shows them as chips under the split
+  // control rather than as rows in a separate card — the rows are the per-person value editor, and
+  // evenly has no per-person value to edit.
+  const chips = page.getByTestId('evenly-chips').getByRole('switch')
+  await expect(chips).toHaveCount(3)
+  for (const chip of await chips.all()) {
+    await expect(chip).toHaveAttribute('aria-checked', 'true')
+  }
 
   // Step 8: Submit expense
   const saveButton = page.locator('button[type="submit"]').first()
@@ -372,4 +376,37 @@ test('Create expense - by amount split mode', async ({ page }) => {
   await expect(page.getByText(participantA).first()).toBeVisible()
   await expect(page.getByText(participantB).first()).toBeVisible()
   await expect(page.getByText(participantC).first()).toBeVisible()
+})
+
+test('evenly chips re-divide when someone is dropped', async ({ page }) => {
+  await page.goto('/groups')
+  const groupId = await createGroupViaAPI(page, `chips ${randomId(4)}`, [
+    'Alice',
+    'Bob',
+    'Charlie',
+  ])
+  await navigateToGroup(page, groupId)
+  await page.goto(`/groups/${groupId}/expenses/create`)
+
+  await page.locator('input[name="title"]').fill('Dinner')
+  await page.locator(AMOUNT_INPUT).fill('87.40')
+
+  const chips = page.getByTestId('evenly-chips')
+  // Largest remainder, not three equal thirds: 87.40 does not divide by three, and one of them
+  // has to carry the odd cent.
+  await expect(chips).toContainText('$29.14')
+  await expect(chips).toContainText('$29.13')
+
+  await page.getByTestId('evenly-chip-Bob').click()
+  await expect(page.getByTestId('evenly-chip-Bob')).toHaveAttribute(
+    'aria-checked',
+    'false',
+  )
+  await expect(chips).toContainText('$43.70')
+
+  // And the expense saves with only the two who are still on it.
+  await page.locator('button[type="submit"]').first().click()
+  await page.waitForURL(/\/groups\/[^/]+/)
+  await navigateToTab(page, 'Balances')
+  await expect(page.getByTestId('balance-row-Bob')).toContainText('$0.00')
 })

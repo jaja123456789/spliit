@@ -109,6 +109,7 @@ import { DeletePopup } from '../../../../components/delete-popup'
 import { extractCategoryFromTitle } from '../../../../components/expense-form-actions'
 import { CategoryIcon } from './category-icon'
 import { CreateFromReceiptButton } from './create-from-receipt-button'
+import { EvenlyChips } from './evenly-chips'
 import { ItemizationBuilder } from './itemization-builder' // Import new component
 
 // --- Helpers ---
@@ -1501,6 +1502,19 @@ export function ExpenseForm({
                     only entry point in the whole app was an icon in the expense list's header. The
                     itemised path is the one that most wants OCR, so it is the one that gets the
                     offer, and it fills the lines in place rather than navigating anywhere. */}
+                {/* Evenly is most expenses, and who is in is the thing people actually change on
+                    it. It used to live in a second card at the far end of a page one and a half
+                    screens long; here it is under the control that decides it, each chip carrying
+                    that person's share. */}
+                {splitControl === 'EVENLY' && (
+                  <EvenlyChips
+                    form={form}
+                    group={group}
+                    currency={expenseCurrency}
+                    totalAmount={effectiveTotal}
+                    activeUserId={activeUserId}
+                  />
+                )}
                 {isCreate &&
                   splitControl === 'ITEMS' &&
                   runtimeFeatureFlags.enableReceiptExtract && (
@@ -1772,8 +1786,10 @@ export function ExpenseForm({
               />
             </CardContent>
           </Card>
-        ) : (
-          // Standard "Paid For" Card
+        ) : splitControl === 'EVENLY' ? null : (
+          // The per-person value editor, for shares / percentage / exact amount. Evenly does not
+          // need it — every selected person has the same one share — so on that path the chips
+          // above say who is in and this card does not exist.
           <Card bleed className="mt-4">
             <CardHeader>
               <CardTitle className="flex justify-between">
