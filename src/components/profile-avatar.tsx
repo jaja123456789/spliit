@@ -58,7 +58,9 @@ export function ProfileAvatar({
         // on a 40px plate and as a blob on a 24px one. Mark type sits outside the type scale for
         // the same reason — it is a two-letter label, not text in the reading hierarchy.
         borderRadius: Math.round(size * 0.24),
-        fontSize: Math.round(size * 0.38),
+        // Floored, not purely proportional: a 26px chip mark computed to 8px, smaller than
+        // anything else on the screen. Marks sit outside the type scale, but not that far.
+        fontSize: Math.max(10, Math.round(size * 0.38)),
       }}
     >
       {initials}

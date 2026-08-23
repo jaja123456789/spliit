@@ -191,7 +191,7 @@ export function PaymentForm({ group }: { group: Group }) {
                   value={amount}
                   onValueChange={setAmount}
                   className="h-11 sm:h-10 w-full border-0 bg-transparent shadow-none"
-                  inputClassName="h-11 sm:h-10 w-full border-0 bg-transparent px-2.5 font-mono text-3xl sm:text-3xl font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                  inputClassName="h-11 sm:h-10 w-full border-0 bg-transparent px-2.5 font-mono text-2xl sm:text-2xl font-semibold tabular-nums shadow-none focus-visible:ring-0"
                 />
               </div>
             </div>

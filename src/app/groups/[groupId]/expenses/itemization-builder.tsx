@@ -475,10 +475,6 @@ export function ItemizationBuilder({
                         }
                       />
 
-                      {/* A plain input, not a CalculatorInput. The concept's line is a name and a
-                      price and nothing else, and the calculator's addon put a second icon in
-                      every row — 24 icons on a six-line receipt — for arithmetic you do once, on
-                      the total, where the hero still offers it. */}
                       <FormField
                         control={control}
                         name={`items.${index}.price`}
@@ -494,7 +490,7 @@ export function ItemizationBuilder({
                                 so the decimal point lands in the same column whatever the
                                 value's length — only the symbol moves, which is what it does on
                                 a printed statement too. */}
-                            <div className="flex w-[116px] items-center gap-1 rounded-md border border-input p-0.5 transition-colors focus-within:border-primary pl-2 [&_button]:h-7 [&_button]:w-7">
+                            <div className="flex w-[100px] items-center gap-0.5 rounded-md border border-input p-0.5 transition-colors focus-within:border-primary pl-1.5 [&_button]:h-7 [&_button]:w-7">
                               <span className="font-mono text-xs text-subtle-foreground">
                                 {currency.symbol || group.currency}
                               </span>
@@ -534,23 +530,16 @@ export function ItemizationBuilder({
                           the title above — so the row's only destructive action was there or not
                           depending on where the cursor had last been. Quiet and permanent beats
                           loud and intermittent. */}
-                      {!isSelecting && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 shrink-0 text-subtle-foreground hover:bg-destructive/10 hover:text-destructive"
-                          onClick={() => removeRow(index)}
-                          type="button"
-                          title={t('removeLine')}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
                     </div>
 
                     {/* The second line is the whole target. "Tap a row to change who" — one place to
                     aim at instead of a 36px icon button in the row's most crowded corner, and it
                     is the same strip that tells you who shares the line and what it costs you. */}
+                    {/* `pr-[31px]` is the price field's calculator button (28px) plus its box's
+                        border and padding (3px). Without it this line's "you 6.17" ended 31px to
+                        the right of the price digits directly above it — two money figures in one
+                        row on two different edges, which is the thing a column of figures exists
+                        to avoid. */}
                     {!inlineMarks && (
                       <button
                         type="button"
@@ -558,7 +547,7 @@ export function ItemizationBuilder({
                         aria-expanded={isOpen}
                         disabled={isSelecting}
                         onClick={() => setOpenRowId(isOpen ? null : field.id)}
-                        className="-mx-2 mb-1 flex min-h-[40px] w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted/60 disabled:opacity-100 disabled:hover:bg-transparent"
+                        className="mb-1 flex min-h-[40px] w-full items-center gap-2 rounded-md py-1.5 pr-[31px] text-left transition-colors hover:bg-muted/60 disabled:opacity-100 disabled:hover:bg-transparent"
                       >
                         {/* The stack goes when the row is open: the grid below is the same set of
                         people at four times the size, and the concept's open row drops it too. */}
@@ -629,6 +618,23 @@ export function ItemizationBuilder({
                       />
                     )}
                   </div>
+                  {/* Delete stays on the right of the row, but beside *both* its lines rather than
+                      inside the first one. On the line it was the only thing between the price and
+                      the right edge, so the price stopped 45px short of where the second line's
+                      "you 6.17" ended — two money figures in one row on two different edges. As a
+                      column it reserves the same width from both lines, and they align. */}
+                  {!isSelecting && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-subtle-foreground hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => removeRow(index)}
+                      type="button"
+                      title={t('removeLine')}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
             )

@@ -1115,7 +1115,7 @@ export function ExpenseForm({
                             placeholder={t(
                               `${sExpense}.TitleField.placeholder`,
                             )}
-                            className="h-11 sm:h-10 border-0 bg-transparent px-2.5 text-lg sm:text-lg shadow-none placeholder:font-normal placeholder:text-subtle-foreground focus-visible:ring-0"
+                            className="h-11 sm:h-10 border-0 bg-transparent px-2.5 text-base sm:text-base font-medium shadow-none placeholder:font-normal placeholder:text-subtle-foreground focus-visible:ring-0"
                             {...field}
                             onBlur={async () => {
                               field.onBlur()
@@ -1170,7 +1170,7 @@ export function ExpenseForm({
                                   type="button"
                                   data-testid="currency-trigger"
                                   title={t('changeCurrency')}
-                                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted font-mono text-lg font-medium text-muted-foreground transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
+                                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted font-mono text-base font-medium text-muted-foreground transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
                                 >
                                   {expenseCurrency.symbol || group.currency}
                                 </button>
@@ -1179,7 +1179,7 @@ export function ExpenseForm({
                           )}
                         />
                       ) : (
-                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted font-mono text-lg font-medium text-muted-foreground">
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted font-mono text-base font-medium text-muted-foreground">
                           {expenseCurrency.symbol || group.currency}
                         </span>
                       )}
@@ -1194,7 +1194,7 @@ export function ExpenseForm({
                           // itemised expense they reopened.
                           <span
                             data-testid="derived-total"
-                            className="flex h-10 items-center px-2.5 font-mono text-3xl font-semibold tabular-nums"
+                            className="flex h-10 items-center px-2.5 font-mono text-2xl font-semibold tabular-nums"
                           >
                             {formatCurrency(
                               expenseCurrency,
@@ -1208,7 +1208,7 @@ export function ExpenseForm({
                             <CalculatorInput
                               placeholder="0.00"
                               className="h-11 sm:h-10 w-full border-0 bg-transparent shadow-none"
-                              inputClassName="h-11 sm:h-10 w-full border-0 bg-transparent px-2.5 font-mono text-3xl sm:text-3xl font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                              inputClassName="h-11 sm:h-10 w-full border-0 bg-transparent px-2.5 font-mono text-2xl sm:text-2xl font-semibold tabular-nums shadow-none focus-visible:ring-0"
                               {...field}
                               onValueChange={(val) =>
                                 handlePayerAmountChange(0, val)
@@ -1237,7 +1237,7 @@ export function ExpenseForm({
             <div className="col-span-2 -mx-6 -mt-2">
               <div className="border-b">
                 {isMultiPayer && (
-                  <FormLabel className="block px-6 pb-1 pt-2 text-xs font-normal text-muted-foreground">
+                  <FormLabel className="block px-6 pb-1 pt-2 text-sm font-normal text-muted-foreground">
                     {t(`${sExpense}.paidByField.label`)}
                   </FormLabel>
                 )}
@@ -1279,7 +1279,7 @@ export function ExpenseForm({
                               )}
                             >
                               {!isMultiPayer && (
-                                <FormLabel className="text-xs font-normal text-muted-foreground">
+                                <FormLabel className="text-sm font-normal text-muted-foreground">
                                   {t(`${sExpense}.paidByField.label`)}
                                 </FormLabel>
                               )}
@@ -1398,7 +1398,7 @@ export function ExpenseForm({
                   type="button"
                   variant="ghost"
                   onClick={handleAddPayer}
-                  className="h-11 sm:h-10 w-full justify-start rounded-none px-6 text-xs font-normal text-muted-foreground hover:text-foreground"
+                  className="h-11 sm:h-10 w-full justify-start rounded-none px-6 text-sm font-normal text-muted-foreground hover:text-foreground"
                 >
                   <Plus className="mr-1.5 h-3.5 w-3.5" />
                   {t('addPayer')}
@@ -1413,7 +1413,7 @@ export function ExpenseForm({
                 name="expenseDate"
                 render={({ field }) => (
                   <FormItem className="flex items-center justify-between gap-2 space-y-0 border-b px-6">
-                    <FormLabel className="text-xs font-normal text-muted-foreground">
+                    <FormLabel className="text-sm font-normal text-muted-foreground">
                       {t(`${sExpense}.DateField.label`)}
                     </FormLabel>
                     <FormControl>
@@ -1492,7 +1492,7 @@ export function ExpenseForm({
                       : t('SplitMode.more')}
                   </button>
                 </div>
-                <p className="mt-1.5 text-xs text-muted-foreground">
+                <p className="mt-1.5 text-sm text-muted-foreground">
                   {splitControl === 'ITEMS'
                     ? t('itemizeField.description')
                     : t('SplitMode.description')}
@@ -1549,7 +1549,7 @@ export function ExpenseForm({
                 <Button
                   type="button"
                   variant="ghost"
-                  className="-mx-6 h-11 sm:h-10 w-[calc(100%+3rem)] justify-between rounded-none border-b px-6 text-xs font-normal text-muted-foreground hover:text-foreground"
+                  className="-mx-6 h-11 sm:h-10 w-[calc(100%+3rem)] justify-between rounded-none border-b px-6 text-sm font-normal text-muted-foreground hover:text-foreground"
                 >
                   {t('moreOptions')}
                   <ChevronDown
@@ -1669,7 +1669,7 @@ export function ExpenseForm({
                   name="notes"
                   render={({ field }) => (
                     <FormItem className="space-y-1">
-                      <FormLabel className="text-xs font-normal text-muted-foreground">
+                      <FormLabel className="text-sm font-normal text-muted-foreground">
                         {t('notesField.label')}
                       </FormLabel>
                       {/* A line field like every other place you type on this form. It was a
@@ -1695,7 +1695,7 @@ export function ExpenseForm({
                     <FormItem className="-mx-6 flex items-center justify-between gap-2 space-y-0 border-b px-6">
                       {/* One choice, one value: the same row as Paid by and the date rather than
                           a full-width combobox under a heading. */}
-                      <FormLabel className="text-xs font-normal text-muted-foreground">
+                      <FormLabel className="text-sm font-normal text-muted-foreground">
                         {t(`${sExpense}.recurrenceRule.label`)}
                       </FormLabel>
                       <Select
@@ -1731,7 +1731,7 @@ export function ExpenseForm({
                     name="isReimbursement"
                     render={({ field }) => (
                       <FormItem className="-mx-6 col-span-2 flex min-h-10 flex-row items-center justify-between gap-2 space-y-0 border-b px-6">
-                        <FormLabel className="text-xs font-normal text-muted-foreground">
+                        <FormLabel className="text-sm font-normal text-muted-foreground">
                           {t('isReimbursementField.label')}
                         </FormLabel>
                         <FormControl>
@@ -1753,7 +1753,7 @@ export function ExpenseForm({
                   name="saveDefaultSplittingOptions"
                   render={({ field }) => (
                     <FormItem className="-mx-6 col-span-2 flex min-h-10 flex-row items-center justify-between gap-2 space-y-0 border-b px-6">
-                      <FormLabel className="text-xs font-normal text-muted-foreground">
+                      <FormLabel className="text-sm font-normal text-muted-foreground">
                         {t('SplitModeField.saveAsDefault')}
                       </FormLabel>
                       <FormControl>
