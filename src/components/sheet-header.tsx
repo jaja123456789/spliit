@@ -49,12 +49,12 @@ export function SheetHeader({
         <h2 className="font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
           {label}
         </h2>
-        {/* Arbitrary values, not `min-h-9`/`min-h-5`: this project is on Tailwind 3.3, whose
-            minHeight scale is only 0/full/screen/min/max/fit, so the numeric classes compile to
-            nothing at all and the boxes collapse to whatever the skeleton happens to be. The two
-            heights are the measured line boxes of a one-line figure and a one-line context in this
-            face — 38px and 21px, both a little over their nominal line-heights because the mono
-            metrics exceed them. `min-` rather than a fixed height so a longer locale can wrap. */}
+        {/* Arbitrary values because 38px and 21px are not scale steps, not because numeric ones
+            fail: `tailwind.config.js` now points `minHeight` at the spacing scale, so `min-h-11`
+            does mean 2.75rem. These two are the measured line boxes of a one-line figure and a
+            one-line context in this face — both a little over their nominal line-heights, because
+            the mono metrics exceed them. `min-` rather than a fixed height so a longer locale can
+            wrap. */}
         {figure !== undefined && (
           <div
             data-testid={figureTestId}

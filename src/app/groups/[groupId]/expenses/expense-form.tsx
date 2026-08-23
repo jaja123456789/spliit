@@ -1042,7 +1042,16 @@ export function ExpenseForm({
         )}
 
         <Card bleed>
-          <CardContent className="grid sm:grid-cols-2 gap-6 pt-6">
+          {/* Closed, the last thing in this card is the "More options" row — a ruled row that runs
+              the full width — and the card's own 24px of bottom padding left it floating above an
+              empty band, reading as a list that had been cut off. Let its rule be the card's edge.
+              Open, the last thing is ordinary content, which does want the padding. */}
+          <CardContent
+            className={cn(
+              'grid sm:grid-cols-2 gap-6 pt-6',
+              !showMoreOptions && 'pb-0',
+            )}
+          >
             {/* Title over amount, each with the control that qualifies it in a tinted square to
                 its left, over a rule. The amount used to be a 48px figure centred on its own line
                 with the title centred under it — which is the concept's hero, and the concept's
@@ -1409,6 +1418,7 @@ export function ExpenseForm({
                     <FormControl>
                       <Input
                         className="date-base h-10 w-auto border-0 bg-transparent px-0 text-right font-medium shadow-none focus-visible:ring-0"
+                        name="expenseDate"
                         type="date"
                         value={formatDate(field.value)}
                         onChange={(e) =>
@@ -1536,7 +1546,11 @@ export function ExpenseForm({
                   />
                 </Button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="grid sm:grid-cols-2 gap-6 pt-4">
+              {/* `data-[state=closed]:pt-0` because `grid` quietly defeats the `hidden` attribute
+                  Radix sets when this closes — a class beats a UA attribute selector — so the
+                  collapsed section kept rendering as a grid and reserving its 16px of top padding
+                  under a rule with nothing beneath it. */}
+              <CollapsibleContent className="grid sm:grid-cols-2 gap-6 pt-4 data-[state=closed]:pt-0">
                 {/* The category control is the icon beside the title now. Two controls writing
                     one field is the mistake 09841a4 fixed for the split mode. */}
 

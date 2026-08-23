@@ -16,6 +16,17 @@ module.exports = {
       },
     },
     extend: {
+      // Tailwind's own `minHeight`/`minWidth` scales are only 0/full/screen/min/max/fit — no
+      // numeric steps. So `min-h-11` compiles to nothing at all and the element keeps
+      // `min-height: auto`, which is a silent failure: the class is in the markup, the intent is
+      // legible, and the rule does not exist. It cost this codebase a 20px tap target on the
+      // expense form's split control, where the code plainly asked for 44px.
+      //
+      // Point both at the spacing scale, so `min-h-11` means the same 2.75rem as `h-11` and `p-11`.
+      // Additive — nothing that worked before changes — and it retires the trap rather than
+      // patching the six places it had already reached.
+      minHeight: ({ theme }) => ({ ...theme('spacing') }),
+      minWidth: ({ theme }) => ({ ...theme('spacing') }),
       fontFamily: {
         sans: [
           'var(--font-sans)',
