@@ -121,7 +121,12 @@ export function ItemizationBuilder({
   remove,
   activeUserId,
 }: Props) {
-  const { control, watch, setValue, trigger } = useFormContext()
+  const { control, watch, setValue, trigger, formState } = useFormContext()
+  // One entry per row, most of them empty. Used only to say which lines the error message at the
+  // foot of the list is actually about — without it the message pointed at nothing.
+  const itemErrors = formState.errors.items as
+    | ({ [key: string]: { message?: string } } | undefined)[]
+    | undefined
   const locale = useLocale()
   const t = useTranslations('ExpenseForm.Itemization')
   const isDesktop = useMediaQuery('(min-width: 1024px)')
@@ -352,15 +357,23 @@ export function ItemizationBuilder({
 
             const isRowSelected = selectedRowIds.includes(field.id)
             const isOpen = openRowId === field.id
+            const rowError =
+              (Array.isArray(itemErrors) && itemErrors[index]) || undefined
 
             return (
               <div
                 key={field.id}
                 data-testid={`item-row-${index}`}
+                data-testid-error={rowError ? 'true' : undefined}
                 className={cn(
                   'border-b-2 border-divider px-6 transition-colors',
                   isRowSelected && 'bg-primary/5',
                   isOpen && 'bg-muted/30',
+                  // The line the message at the foot of the list is talking about. A left edge
+                  // rather than a full destructive fill: the row is still a line on a receipt and
+                  // still has to be read, and nine tinted rows would say nothing at all.
+                  rowError &&
+                    'border-l-4 border-l-destructive bg-destructive/5 pl-5',
                   // The excluded line stays legible — it is still a line on the receipt, and its
                   // own strip already says "not shared". A dashed border and a tinted card said it
                   // three more times.
@@ -428,11 +441,22 @@ export function ItemizationBuilder({
                       the concept has them — "desktop rows are wide enough for individual targets
                       again". Past six people they stop fitting and the row falls back to the
                       stack-and-open form below. */}
-                      {inlineMarks && (
-                        <FormField
-                          control={control}
-                          name={`items.${index}.participantIds`}
-                          render={({ field }) => (
+                      {/* Mounted on every row, drawn only on a wide one.
+
+                          This used to be wrapped in `{inlineMarks && …}`, which meant that on a
+                          phone — and on any desktop group of more than six — nothing ever
+                          registered `items.N.participantIds` with the form. React Hook Form prunes
+                          keys it has no registered field for when a field array is rebuilt, so an
+                          expense arriving through `form.reset` lost the assignment on exactly those
+                          layouts: a scanned receipt landed with every line marked "not shared", and
+                          the same nine lines came through fully shared at 1280px. Registering the
+                          field unconditionally is what keeps the value; whether the marks are drawn
+                          is a separate question, answered inside. */}
+                      <FormField
+                        control={control}
+                        name={`items.${index}.participantIds`}
+                        render={({ field }) =>
+                          inlineMarks ? (
                             <FormItem className="space-y-0">
                               <MarkRow
                                 value={field.value || []}
@@ -445,9 +469,11 @@ export function ItemizationBuilder({
                                 rowIndex={index}
                               />
                             </FormItem>
-                          )}
-                        />
-                      )}
+                          ) : (
+                            <></>
+                          )
+                        }
+                      />
 
                       {/* A plain input, not a CalculatorInput. The concept's line is a name and a
                       price and nothing else, and the calculator's addon put a second icon in

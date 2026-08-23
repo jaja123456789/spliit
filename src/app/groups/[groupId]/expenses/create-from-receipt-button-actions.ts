@@ -152,7 +152,16 @@ export async function extractExpenseInformationFromImage(
 async function extractWithGemini(images: ReceiptImage[], prompt: string) {
   const model = env.GEMINI_RECEIPT_MODEL
   const generationConfig = {
-    temperature: 0.2,
+    // Greedy decoding. Reading a receipt has one right answer, so there is nothing for sampling to
+    // explore: at 0.2 the same photo came back with different line splits, different merchant
+    // spellings and occasionally a different total on consecutive runs, which is indistinguishable
+    // from the extractor being unreliable. Determinism is not guaranteed across a provider's own
+    // serving changes, but the deliberate randomness is ours to remove.
+    temperature: 0,
+    // Same reason: pin the tie-breaks the sampler would otherwise make freely.
+    topP: 1,
+    topK: 1,
+    seed: 7,
     maxOutputTokens: 8192,
     responseMimeType: 'application/json',
     responseJsonSchema: receiptJsonSchema,
@@ -230,7 +239,11 @@ async function extractWithOpenRouter(images: ReceiptImage[], prompt: string) {
   const completion = await openai.chat.completions.create({
     model: env.OPENROUTER_RECEIPT_MODEL,
     messages: [{ role: 'user', content: contentParts }],
-    temperature: 0.2,
+    // As for Gemini: one right answer, so no reason to sample for variety. `seed` is honoured by
+    // some OpenRouter upstreams and ignored by others; it costs nothing where it is ignored.
+    temperature: 0,
+    top_p: 1,
+    seed: 7,
   })
 
   const rawContent = completion.choices[0]?.message?.content

@@ -385,7 +385,8 @@
       "yourShareShort": "you",
       "removeLine": "Remove this line",
       "sameAsNamed": "Same as {name}",
-      "perHeadEach": "{amount} each"
+      "perHeadEach": "{amount} each",
+      "lineHasError": "Check this line"
     },
     "Draft": {
       "prompt": "You have an unsaved expense from earlier.",
@@ -660,7 +661,8 @@
     "noZeroShares": "All shares must be higher than 0.",
     "amountSum": "Sum of amounts must equal the expense amount.",
     "percentageSum": "Sum of percentages must equal 100.",
-    "itemTotalMismatch": "Sum of item prices must match expense total."
+    "itemTotalMismatch": "Sum of item prices must match expense total.",
+    "checkInputs": "Some lines need attention — the ones marked below."
   },
   "Categories": {
     "search": "Search category...",

@@ -76,6 +76,36 @@ test.describe('Scanning a receipt', () => {
     )
   })
 
+  test('scanned lines arrive shared, on a narrow screen too', async ({
+    page,
+  }) => {
+    // The regression this exists for only appears below the width where the per-line marks are
+    // drawn inline. `items.N.participantIds` had no registered field on any other layout, so React
+    // Hook Form pruned it when the field array was rebuilt by `reset` — and every scanned line
+    // landed "not shared". At 1280 the same nine lines came through fully shared, which is why the
+    // first version of this suite did not catch it.
+    await page.setViewportSize({ width: 390, height: 800 })
+
+    await page.goto('/groups')
+    const groupId = await createGroupViaAPI(page, `scan share ${randomId(4)}`, [
+      'Alice',
+      'Bob',
+    ])
+    await navigateToGroup(page, groupId)
+
+    await openScannerWithAPage(page)
+    await page.getByRole('button', { name: /analyze receipt/i }).click()
+    await expect(page.getByText('Check what was read')).toBeVisible({
+      timeout: 30_000,
+    })
+    await page.getByRole('button', { name: /^continue$/i }).click()
+    await page.waitForURL(/fromReceipt=true/)
+
+    const rows = page.locator('[data-testid^="item-row-"]')
+    await expect(rows).toHaveCount(9)
+    await expect(rows.filter({ hasText: /not shared/i })).toHaveCount(0)
+  })
+
   test('a failed read keeps the photos and offers to carry on by hand', async ({
     page,
   }) => {

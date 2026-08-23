@@ -147,16 +147,30 @@ const FormMessage = React.forwardRef<
 >(({ className, children, ...props }, ref) => {
   const messages = useMessages()
   const { error, formMessageId } = useFormField()
+  const translate = (key: unknown) => {
+    const raw = String(key)
+    return (messages.SchemaErrors as any)?.[raw] ?? raw
+  }
+
   let body
   if (error) {
-    if(Array.isArray(error)){
-      body = String("Please check all inputs")
-    }else{
-      body = String(error?.message)
-      const translation = (messages.SchemaErrors as any)[body]
-      if (translation) {
-        body = translation
-      }
+    if (Array.isArray(error)) {
+      // A field array's error is one entry per row, most of them empty. This used to render the
+      // string "Please check all inputs" — hardcoded, untranslated, and true of nothing in
+      // particular: it named neither the row nor the problem, so the only way to find what was
+      // wrong was to re-read every line. Surface the first real message instead; the callers that
+      // own rows are responsible for marking which ones.
+      const firstMessage = error
+        .flatMap((entry) =>
+          entry && typeof entry === 'object'
+            ? Object.values(entry as Record<string, { message?: unknown }>)
+            : [],
+        )
+        .map((field) => field?.message)
+        .find((message) => typeof message === 'string' && message.length > 0)
+      body = firstMessage ? translate(firstMessage) : translate('checkInputs')
+    } else {
+      body = translate(error?.message)
     }
   } else {
     body = children
