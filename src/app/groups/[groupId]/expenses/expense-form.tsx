@@ -90,6 +90,7 @@ import {
   Crown,
   Loader2,
   Plus,
+  Receipt,
   Save,
   Trash2,
 } from 'lucide-react'
@@ -107,6 +108,7 @@ import { match } from 'ts-pattern'
 import { DeletePopup } from '../../../../components/delete-popup'
 import { extractCategoryFromTitle } from '../../../../components/expense-form-actions'
 import { CategoryIcon } from './category-icon'
+import { CreateFromReceiptButton } from './create-from-receipt-button'
 import { ItemizationBuilder } from './itemization-builder' // Import new component
 
 // --- Helpers ---
@@ -239,6 +241,7 @@ export function ExpenseForm({
   runtimeFeatureFlags: RuntimeFeatureFlags
 }) {
   const t = useTranslations('ExpenseForm')
+  const tReceipt = useTranslations('CreateFromReceipt')
   // The category trigger is an icon; its name has to come from the Categories namespace.
   const tCategories = useTranslations('Categories')
   const locale = useLocale() as Locale
@@ -652,62 +655,67 @@ export function ExpenseForm({
 
   // --- Effects ---
 
+  /**
+   * Pour an extracted receipt into the form.
+   *
+   * Lifted out of the `?fromReceipt=true` effect because the scanner can now be opened from inside
+   * this form, where the old hand-off — write session storage, navigate to the create page — would
+   * be a navigation to the screen you are already on.
+   */
+  const applyReceiptData = useCallback(
+    (data: any) => {
+      const allParticipantIds = group.participants.map((p) => p.id)
+
+      const formItems = (data.items || []).map((item: any) => ({
+        name: item.name || 'Unknown Item',
+        price: Number(item.price) || 0,
+        participantIds: allParticipantIds,
+      }))
+
+      const currentValues = form.getValues()
+
+      // The receipt was paid in its own currency, so the whole expense is entered in it and
+      // only the total gets converted to the group currency.
+      const receiptCurrency = conversionAvailable
+        ? normalizeCurrencyCode(data.currency)
+        : undefined
+
+      // Reset the WHOLE form at once
+      form.reset({
+        ...currentValues, // Keep current values
+        title: data.title || '',
+        expenseDate: data.date ? new Date(data.date) : new Date(),
+        category: data.categoryId ? Number(data.categoryId) : undefined,
+        documents: data.documents || [],
+        items: formItems, // This replaces useFieldArray automatically
+        originalCurrency:
+          receiptCurrency ?? currentValues.originalCurrency ?? '',
+        paidBy: [
+          {
+            ...currentValues.paidBy?.[0], // Keep the userId or other props
+            amount: Number(data.amount) || 0,
+          },
+        ],
+      })
+
+      setIsItemized(formItems.length > 0)
+    },
+    [group.participants, form, conversionAvailable],
+  )
+
   useEffect(() => {
     if (isCreate && searchParams.get('fromReceipt') === 'true') {
       try {
         const storedData = sessionStorage.getItem('pendingReceiptData')
         if (storedData) {
-          const data: any = JSON.parse(storedData)
           sessionStorage.removeItem('pendingReceiptData')
-
-          const allParticipantIds = group.participants.map((p) => p.id)
-
-          const formItems = (data.items || []).map((item: any) => ({
-            name: item.name || 'Unknown Item',
-            price: Number(item.price) || 0,
-            participantIds: allParticipantIds,
-          }))
-
-          const currentValues = form.getValues()
-
-          // The receipt was paid in its own currency, so the whole expense is entered in it and
-          // only the total gets converted to the group currency.
-          const receiptCurrency = conversionAvailable
-            ? normalizeCurrencyCode(data.currency)
-            : undefined
-
-          // Reset the WHOLE form at once
-          form.reset({
-            ...currentValues, // Keep current values
-            title: data.title || '',
-            expenseDate: data.date ? new Date(data.date) : new Date(),
-            category: data.categoryId ? Number(data.categoryId) : undefined,
-            documents: data.documents || [],
-            items: formItems, // This replaces useFieldArray automatically
-            originalCurrency:
-              receiptCurrency ?? currentValues.originalCurrency ?? '',
-            paidBy: [
-              {
-                ...currentValues.paidBy?.[0], // Keep the userId or other props
-                amount: Number(data.amount) || 0,
-              },
-            ],
-          })
-
-          setIsItemized(formItems.length > 0)
+          applyReceiptData(JSON.parse(storedData))
         }
       } catch (e) {
         console.error('Failed to load receipt data', e)
       }
     }
-  }, [
-    isCreate,
-    searchParams,
-    itemReplace,
-    group.participants,
-    form,
-    conversionAvailable,
-  ])
+  }, [isCreate, searchParams, applyReceiptData])
 
   useEffect(() => {
     if (importingReceipt) return
@@ -1478,6 +1486,29 @@ export function ExpenseForm({
                     ? t('itemizeField.description')
                     : t('SplitMode.description')}
                 </p>
+                {/* The hint directly above says "enter each line of the receipt", and until now
+                    this screen had no way to reach the thing that reads receipts — the scanner's
+                    only entry point in the whole app was an icon in the expense list's header. The
+                    itemised path is the one that most wants OCR, so it is the one that gets the
+                    offer, and it fills the lines in place rather than navigating anywhere. */}
+                {isCreate &&
+                  splitControl === 'ITEMS' &&
+                  runtimeFeatureFlags.enableReceiptExtract && (
+                    <CreateFromReceiptButton
+                      onExtracted={applyReceiptData}
+                      trigger={
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="mt-2 w-full"
+                          data-testid="scan-receipt-in-form"
+                        >
+                          <Receipt className="mr-2 h-4 w-4" />
+                          {tReceipt('scanEntry')}
+                        </Button>
+                      }
+                    />
+                  )}
               </div>
             )}
 

@@ -22,7 +22,6 @@ import {
   DrawerTitle,
   DrawerTrigger,
 } from '@/components/ui/drawer'
-import { ToastAction } from '@/components/ui/toast'
 import { useToast } from '@/components/ui/use-toast'
 import { Locale } from '@/i18n/request'
 import { getCurrency, normalizeCurrencyCode } from '@/lib/currency'
@@ -68,7 +67,31 @@ import { useCurrentGroup } from '../current-group-context'
 
 const MAX_FILE_SIZE = 50 * 1024 ** 2
 
-export function CreateFromReceiptButton() {
+type CreateFromReceiptButtonProps = {
+  /**
+   * Overrides the icon-only trigger. The expense list has room for an icon; the empty group and the
+   * expense form both need something that says what it does.
+   */
+  trigger?: ReactNode
+  /**
+   * Called with the extracted receipt instead of navigating to the create form.
+   *
+   * The default hand-off is a `sessionStorage` payload plus a push to `…/create?fromReceipt=true`,
+   * which is right when the scanner is opened from a list. Opened from inside the form, that would
+   * be a navigation to the screen you are already on, so the form passes a callback and applies the
+   * data in place.
+   */
+  onExtracted?: (info: ExtractedForForm) => void
+}
+
+export type ExtractedForForm = ReceiptExtractedInfo & {
+  documents?: { url: string; width: number; height: number; id: string }[]
+}
+
+export function CreateFromReceiptButton({
+  trigger,
+  onExtracted,
+}: CreateFromReceiptButtonProps = {}) {
   const t = useTranslations('CreateFromReceipt')
   const isDesktop = useMediaQuery('(min-width: 1024px)')
   const searchParams = useSearchParams()
@@ -94,33 +117,44 @@ export function CreateFromReceiptButton() {
       open={open}
       onOpenChange={setOpen}
       trigger={
-        <Button
-          size="icon"
-          variant="secondary"
-          title={t('Dialog.triggerTitle')}
-        >
-          <Receipt className="w-4 h-4" />
-        </Button>
+        trigger ?? (
+          <Button
+            size="icon"
+            variant="secondary"
+            title={t('Dialog.triggerTitle')}
+          >
+            <Receipt className="w-4 h-4" />
+          </Button>
+        )
       }
       title={
         <>
           <span>{t('Dialog.title')}</span>
-          <Badge className="bg-pink-700 hover:bg-pink-600 dark:bg-pink-500 dark:hover:bg-pink-600">
-            Beta
-          </Badge>
+          <Badge variant="secondary">Beta</Badge>
         </>
       }
       description={<>{t('Dialog.description')}</>}
     >
-      <ReceiptDialogContent initialImageDataUrl={sharedImage} />
+      <ReceiptDialogContent
+        initialImageDataUrl={sharedImage}
+        onExtracted={
+          onExtracted &&
+          ((info) => {
+            onExtracted(info)
+            setOpen(false)
+          })
+        }
+      />
     </DialogOrDrawer>
   )
 }
 
 function ReceiptDialogContent({
   initialImageDataUrl,
+  onExtracted,
 }: {
   initialImageDataUrl?: string | null
+  onExtracted?: (info: ExtractedForForm) => void
 }) {
   const { group } = useCurrentGroup()
   const { data: categoriesData } = trpc.categories.list.useQuery()
@@ -144,6 +178,18 @@ function ReceiptDialogContent({
       height: number | undefined
     }[]
   >([])
+
+  // The extraction failed. Not a toast that scrolls away: the photos are the expensive thing — the
+  // user was standing in a restaurant when they took them — so the failure has to stay on screen
+  // for as long as it takes to decide what to do with them.
+  const [failed, setFailed] = useState(false)
+  // Whatever did make it to storage before the reading failed, so "add by hand" can carry it.
+  const [failedDocuments, setFailedDocuments] = useState<
+    { url: string; width: number; height: number; id: string }[]
+  >([])
+  // Uploads are best-effort and used to fail in silence, so a scan could complete having attached
+  // nothing at all and never say so.
+  const [uploadFailures, setUploadFailures] = useState(0)
 
   // Result after analysis
   const [receiptInfo, setReceiptInfo] = useState<
@@ -293,6 +339,8 @@ function ReceiptDialogContent({
 
     setPending(true)
     setReceiptInfo(null)
+    setFailed(false)
+    setUploadFailures(0)
 
     try {
       // 1. Prepare Base64 for AI
@@ -321,34 +369,35 @@ function ReceiptDialogContent({
           }),
       )
 
-      const [info, uploadedDocs] = await Promise.all([
-        analysisPromise,
-        Promise.all(uploadPromises),
-      ])
+      // Each upload catches its own failure, so this never rejects — which is what lets the
+      // uploaded documents survive an extraction that does. Awaiting them inside `Promise.all`
+      // with the analysis threw them away on exactly the path that needs them most.
+      const uploadsSettled = Promise.all(uploadPromises)
 
-      const validDocs = uploadedDocs.filter(
-        (d): d is NonNullable<typeof d> => d !== null,
-      )
-
-      setReceiptInfo({
-        ...info,
-        documents: validDocs,
-      })
+      try {
+        const info = await analysisPromise
+        const uploadedDocs = await uploadsSettled
+        const validDocs = uploadedDocs.filter(
+          (d): d is NonNullable<typeof d> => d !== null,
+        )
+        setUploadFailures(uploadedDocs.length - validDocs.length)
+        setReceiptInfo({
+          ...info,
+          documents: validDocs,
+        })
+      } catch (err) {
+        console.error(err)
+        const uploadedDocs = await uploadsSettled
+        const validDocs = uploadedDocs.filter(
+          (d): d is NonNullable<typeof d> => d !== null,
+        )
+        setUploadFailures(uploadedDocs.length - validDocs.length)
+        setFailedDocuments(validDocs)
+        setFailed(true)
+      }
     } catch (err) {
       console.error(err)
-      toast({
-        title: t('ErrorToast.title'),
-        description: t('ErrorToast.description'),
-        variant: 'destructive',
-        action: (
-          <ToastAction
-            altText={t('ErrorToast.retry')}
-            onClick={() => analyzeImages()}
-          >
-            {t('ErrorToast.retry')}
-          </ToastAction>
-        ),
-      })
+      setFailed(true)
     } finally {
       setPending(false)
     }
@@ -411,10 +460,12 @@ function ReceiptDialogContent({
         className="hidden"
       />
 
-      <p>{t('Dialog.body')}</p>
+      {/* `Dialog.body` used to be printed here as well, word for word the same sentence the
+          dialog's own description already carries — two paragraphs saying one thing, about 120px
+          of a phone, on screen through every state including the wait. */}
 
       {/* --- STAGE 1: Image Selection --- */}
-      {receiptInfo === null && !pending && (
+      {receiptInfo === null && !pending && !failed && (
         <div className="flex flex-col gap-4">
           {draftImages.length === 0 ? (
             // Empty State Buttons
@@ -512,6 +563,66 @@ function ReceiptDialogContent({
         </div>
       )}
 
+      {/* --- STAGE 1c: It could not be read ---
+          Both providers failing is ordinary: Gemini rate-limits, OpenRouter's free tier is
+          best-effort, and a crumpled receipt beats both. This used to be a destructive toast that
+          scrolled away over a screen offering no way forward except closing the drawer, which threw
+          the photos away — the one thing that must not happen, since they are what cost the user
+          something to obtain. */}
+      {failed && !pending && (
+        <div className="flex flex-col gap-4">
+          <div>
+            <p className="text-base font-medium">{t('Failed.title')}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t('Failed.description')}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {draftImages.map((img, idx) => (
+              <div
+                key={idx}
+                className="relative aspect-[3/4] overflow-hidden rounded-md border"
+              >
+                <Image
+                  src={img.blobUrl}
+                  alt={`Page ${idx + 1}`}
+                  fill
+                  className="object-cover"
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Button onClick={analyzeImages}>{t('Failed.retry')}</Button>
+            {/* The slower success. Same hand-off the review screen uses, carrying the documents
+                and nothing else — the form opens with the photos already attached and every field
+                empty, which is exactly a manual entry that did not lose anything. */}
+            <Button
+              variant="outline"
+              onClick={() => {
+                if (!group) return
+                const payload = { documents: failedDocuments }
+                if (onExtracted) {
+                  onExtracted(payload as ExtractedForForm)
+                  return
+                }
+                sessionStorage.setItem(
+                  'pendingReceiptData',
+                  JSON.stringify(payload),
+                )
+                router.push(
+                  `/groups/${group.id}/expenses/create?fromReceipt=true`,
+                )
+              }}
+            >
+              {t('Failed.manual')}
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* --- STAGE 1b: Reading ---
           The wait used to be a spinner inside the Analyze button, with the pile of thumbnails still
           on screen: nothing said what was happening or how much of it there would be. This is the
@@ -553,6 +664,21 @@ function ReceiptDialogContent({
       {/* --- STAGE 2: Analysis Result --- */}
       {receiptInfo && (
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {/* `reviewTitle` and `reviewHint` were written for this screen and translated into 23
+              locales, and then never rendered — so the review state carried the capture state's
+              heading and said nothing about the one thing a reader needs to know here, which is
+              that all of this is a guess. */}
+          <div className="mb-4">
+            <p className="text-base font-medium">{t('reviewTitle')}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t('reviewHint')}
+            </p>
+          </div>
+          {uploadFailures > 0 && (
+            <p className="mb-4 text-sm font-medium text-destructive">
+              {t('uploadFailed', { count: uploadFailures })}
+            </p>
+          )}
           <div className="grid gap-x-4 gap-y-4 grid-cols-1 sm:grid-cols-3 mb-6">
             {/* Preview of first image */}
             <div className="relative aspect-video sm:aspect-[3/4] rounded-lg overflow-hidden border bg-muted sm:row-span-3">
@@ -702,6 +828,7 @@ function ReceiptDialogContent({
               className="flex-1"
               onClick={() => {
                 setReceiptInfo(null)
+                setFailed(false)
                 // keep images to retry or add more
               }}
             >
@@ -711,6 +838,10 @@ function ReceiptDialogContent({
               className="flex-[2]"
               onClick={() => {
                 if (!receiptInfo || !group) return
+                if (onExtracted) {
+                  onExtracted(receiptInfo)
+                  return
+                }
                 sessionStorage.setItem(
                   'pendingReceiptData',
                   JSON.stringify(receiptInfo),
@@ -720,7 +851,7 @@ function ReceiptDialogContent({
                 )
               }}
             >
-              Continue to Edit
+              {t('Dialog.continue')}
             </Button>
           </div>
         </div>

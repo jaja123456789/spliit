@@ -443,6 +443,12 @@
       "description": "Something wrong happened when uploading the document. Please retry later or select a different file.",
       "retry": "Retry"
     },
+    "Failed": {
+      "title": "Couldn’t read it",
+      "description": "Your photos are still here. Try again, or add the expense by hand with them attached.",
+      "retry": "Try again",
+      "manual": "Add by hand"
+    },
     "reviewTitle": "Check what was read",
     "reviewHint": "Reading a receipt is a guess. Correct anything wrong on the next screen.",
     "preview": "Receipt preview",
@@ -457,7 +463,9 @@
     "linesMatch": "The lines add up to the total.",
     "linesShort": "The lines add up to {sum}, which is {difference} less than the total. Usually tax and service — you can split it on the next screen.",
     "linesOver": "The lines add up to {sum}, which is {difference} more than the total. Something was probably read twice.",
-    "linesNone": "No lines were read, so only the total is going through."
+    "linesNone": "No lines were read, so only the total is going through.",
+    "uploadFailed": "{count, plural, one {# photo couldn’t be attached} other {# photos couldn’t be attached}}",
+    "scanEntry": "Scan a receipt"
   },
   "Balances": {
     "title": "Balances",

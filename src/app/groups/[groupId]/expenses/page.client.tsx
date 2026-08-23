@@ -49,6 +49,7 @@ export default function GroupExpensesPageClient({
       <Card bleed className="mb-20 sm:mb-4 overflow-hidden">
         <CardContent className="p-0 flex flex-col gap-3 pb-4 sm:pb-6 relative min-h-[300px]">
           <ExpenseList
+            enableReceiptExtract={enableReceiptExtract}
             actions={
               <>
                 <ExportButton groupId={groupId} />

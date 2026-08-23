@@ -1,4 +1,5 @@
 'use client'
+import { CreateFromReceiptButton } from '@/app/groups/[groupId]/expenses/create-from-receipt-button'
 import { ExpenseCard } from '@/app/groups/[groupId]/expenses/expense-card'
 import { getGroupExpensesAction } from '@/app/groups/[groupId]/expenses/expense-list-fetch-action'
 import { ExpenseListTotal } from '@/app/groups/[groupId]/expenses/expense-list-total'
@@ -10,6 +11,7 @@ import { NEW_GROUP_ACTIVE_USER_KEY, writeActiveUser } from '@/lib/active-user'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import dayjs, { type Dayjs } from 'dayjs'
+import { Receipt } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { ReactNode, forwardRef, useEffect, useMemo, useState } from 'react'
@@ -61,7 +63,13 @@ function getGroupedExpensesByDate(expenses: ExpensesType) {
   }, {})
 }
 
-export function ExpenseList({ actions }: { actions?: ReactNode }) {
+export function ExpenseList({
+  actions,
+  enableReceiptExtract = false,
+}: {
+  actions?: ReactNode
+  enableReceiptExtract?: boolean
+}) {
   const { groupId, group } = useCurrentGroup()
   const [searchText, setSearchText] = useState('')
   const [debouncedSearchText] = useDebounce(searchText, 300)
@@ -95,6 +103,7 @@ export function ExpenseList({ actions }: { actions?: ReactNode }) {
           whoever just typed into it. */}
       <ExpenseListForSearch
         groupId={groupId}
+        enableReceiptExtract={enableReceiptExtract}
         searchText={debouncedSearchText}
         searchBar={
           <SearchBar onValueChange={(value) => setSearchText(value)} />
@@ -108,10 +117,12 @@ const ExpenseListForSearch = ({
   groupId,
   searchText,
   searchBar,
+  enableReceiptExtract,
 }: {
   groupId: string
   searchText: string
   searchBar: ReactNode
+  enableReceiptExtract: boolean
 }) => {
   const utils = trpc.useUtils()
   const { group } = useCurrentGroup()
@@ -124,6 +135,7 @@ const ExpenseListForSearch = ({
 
   const t = useTranslations('Expenses')
   const tEmpty = useTranslations('Expenses.EmptyGroup')
+  const tReceipt = useTranslations('CreateFromReceipt')
   const { ref: loadingRef, inView } = useInView()
 
   const {
@@ -185,6 +197,19 @@ const ExpenseListForSearch = ({
               {t('createFirst')}
             </Link>
           </Button>
+          {/* "…or scan a receipt to start from one". The scanner used to have exactly one entry
+              point in the whole app — an icon in this sheet's header — which is not where anyone
+              looks on a group that has nothing in it yet. */}
+          {enableReceiptExtract && (
+            <CreateFromReceiptButton
+              trigger={
+                <Button variant="link" className="text-muted-foreground">
+                  <Receipt className="mr-2 h-4 w-4" />
+                  {tReceipt('scanEntry')}
+                </Button>
+              }
+            />
+          )}
         </div>
       </div>
     )

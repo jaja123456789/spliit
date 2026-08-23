@@ -79,6 +79,15 @@ export default defineConfig({
       // under /spliit/api/auth while the app answers at the root, so every magic link 404s.
       NEXTAUTH_URL: 'http://localhost:3000/api/auth',
       NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'e2e-not-a-real-secret',
+      // The receipt extractor calls Gemini and OpenRouter from a *server action*, so there is
+      // nothing for the browser to intercept. This preload answers both from a fixture, which is
+      // what lets the scan flow be tested at all: no API key, no credits, no network.
+      // Relative on purpose — an absolute Windows path in NODE_OPTIONS gets rewritten by MSYS.
+      NODE_OPTIONS: '--require ./tests/fixtures/receipt-extraction-stub.cjs',
+      // The action refuses to run without both keys, before it reaches the fetch the stub answers.
+      GEMINI_API_KEY: 'stub-key',
+      OPENROUTER_API_KEY: 'stub-key',
+      NEXT_PUBLIC_ENABLE_RECEIPT_EXTRACT: 'true',
     },
     reuseExistingServer: !process.env.CI,
   },
