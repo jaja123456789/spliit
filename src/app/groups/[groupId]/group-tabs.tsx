@@ -16,13 +16,17 @@ type Props = {
   groupId: string
 }
 
+export type GroupTab = {
+  value: string
+  messageKey: string
+  Icon: LucideIcon
+}
+
 /**
- * Six tabs did not fit a phone: the strip needed 483px in a 412px viewport, so Settings sat
- * off-screen and the share button covered Activity, with nothing to indicate it scrolled.
- * Stacking a glyph over the label fits all six and takes the touch target from 32px to ~44px.
- * The icons are aria-hidden so each trigger's accessible name stays exactly the translated label.
+ * The six places a group can be, in order. Shared with the bottom bar, which shows the first four
+ * and folds the rest into "More".
  */
-const TABS: { value: string; messageKey: string; Icon: LucideIcon }[] = [
+export const GROUP_TABS: GroupTab[] = [
   { value: 'expenses', messageKey: 'Expenses.title', Icon: Receipt },
   { value: 'balances', messageKey: 'Balances.title', Icon: Scale },
   { value: 'stats', messageKey: 'Stats.title', Icon: BarChart3 },
@@ -31,11 +35,28 @@ const TABS: { value: string; messageKey: string; Icon: LucideIcon }[] = [
   { value: 'edit', messageKey: 'Settings.title', Icon: Settings },
 ]
 
+/** The tab the current URL is on. `/groups/<id>` with nothing after it lands on expenses. */
+export function useGroupTabValue() {
+  const pathname = usePathname()
+  return pathname.replace(/\/groups\/[^\/]+\/([^/]+).*/, '$1') || 'expenses'
+}
+
+/**
+ * The horizontal strip, which is now the *desktop* navigation only.
+ *
+ * It never fitted a phone. Six labels needed 483px in a 412px viewport, and stacking a glyph over
+ * each label — the previous fix — bought enough room for the touch targets but not for the words:
+ * measured at four phone widths, "Information" wanted 62px in a box that is 45px at 360 and still
+ * only 57px at 430, so it was clipped on every phone made. At 360 "Expenses" and "Balances" clipped
+ * too, and with no horizontal padding left to give, the six labels ran together with no visible
+ * boundary between one target and the next.
+ *
+ * Below `sm` this is replaced by `GroupTabBar`, which shows four tabs and a More. Exactly one of
+ * the two is ever in the accessibility tree, so `getByRole('tab')` stays unambiguous.
+ */
 export function GroupTabs({ groupId }: Props) {
   const t = useTranslations()
-  const pathname = usePathname()
-  const value =
-    pathname.replace(/\/groups\/[^\/]+\/([^/]+).*/, '$1') || 'expenses'
+  const value = useGroupTabValue()
   const router = useRouter()
 
   return (
@@ -46,20 +67,15 @@ export function GroupTabs({ groupId }: Props) {
         router.push(`/groups/${groupId}/${value}`)
       }}
     >
-      <TabsList className="grid w-full grid-cols-6 h-auto sm:flex sm:h-10">
-        {TABS.map(({ value, messageKey, Icon }) => (
+      <TabsList className="flex w-full h-10">
+        {GROUP_TABS.map(({ value, messageKey, Icon }) => (
           <TabsTrigger
             key={value}
             value={value}
-            // No horizontal padding on the narrow layout. At 412px a tab is 53.7px wide and `px-1`
-            // left the label 45.7px, which is under the 12px width of half these labels — so the
-            // strip had been pushed to 10px to fit. Dropping the padding buys back 8px and the same
-            // one label truncates as before ("Information", 62.5px, which never fitted at 10px
-            // either).
-            className="flex-col gap-1 px-0 py-2 min-w-0 sm:flex-row sm:gap-1.5 sm:px-3 sm:py-1.5"
+            className="flex-row gap-1.5 px-3 py-1.5 min-w-0"
           >
             <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
-            <span className="text-xs leading-none truncate max-w-full sm:text-sm">
+            <span className="text-sm leading-none truncate max-w-full">
               {t(messageKey as never)}
             </span>
           </TabsTrigger>

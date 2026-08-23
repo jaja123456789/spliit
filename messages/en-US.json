@@ -738,7 +738,9 @@
   },
   "Common": {
     "loading": "Loading...",
-    "syncing": "Syncing..."
+    "syncing": "Syncing...",
+    "more": "More",
+    "moreDescription": "The rest of this group’s screens."
   },
   "AuthError": {
     "title": "Authentication Error",

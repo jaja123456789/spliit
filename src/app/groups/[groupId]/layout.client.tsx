@@ -42,6 +42,7 @@ export function GroupLayoutClient({
       <CurrentGroupProvider {...props}>
         <GroupHeader />
         {children}
+        <TabBarClearance />
       </CurrentGroupProvider>
     )
   }
@@ -50,7 +51,19 @@ export function GroupLayoutClient({
     <CurrentGroupProvider {...props}>
       <GroupHeader />
       {children}
+      <TabBarClearance />
       <SaveGroupLocally />
     </CurrentGroupProvider>
   )
 }
+
+/**
+ * The bottom bar is fixed, so the page has to end above it or the last row is unreachable. Matches
+ * the bar's own height plus whatever the device reserves for its home indicator.
+ */
+const TabBarClearance = () => (
+  <div
+    aria-hidden="true"
+    className="h-[calc(3.5rem+env(safe-area-inset-bottom))] sm:hidden"
+  />
+)

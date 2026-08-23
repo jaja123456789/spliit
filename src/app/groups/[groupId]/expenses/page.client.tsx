@@ -70,7 +70,9 @@ export default function GroupExpensesPageClient({
       </Card>
 
       {/* Mobile Floating Action Button (FAB) */}
-      <div className="fixed bottom-6 right-6 z-40 sm:hidden">
+      {/* Above the tab bar, not on it: the bar is 3.5rem plus the home indicator, and this
+          keeps a 1rem gap over it. */}
+      <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-6 z-40 sm:hidden">
         <Button
           asChild
           size="icon"

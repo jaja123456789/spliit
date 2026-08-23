@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 import { navigateToGroup, switchLocale } from '../helpers'
 import { createExpenseViaAPI, createGroupViaAPI } from '../helpers/batch-api'
 
-test('Mobile navigation uses hamburger menu', async ({ page }) => {
+test('Mobile navigation uses the bottom tab bar', async ({ page }) => {
   // Set viewport to mobile size (iPhone SE)
   await page.setViewportSize({ width: 375, height: 667 })
 
@@ -44,6 +44,40 @@ test('Mobile navigation uses hamburger menu', async ({ page }) => {
   // Verify we navigated to Stats
   await page.waitForURL(/\/stats$/)
   await expect(page.getByRole('heading', { name: 'Group total' })).toBeVisible()
+})
+
+test('Mobile folds the last two tabs into More', async ({ page }) => {
+  // Six labels never fitted a phone: "Information" wanted 62px in a box that is 45px at 360 and
+  // 57px at 430, so it was clipped on every phone made. Four tabs and a More retires that.
+  await page.setViewportSize({ width: 375, height: 667 })
+
+  await page.goto('/groups')
+  const groupId = await createGroupViaAPI(page, `more nav ${randomId(4)}`, [
+    'Alice',
+    'Bob',
+  ])
+  await navigateToGroup(page, groupId)
+
+  // The four primary destinations are tabs; the folded two are not.
+  for (const name of ['Expenses', 'Balances', 'Stats', 'Activity', 'More']) {
+    await expect(page.getByRole('tab', { name, exact: true })).toBeVisible()
+  }
+  for (const name of ['Information', 'Settings']) {
+    await expect(page.getByRole('tab', { name, exact: true })).toHaveCount(0)
+  }
+
+  // They are still reachable, one tap further in.
+  await page.getByRole('tab', { name: 'More' }).click()
+  const information = page.getByRole('link', { name: 'Information' })
+  await expect(information).toBeVisible()
+  await information.click()
+  await page.waitForURL(/\/information$/)
+
+  // And the bar says where you are, which is the whole point of an overflow having a state.
+  await expect(page.getByRole('tab', { name: 'More' })).toHaveAttribute(
+    'data-state',
+    'active',
+  )
 })
 
 test('Desktop view displays full layout', async ({ page }) => {
