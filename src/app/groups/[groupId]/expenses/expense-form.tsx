@@ -1296,7 +1296,11 @@ export function ExpenseForm({
                 Full-bleed (`-mx-6`, each row paying the padding back with `px-6`): the concept's
                 thesis is a ledger of hairline rules spanning the sheet, and a rule that stops 24px
                 short on both sides reads as another stacked box instead. */}
-            <div className="col-span-2 -mx-6 -mt-2">
+            {/* The ledger opens on a rule. Without one it simply began — and "Paid by" is a
+                14px muted label at x=24 exactly like "Amount" directly above it, so the two
+                typed fields and the first picked row read as one undifferentiated run. The
+                hairline is what says the boxes stopped and the ledger started. */}
+            <div className="col-span-2 -mx-6 mt-1 border-t">
               <div className="border-b">
                 {isMultiPayer && (
                   <FormLabel className="block px-6 pb-1 pt-2 text-sm font-normal text-muted-foreground">
