@@ -603,7 +603,7 @@ export function ItemizationBuilder({
                         </span>
                         <ChevronDown
                           className={cn(
-                            'h-3.5 w-3.5 shrink-0 text-subtle-foreground transition-transform',
+                            'h-4 w-4 shrink-0 text-subtle-foreground transition-transform',
                             isOpen && 'rotate-180',
                           )}
                         />

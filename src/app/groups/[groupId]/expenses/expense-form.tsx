@@ -1122,17 +1122,17 @@ export function ExpenseForm({
                                 // A glyph in a grey square is a picture; the chevron is what makes
                                 // it a control. Same 44px height, ~8px wider, and the name it
                                 // switches between is spelled out in the label row above.
-                                className="flex h-11 shrink-0 items-center gap-0.5 rounded-md bg-muted pl-2 pr-1 text-muted-foreground transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
+                                className="flex h-11 w-14 shrink-0 items-center justify-center gap-0.5 rounded-md bg-muted px-1 text-muted-foreground transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
                               >
                                 {isCategoryLoading ? (
-                                  <Loader2 className="h-5 w-5 animate-spin" />
+                                  <Loader2 className="h-4 w-4 animate-spin" />
                                 ) : (
                                   <CategoryIcon
                                     category={category}
-                                    className="h-5 w-5"
+                                    className="h-4 w-4"
                                   />
                                 )}
-                                <ChevronDown className="h-3.5 w-3.5 opacity-40" />
+                                <ChevronDown className="h-4 w-4 opacity-40" />
                               </button>
                             )}
                           />
@@ -1219,10 +1219,10 @@ export function ExpenseForm({
                                   type="button"
                                   data-testid="currency-trigger"
                                   title={t('changeCurrency')}
-                                  className="flex h-11 shrink-0 items-center gap-0.5 rounded-md bg-muted pl-2 pr-1 font-mono text-base font-medium text-muted-foreground transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
+                                  className="flex h-11 w-14 shrink-0 items-center justify-center gap-0.5 rounded-md bg-muted px-1 font-mono text-base font-medium text-muted-foreground transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
                                 >
                                   {expenseCurrency.symbol || group.currency}
-                                  <ChevronDown className="h-3.5 w-3.5 opacity-40" />
+                                  <ChevronDown className="h-4 w-4 opacity-40" />
                                 </button>
                               )}
                             />
@@ -1231,7 +1231,7 @@ export function ExpenseForm({
                       ) : (
                         // No chevron here on purpose: with no exchange rate to convert from there
                         // is nothing to pick, and this is a label, not a control.
-                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-muted font-mono text-base font-medium text-muted-foreground">
+                        <span className="grid h-11 w-14 shrink-0 place-items-center rounded-md bg-muted font-mono text-base font-medium text-muted-foreground">
                           {expenseCurrency.symbol || group.currency}
                         </span>
                       )}
@@ -1413,7 +1413,7 @@ export function ExpenseForm({
                                     column, figure right-aligned and tabular so the decimals line
                                     up down the column, the box tracking its value, and the
                                     calculator inside the field rather than beside it. */}
-                                <div className="flex w-[116px] items-center gap-1 rounded-md border border-input p-0.5 transition-colors focus-within:border-primary pl-2 [&_button]:h-7 [&_button]:w-7">
+                                <div className="flex w-[116px] items-center gap-1 rounded-md border border-input p-0.5 transition-colors focus-within:border-primary pl-2 [&_button]:relative [&_button]:h-7 [&_button]:w-7 [&_button]:after:absolute [&_button]:after:inset-x-0 [&_button]:after:-inset-y-2 [&_button]:after:content-[''] sm:[&_button]:after:hidden">
                                   <span className="font-mono text-xs text-subtle-foreground">
                                     {expenseCurrency.symbol || group.currency}
                                   </span>
@@ -1442,7 +1442,7 @@ export function ExpenseForm({
                             size="icon"
                             onClick={() => removePayer(index)}
                             title={t('removePayer')}
-                            className="h-8 w-8 shrink-0 text-subtle-foreground hover:bg-destructive/10 hover:text-destructive"
+                            className="relative h-8 w-8 shrink-0 text-subtle-foreground after:absolute after:-inset-x-1 after:-inset-y-1.5 after:content-[''] hover:bg-destructive/10 hover:text-destructive sm:after:hidden"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -1463,7 +1463,7 @@ export function ExpenseForm({
                   onClick={handleAddPayer}
                   className="h-11 sm:h-10 w-full justify-start rounded-none px-6 text-sm font-normal text-muted-foreground hover:text-foreground"
                 >
-                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  <Plus className="mr-2 h-4 w-4" />
                   {t('addPayer')}
                 </Button>
               </div>
@@ -1503,8 +1503,10 @@ export function ExpenseForm({
                 cover almost everything people do and the third is where the rest lives. */}
             {!form.watch('isReimbursement') && (
               <div className="col-span-2" data-testid="split-control">
-                <Label className="text-sm">{t('SplitMode.title')}</Label>
-                <div className="mt-1.5 grid grid-cols-3 gap-1 rounded-lg bg-muted p-1">
+                <Label className="text-sm font-normal text-muted-foreground">
+                  {t('SplitMode.title')}
+                </Label>
+                <div className="mt-1.5 grid grid-cols-3 gap-1 rounded-md bg-muted p-1">
                   {(
                     [
                       ['EVENLY', 'evenly', t('SplitMode.evenly')],
@@ -1632,7 +1634,7 @@ export function ExpenseForm({
                   )}
                 >
                   <FormItem>
-                    <FormLabel>
+                    <FormLabel className="text-sm font-normal text-muted-foreground">
                       {t('convertedTotalField.label', {
                         currency: group.currencyCode ?? group.currency,
                       })}
@@ -1687,7 +1689,7 @@ export function ExpenseForm({
                         name="conversionRate"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>
+                            <FormLabel className="text-sm font-normal text-muted-foreground">
                               {t('conversionRateField.label')}
                             </FormLabel>
                             <div className="flex items-baseline gap-2">
