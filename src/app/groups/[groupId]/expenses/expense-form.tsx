@@ -1977,10 +1977,10 @@ export function ExpenseForm({
                         setSplitSheetOpen(false)
                       }}
                       className={cn(
-                        'flex min-h-16 items-center justify-between gap-3 rounded-lg border px-4 py-3 text-left transition-colors',
+                        'flex min-h-16 items-center justify-between gap-3 rounded-md px-4 py-3 text-left transition-colors',
                         active
-                          ? 'border-primary bg-primary/5'
-                          : 'hover:bg-muted',
+                          ? 'bg-primary/10'
+                          : 'bg-muted hover:bg-muted-foreground/15',
                       )}
                     >
                       <span className="min-w-0">
@@ -2002,7 +2002,7 @@ export function ExpenseForm({
             <DrawerFooter>
               <Button
                 type="button"
-                variant="outline"
+                variant="secondary"
                 className="w-full"
                 onClick={() => setSplitSheetOpen(false)}
               >

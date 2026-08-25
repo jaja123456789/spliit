@@ -757,9 +757,9 @@ export function ItemizationBuilder({
             <span className="flex justify-end gap-2">
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="h-11 rounded-full border-primary/40 bg-transparent px-3 text-sm text-primary hover:bg-primary/10 sm:h-8 sm:text-xs"
+                className="h-11 rounded-md border-0 bg-primary/10 px-3 text-sm font-medium text-primary hover:bg-primary/20 sm:h-8 sm:text-xs"
                 onClick={addRemainderProportionally}
                 disabled={!canSplitProportionally}
                 title={
@@ -772,9 +772,9 @@ export function ItemizationBuilder({
               </Button>
               <Button
                 type="button"
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="h-11 rounded-full border-primary/40 bg-transparent px-3 text-sm text-primary hover:bg-primary/10 sm:h-8 sm:text-xs"
+                className="h-11 rounded-md border-0 bg-primary/10 px-3 text-sm font-medium text-primary hover:bg-primary/20 sm:h-8 sm:text-xs"
                 onClick={addRemainderEvenly}
               >
                 {t('remainderEvenly')}
@@ -1183,10 +1183,10 @@ function RowPicker({
       data-testid={testId}
       onClick={onClick}
       className={cn(
-        'rounded-full border px-3 py-1.5 text-xs transition-colors',
+        'rounded-md px-3 py-1.5 text-xs transition-colors',
         isOn
-          ? 'border-primary bg-primary/10 font-medium text-primary'
-          : 'border-input text-muted-foreground hover:bg-muted',
+          ? 'bg-primary/10 font-medium text-primary'
+          : 'bg-muted text-muted-foreground hover:bg-muted-foreground/15',
       )}
     >
       {label}
