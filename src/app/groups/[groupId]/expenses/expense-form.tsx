@@ -508,6 +508,10 @@ export function ExpenseForm({
   // Cancel throws the draft away, and a watch tick can still land between the click and the
   // unmount. Without this the form would save back the draft that was just discarded.
   const discardedRef = useRef(false)
+  // Set on Cancel's *pointer* down rather than its click, because the title's blur fires in
+  // between the two — which is exactly the moment the category guess used to start.
+  const abandoningRef = useRef(false)
+  const lastExtractedTitleRef = useRef<string | null>(null)
 
   // Track manual edits for BY_AMOUNT mode
   const [manuallyEditedParticipants, setManuallyEditedParticipants] = useState<
@@ -1086,7 +1090,14 @@ export function ExpenseForm({
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(submit)}>
+      <form
+        onSubmit={form.handleSubmit(submit)}
+        // Pressing Cancel and sliding off it without releasing leaves nothing behind: touching
+        // any field again says this form is still being filled in.
+        onFocusCapture={() => {
+          abandoningRef.current = false
+        }}
+      >
         {restoredDraft && (
           <div className="mb-3 flex items-center justify-between gap-3 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
             <span className="min-w-0 truncate">{t('Draft.restored')}</span>
@@ -1205,18 +1216,32 @@ export function ExpenseForm({
                             {...field}
                             onBlur={async () => {
                               field.onBlur()
+                              // Guessing the category costs a round trip to a model, so it should
+                              // happen when there is a new title to guess from and not merely
+                              // whenever the field loses focus. It used to run on every blur:
+                              // clicking into the amount and back re-asked about a title nobody
+                              // had touched, and leaving through Cancel asked about an expense on
+                              // its way to being thrown away — which is the spinner you could
+                              // catch on the way out the door.
+                              const title = field.value?.trim() ?? ''
                               if (
-                                runtimeFeatureFlags.enableCategoryExtract &&
-                                field.value
+                                !runtimeFeatureFlags.enableCategoryExtract ||
+                                !title ||
+                                abandoningRef.current ||
+                                title === lastExtractedTitleRef.current
                               ) {
-                                setCategoryLoading(true)
-                                try {
-                                  const { categoryId } =
-                                    await extractCategoryFromTitle(field.value)
+                                return
+                              }
+                              lastExtractedTitleRef.current = title
+                              setCategoryLoading(true)
+                              try {
+                                const { categoryId } =
+                                  await extractCategoryFromTitle(title)
+                                if (!abandoningRef.current) {
                                   form.setValue('category', categoryId)
-                                } finally {
-                                  setCategoryLoading(false)
                                 }
+                              } finally {
+                                setCategoryLoading(false)
                               }
                             }}
                           />
@@ -2099,6 +2124,9 @@ export function ExpenseForm({
             variant="ghost"
             className="h-11 sm:h-10"
             asChild
+            onPointerDown={() => {
+              abandoningRef.current = true
+            }}
             onClick={() => {
               discardedRef.current = true
               clearExpenseDraft(draftScope)
