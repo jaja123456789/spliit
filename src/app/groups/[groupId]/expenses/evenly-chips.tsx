@@ -89,7 +89,11 @@ export function EvenlyChips({
 
   return (
     <div className="mt-3" data-testid="evenly-chips">
-      <div className="flex flex-wrap gap-2">
+      {/* A grid, not a wrap. Free-flowing pills sized themselves to their names, so three people
+          came out 131, 139 and 137px wide and wrapped 2 + 1 — a ragged edge under a form whose
+          every other row runs the full width. Two equal columns give the block an edge, and the
+          names line up with each other instead of with nothing. */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {group.participants.map((participant) => {
           const on = isOn(participant.id)
           const share = shareOf(participant.id)
@@ -102,7 +106,7 @@ export function EvenlyChips({
               data-testid={`evenly-chip-${participant.name}`}
               onClick={() => toggle(participant.id)}
               className={cn(
-                'flex min-h-11 items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3 text-sm transition-colors',
+                'flex min-h-11 min-w-0 items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3 text-sm transition-colors',
                 on
                   ? 'border-primary/40 bg-primary/5 text-foreground'
                   : 'border-input text-muted-foreground',
@@ -114,11 +118,16 @@ export function EvenlyChips({
                 size={26}
                 className={cn(!on && 'opacity-50')}
               />
-              <span className={cn('font-medium', !on && 'line-through')}>
+              <span
+                className={cn(
+                  'min-w-0 truncate font-medium',
+                  !on && 'line-through',
+                )}
+              >
                 {participant.name}
               </span>
               {on && share !== null && (
-                <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                <span className="ml-auto shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
                   {formatCurrency(currency, share, locale)}
                 </span>
               )}

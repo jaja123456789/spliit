@@ -517,6 +517,13 @@ export function ExpenseForm({
   )
 
   const watchedItems = useWatch({ control: form.control, name: 'items' }) || []
+  // The category's *name*, for the label row above the title field. The icon in the trigger says
+  // which one is selected only to someone who already knows the icon set; on a phone it is a
+  // 20px glyph in a grey square, and there was nothing anywhere on the form that spelled it out.
+  const watchedCategory = useWatch({ control: form.control, name: 'category' })
+  const selectedCategory = categories.find(
+    (category) => category.id === Number(watchedCategory),
+  )
   const groupSplitSum = watchedItems.reduce((sum, item) => {
     if (!item.participantIds || item.participantIds.length === 0) return sum
     return sum + (Number(item.price) || 0)
@@ -1069,9 +1076,27 @@ export function ExpenseForm({
                 name="title"
                 render={({ field }) => (
                   <FormItem className="space-y-0">
-                    <FormLabel className="sr-only">
-                      {t(`${sExpense}.TitleField.label`)}
-                    </FormLabel>
+                    {/* Visible, like every other label on this form. These two were the only
+                        `sr-only` ones left — a leftover from when the title and the amount were
+                        styled as heroes big enough to need no naming, which they no longer are.
+                        The row carries the category's name on the right, so the glyph in the
+                        square has something to be read against and the label line does the work
+                        instead of a second row. */}
+                    <div className="mb-1 flex items-baseline justify-between gap-3">
+                      <FormLabel className="text-sm font-normal text-muted-foreground">
+                        {t(`${sExpense}.TitleField.label`)}
+                      </FormLabel>
+                      {selectedCategory && (
+                        <span
+                          data-testid="category-name"
+                          className="min-w-0 truncate text-sm text-muted-foreground"
+                        >
+                          {tCategories(
+                            `${selectedCategory.grouping}.${selectedCategory.name}`,
+                          )}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-3">
                       <FormField
                         control={form.control}
@@ -1094,7 +1119,10 @@ export function ExpenseForm({
                                 )}: ${tCategories(
                                   `${category.grouping}.${category.name}`,
                                 )}`}
-                                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted text-muted-foreground transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
+                                // A glyph in a grey square is a picture; the chevron is what makes
+                                // it a control. Same 44px height, ~8px wider, and the name it
+                                // switches between is spelled out in the label row above.
+                                className="flex h-11 shrink-0 items-center gap-0.5 rounded-md bg-muted pl-2 pr-1 text-muted-foreground transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
                               >
                                 {isCategoryLoading ? (
                                   <Loader2 className="h-5 w-5 animate-spin" />
@@ -1104,6 +1132,7 @@ export function ExpenseForm({
                                     className="h-5 w-5"
                                   />
                                 )}
+                                <ChevronDown className="h-3.5 w-3.5 opacity-40" />
                               </button>
                             )}
                           />
@@ -1147,9 +1176,29 @@ export function ExpenseForm({
                 name="paidBy.0.amount"
                 render={({ field }) => (
                   <FormItem className="space-y-0">
-                    <FormLabel className="sr-only">
-                      {t(`${sExpense}.amountLabel`)}
-                    </FormLabel>
+                    {/* The converted total used to sit two rows further down, under Paid by and
+                        the date — it qualifies the amount, so it belongs to the amount. Here it
+                        occupies the same right-hand slot the category name does one row up, and
+                        costs no height of its own. */}
+                    <div className="mb-1 flex items-baseline justify-between gap-3">
+                      <FormLabel className="text-sm font-normal text-muted-foreground">
+                        {t(`${sExpense}.amountLabel`)}
+                      </FormLabel>
+                      {conversionRequired && (
+                        <span
+                          data-testid="converted-total"
+                          className="min-w-0 truncate text-sm tabular-nums text-muted-foreground"
+                        >
+                          ≈{' '}
+                          {formatCurrency(
+                            groupCurrency,
+                            effectiveRate ? effectiveTotal * effectiveRate : 0,
+                            locale,
+                            true,
+                          )}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-3">
                       {/* An expense can be entered in another currency than the group's, and that
                           lived as a Select buried in More options. Inert for a group with a custom
@@ -1170,16 +1219,19 @@ export function ExpenseForm({
                                   type="button"
                                   data-testid="currency-trigger"
                                   title={t('changeCurrency')}
-                                  className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted font-mono text-base font-medium text-muted-foreground transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
+                                  className="flex h-11 shrink-0 items-center gap-0.5 rounded-md bg-muted pl-2 pr-1 font-mono text-base font-medium text-muted-foreground transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
                                 >
                                   {expenseCurrency.symbol || group.currency}
+                                  <ChevronDown className="h-3.5 w-3.5 opacity-40" />
                                 </button>
                               )}
                             />
                           )}
                         />
                       ) : (
-                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted font-mono text-base font-medium text-muted-foreground">
+                        // No chevron here on purpose: with no exchange rate to convert from there
+                        // is nothing to pick, and this is a label, not a control.
+                        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-md bg-muted font-mono text-base font-medium text-muted-foreground">
                           {expenseCurrency.symbol || group.currency}
                         </span>
                       )}
@@ -1224,6 +1276,17 @@ export function ExpenseForm({
                       </p>
                     )}
                     <FormMessage className="mt-1" />
+                    {/* "The lines do not add up to the total" is an argument about this figure,
+                        and it used to be made at the foot of the itemisation block — past every
+                        row and past the strip offering to fix it. The strip still colours itself;
+                        the sentence belongs next to the number it disputes. */}
+                    {splitControl === 'ITEMS' && (
+                      <FormField
+                        control={form.control}
+                        name="items"
+                        render={() => <FormMessage className="mt-1" />}
+                      />
+                    )}
                   </FormItem>
                 )}
               />
@@ -1433,17 +1496,8 @@ export function ExpenseForm({
               />
             </div>
 
-            {conversionRequired && (
-              <div className="col-span-2 -mt-1 px-0 text-right text-xs tabular-nums text-muted-foreground">
-                ≈{' '}
-                {formatCurrency(
-                  groupCurrency,
-                  effectiveRate ? effectiveTotal * effectiveRate : 0,
-                  locale,
-                  true,
-                )}
-              </div>
-            )}
+            {/* The converted total was here, below Paid by and the expense date. It now sits in
+                the amount's own label row, two rows up. */}
 
             {/* One control for how the expense is split. Three positions, because two of them
                 cover almost everything people do and the third is where the rest lives. */}
@@ -1524,7 +1578,7 @@ export function ExpenseForm({
                         <Button
                           type="button"
                           variant="outline"
-                          className="mt-2 w-full"
+                          className="mt-2 h-11 w-full sm:h-10"
                           data-testid="scan-receipt-in-form"
                         >
                           <Receipt className="mr-2 h-4 w-4" />
@@ -1730,8 +1784,12 @@ export function ExpenseForm({
                     control={form.control}
                     name="isReimbursement"
                     render={({ field }) => (
-                      <FormItem className="-mx-6 col-span-2 flex min-h-10 flex-row items-center justify-between gap-2 space-y-0 border-b px-6">
-                        <FormLabel className="text-sm font-normal text-muted-foreground">
+                      // The label already carried the click — what it did not carry was the
+                      // 176px of dead row between the end of the words and a 16px box pinned to
+                      // the right edge. Stretching the label across that gap makes the whole row
+                      // the target, which is what a row like this looks like it is.
+                      <FormItem className="-mx-6 col-span-2 flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 border-b px-6 sm:min-h-10">
+                        <FormLabel className="flex-1 cursor-pointer py-3 text-sm font-normal text-muted-foreground">
                           {t('isReimbursementField.label')}
                         </FormLabel>
                         <FormControl>
@@ -1752,8 +1810,8 @@ export function ExpenseForm({
                   control={form.control}
                   name="saveDefaultSplittingOptions"
                   render={({ field }) => (
-                    <FormItem className="-mx-6 col-span-2 flex min-h-10 flex-row items-center justify-between gap-2 space-y-0 border-b px-6">
-                      <FormLabel className="text-sm font-normal text-muted-foreground">
+                    <FormItem className="-mx-6 col-span-2 flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 border-b px-6 sm:min-h-10">
+                      <FormLabel className="flex-1 cursor-pointer py-3 text-sm font-normal text-muted-foreground">
                         {t('SplitModeField.saveAsDefault')}
                       </FormLabel>
                       <FormControl>

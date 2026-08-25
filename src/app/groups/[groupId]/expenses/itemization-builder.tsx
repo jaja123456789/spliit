@@ -127,6 +127,17 @@ export function ItemizationBuilder({
   const itemErrors = formState.errors.items as
     | ({ [key: string]: { message?: string } } | undefined)[]
     | undefined
+  // The array-level complaint — "the lines do not add up to the total" — as opposed to the
+  // per-row ones above. It is rendered under the amount field now, beside the figure it is
+  // arguing with; here it only colours the strip, so the foot of a long list is not silent
+  // about a form that will not submit.
+  // Two shapes, one meaning: React Hook Form keeps this message at the top of the error during
+  // live validation and moves it under `root` once the resolver runs on submit.
+  const itemsArrayError = formState.errors.items as
+    | { message?: string; root?: { message?: string } }
+    | undefined
+  const itemsSumError =
+    itemsArrayError?.root?.message ?? itemsArrayError?.message
   const locale = useLocale()
   const t = useTranslations('ExpenseForm.Itemization')
   const isDesktop = useMediaQuery('(min-width: 1024px)')
@@ -490,13 +501,27 @@ export function ItemizationBuilder({
                                 so the decimal point lands in the same column whatever the
                                 value's length — only the symbol moves, which is what it does on
                                 a printed statement too. */}
-                            <div className="flex w-[100px] items-center gap-0.5 rounded-md border border-input p-0.5 transition-colors focus-within:border-primary pl-1.5 [&_button]:h-7 [&_button]:w-7">
+                            {/* The calculator keeps its 28px face: the box is 100px wide and the
+                                digits need the rest of it, and widening the button would also
+                                move the price's right edge away from the "you 6.17" below it,
+                                which is aligned to the button's width. What it gains is the
+                                field's full height as a target — a 28x44 hit area on a 28x28
+                                face, which costs no layout at all. */}
+                            <div className="flex w-[100px] items-center gap-0.5 rounded-md border border-input p-0.5 transition-colors focus-within:border-primary pl-1.5 [&_button]:relative [&_button]:h-7 [&_button]:w-7 [&_button]:after:absolute [&_button]:after:inset-x-0 [&_button]:after:-inset-y-2 [&_button]:after:content-[''] sm:[&_button]:after:hidden">
                               <span className="font-mono text-xs text-subtle-foreground">
                                 {currency.symbol || group.currency}
                               </span>
                               <FormControl>
                                 <CalculatorInput
                                   {...field}
+                                  // A new line is prefilled with whatever is left unassigned,
+                                  // which is the useful thing to do — but when nothing is left
+                                  // that prefill is the number 0, and you had to select it and
+                                  // delete it before you could type, while the name field beside
+                                  // it politely showed a placeholder. Only the untouched numeric
+                                  // 0 is blanked: anything typed arrives as a string, so "0" on
+                                  // the way to "0.50" is left alone.
+                                  value={field.value === 0 ? '' : field.value}
                                   placeholder="0.00"
                                   className="h-11 sm:h-8 min-w-0 flex-1 border-0 bg-transparent shadow-none"
                                   inputClassName="h-11 sm:h-8 w-full border-0 bg-transparent px-0 text-right font-mono text-base sm:text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
@@ -547,7 +572,7 @@ export function ItemizationBuilder({
                         aria-expanded={isOpen}
                         disabled={isSelecting}
                         onClick={() => setOpenRowId(isOpen ? null : field.id)}
-                        className="mb-1 flex min-h-[40px] w-full items-center gap-2 rounded-md py-1.5 pr-[31px] text-left transition-colors hover:bg-muted/60 disabled:opacity-100 disabled:hover:bg-transparent"
+                        className="mb-1 flex min-h-11 w-full items-center gap-2 rounded-md py-1.5 pr-[31px] text-left transition-colors hover:bg-muted/60 disabled:opacity-100 disabled:hover:bg-transparent sm:min-h-[40px]"
                       >
                         {/* The stack goes when the row is open: the grid below is the same set of
                         people at four times the size, and the concept's open row drops it too. */}
@@ -627,7 +652,10 @@ export function ItemizationBuilder({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 shrink-0 text-subtle-foreground hover:bg-destructive/10 hover:text-destructive"
+                      // Same trick as the calculator: the face stays 32px because growing it
+                      // would take width back off the name field, which only just stopped
+                      // truncating "Gambas ao alhinho". The hit area is what grows.
+                      className="relative h-8 w-8 shrink-0 text-subtle-foreground after:absolute after:-inset-x-1 after:-inset-y-1.5 after:content-[''] hover:bg-destructive/10 hover:text-destructive sm:after:hidden"
                       onClick={() => removeRow(index)}
                       type="button"
                       title={t('removeLine')}
@@ -650,7 +678,7 @@ export function ItemizationBuilder({
             type="button"
             variant="outline"
             data-testid="add-item"
-            className="flex-1 justify-center gap-2 border-dashed"
+            className="h-11 flex-1 justify-center gap-2 border-dashed sm:h-10"
             onClick={() => {
               const nextAmount =
                 unassignedRemainder > 0
@@ -674,7 +702,7 @@ export function ItemizationBuilder({
             <Button
               type="button"
               variant="ghost"
-              className="h-10 shrink-0 text-xs text-muted-foreground hover:text-foreground"
+              className="h-11 shrink-0 text-sm text-muted-foreground hover:text-foreground sm:h-10 sm:text-xs"
               data-testid="select-lines"
               onClick={() => {
                 if (isSelecting) return leaveSelection()
@@ -697,10 +725,21 @@ export function ItemizationBuilder({
         {Math.abs(unassignedRemainder) > 0.01 ? (
           <div
             data-testid="remainder-strip"
-            className="-mx-6 flex flex-col gap-2 border-t bg-muted px-6 py-3 sm:flex-row sm:items-center sm:gap-3"
+            className={cn(
+              '-mx-6 flex flex-col gap-2 border-t px-6 py-3 sm:flex-row sm:items-center sm:gap-3',
+              // A mismatch is the strip's own subject: the amount left over *is* the reason the
+              // form will not submit. Colouring it is what keeps the foot of a long list from
+              // going quiet when the message moves up to the amount field.
+              itemsSumError ? 'bg-destructive/10' : 'bg-muted',
+            )}
           >
             <span className="flex items-baseline justify-between gap-3 sm:flex-1">
-              <span className="text-xs text-muted-foreground">
+              <span
+                className={cn(
+                  'text-xs',
+                  itemsSumError ? 'text-destructive' : 'text-muted-foreground',
+                )}
+              >
                 {t('remainderLabel')}
               </span>
               <Money
@@ -716,7 +755,7 @@ export function ItemizationBuilder({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 rounded-full border-primary/40 bg-transparent px-3 text-xs text-primary hover:bg-primary/10"
+                className="h-11 rounded-full border-primary/40 bg-transparent px-3 text-sm text-primary hover:bg-primary/10 sm:h-8 sm:text-xs"
                 onClick={addRemainderProportionally}
                 disabled={!canSplitProportionally}
                 title={
@@ -731,7 +770,7 @@ export function ItemizationBuilder({
                 type="button"
                 variant="outline"
                 size="sm"
-                className="h-8 rounded-full border-primary/40 bg-transparent px-3 text-xs text-primary hover:bg-primary/10"
+                className="h-11 rounded-full border-primary/40 bg-transparent px-3 text-sm text-primary hover:bg-primary/10 sm:h-8 sm:text-xs"
                 onClick={addRemainderEvenly}
               >
                 {t('remainderEvenly')}
@@ -767,12 +806,10 @@ export function ItemizationBuilder({
           </div>
         )}
 
-        {/* Global Items Array Error (e.g. "Items must sum to total") */}
-        <FormField
-          control={control}
-          name="items"
-          render={() => <FormMessage className="mt-2" />}
-        />
+        {/* The array-level error used to be rendered here, below the rows *and* below the strip
+            that offers to fix it — on a three-line receipt it already sat some 500px under the
+            total it was contradicting, which is a long way to send someone to be told a number
+            is wrong. It is under the amount field now; the strip above carries the colour. */}
       </div>
     </div>
   )
