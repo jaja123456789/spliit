@@ -147,14 +147,27 @@ const FormMessage = React.forwardRef<
 >(({ className, children, ...props }, ref) => {
   const messages = useMessages()
   const { error, formMessageId } = useFormField()
+  // `String(undefined)` is `"undefined"`, and that is what this used to render — in destructive
+  // red, under the field — whenever a message was missing. A missing message is nothing to say.
   const translate = (key: unknown) => {
-    const raw = String(key)
-    return (messages.SchemaErrors as any)?.[raw] ?? raw
+    if (typeof key !== 'string' || key.length === 0) return null
+    return (messages.SchemaErrors as any)?.[key] ?? key
   }
+
+  // A field array can carry an error about *itself* — "the lines do not add up to the total" —
+  // as opposed to one per row. React Hook Form keeps that message at the top of the error while
+  // live validation is running and moves it under `root` once the resolver runs on submit, so
+  // reading only one of the two shapes means the message vanishes at exactly the moment someone
+  // presses the button.
+  const ownMessage =
+    (error as { root?: { message?: unknown } } | undefined)?.root?.message ??
+    (error as { message?: unknown } | undefined)?.message
 
   let body
   if (error) {
-    if (Array.isArray(error)) {
+    if (typeof ownMessage === 'string' && ownMessage.length > 0) {
+      body = translate(ownMessage)
+    } else if (Array.isArray(error)) {
       // A field array's error is one entry per row, most of them empty. This used to render the
       // string "Please check all inputs" — hardcoded, untranslated, and true of nothing in
       // particular: it named neither the row nor the problem, so the only way to find what was
