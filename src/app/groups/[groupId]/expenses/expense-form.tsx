@@ -57,6 +57,7 @@ import {
 } from '@/lib/currency'
 import {
   clearExpenseDraft,
+  draftHasContent,
   createDraftScope,
   editDraftScope,
   readExpenseDraft,
@@ -742,15 +743,48 @@ export function ExpenseForm({
   const initialValuesRef = useRef<string | null>(null)
   const savedThisMountRef = useRef(false)
   useEffect(() => {
+    // A plain `JSON.stringify` of the values compares two things it should not: the order of the
+    // rows and the type they happen to be carrying. `paidFor` is rebuilt whenever someone is
+    // added or dropped, so taking a person off and putting them back reordered the array and the
+    // form counted as changed forever after; amounts round-trip between numbers and the strings
+    // the inputs hold, so `0` and `"0"` read as an edit. Sort the rows by who they are about and
+    // compare their figures as figures.
     const fingerprint = (values: unknown) => {
       const { conversionRate, ...rest } = (values ?? {}) as Record<string, any>
-      return JSON.stringify(rest)
+      const figure = (value: unknown) => Number(value) || 0
+      const byParticipant = (rows: unknown) =>
+        (Array.isArray(rows) ? rows : [])
+          .map((row: any) => ({
+            participant: String(row?.participant ?? ''),
+            amount: figure(row?.amount),
+            shares: figure(row?.shares),
+          }))
+          .sort((a, b) => a.participant.localeCompare(b.participant))
+      return JSON.stringify({
+        ...rest,
+        // The clock is not an edit: only the day someone picked is.
+        expenseDate: new Date(rest.expenseDate ?? NaN).toDateString(),
+        paidBy: byParticipant(rest.paidBy),
+        paidFor: byParticipant(rest.paidFor),
+        items: (Array.isArray(rest.items) ? rest.items : []).map(
+          (item: any) => ({
+            name: String(item?.name ?? ''),
+            price: figure(item?.price),
+            participantIds: [...(item?.participantIds ?? [])].sort(),
+          }),
+        ),
+      })
     }
     if (initialValuesRef.current === null) {
       initialValuesRef.current = fingerprint(form.getValues())
     }
     const subscription = form.watch((values) => {
-      if (fingerprint(values) === initialValuesRef.current) {
+      const unchanged = fingerprint(values) === initialValuesRef.current
+      // Changed, but changed into nothing: a cleared title leaves behind the category the
+      // extractor guessed from it, a cleared amount leaves `""` where a `0` was. Neither is an
+      // expense, and offering to restore one is how the banner came to appear nearly every time.
+      const empty = !draftHasContent(values as ExpenseFormValues)
+      if (unchanged || empty) {
         // Only discard a draft this mount actually wrote. Clearing unconditionally would delete
         // the draft being offered for restore, since a freshly opened form starts out equal to
         // its own defaults.

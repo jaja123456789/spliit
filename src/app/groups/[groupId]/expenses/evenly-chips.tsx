@@ -63,26 +63,28 @@ export function EvenlyChips({
     return index < 0 ? null : shares[index]
   }
 
+  // Rebuilt in the group's own order every time, rather than filtering someone out and appending
+  // them back on the end. Order is not visible here — the row list on the other split modes reads
+  // from `group.participants` — but it was visible to the draft, which compares the form against
+  // the values it started with: dropping someone and picking them again left the array in a
+  // different order, and the form counted itself edited from then on.
   const toggle = (id: string) => {
     const current = form.getValues('paidFor')
-    const options = {
-      shouldDirty: true,
-      shouldTouch: true,
-      shouldValidate: true,
-    }
-    if (isOn(id)) {
-      form.setValue(
-        'paidFor',
-        current.filter((entry: any) => entry.participant !== id) as any,
-        options,
-      )
-    } else {
-      form.setValue(
-        'paidFor',
-        [...current, { participant: id, shares: '1' }] as any,
-        options,
-      )
-    }
+    const chosen = new Set(current.map((entry: any) => entry.participant))
+    if (chosen.has(id)) chosen.delete(id)
+    else chosen.add(id)
+    form.setValue(
+      'paidFor',
+      group.participants
+        .filter((participant) => chosen.has(participant.id))
+        .map((participant) => ({
+          participant: participant.id,
+          shares:
+            current.find((entry: any) => entry.participant === participant.id)
+              ?.shares ?? '1',
+        })) as any,
+      { shouldDirty: true, shouldTouch: true, shouldValidate: true },
+    )
   }
 
   const allSelected = selected.length === group.participants.length
