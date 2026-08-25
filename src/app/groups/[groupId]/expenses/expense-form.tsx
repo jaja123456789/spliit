@@ -62,6 +62,7 @@ import {
   editDraftScope,
   readExpenseDraft,
   saveExpenseDraft,
+  touchExpenseDraft,
 } from '@/lib/expense-draft'
 import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { useActiveUser, useCurrencyRate } from '@/lib/hooks'
@@ -499,9 +500,14 @@ export function ExpenseForm({
   const draftScope = isCreate
     ? createDraftScope(group.id)
     : editDraftScope(expense.id)
-  const [pendingDraft, setPendingDraft] = useState<ExpenseFormValues | null>(
-    null,
-  )
+  // Restored, not offered. Being asked "you have an unsaved expense — restore or discard?" makes
+  // you read and decide, every time, about something you almost always want; the form simply comes
+  // back as you left it and says so quietly, with a way out for the time you did not want it.
+  const [restoredDraft, setRestoredDraft] = useState(false)
+  const pristineValuesRef = useRef<ExpenseFormValues | null>(null)
+  // Cancel throws the draft away, and a watch tick can still land between the click and the
+  // unmount. Without this the form would save back the draft that was just discarded.
+  const discardedRef = useRef(false)
 
   // Track manual edits for BY_AMOUNT mode
   const [manuallyEditedParticipants, setManuallyEditedParticipants] = useState<
@@ -726,9 +732,36 @@ export function ExpenseForm({
     }
   }, [isCreate, searchParams, applyReceiptData])
 
+  // Restore before the fingerprint below is taken, which is why this effect is declared first:
+  // the baseline then *is* the restored draft, so merely opening the form does not count as an
+  // edit and does not re-stamp the draft's clock.
   useEffect(() => {
     if (importingReceipt) return
-    setPendingDraft(readExpenseDraft(draftScope))
+    if (pristineValuesRef.current === null) {
+      pristineValuesRef.current = form.getValues()
+    }
+    const draft = readExpenseDraft(draftScope)
+    if (!draft) return
+    // No validation on the way in: a half-typed expense is exactly what this holds, and greeting
+    // someone with a wall of red for the parts they had not reached yet helps nobody.
+    form.reset(draft)
+    setRestoredDraft(true)
+    setShowMoreOptions(true)
+  }, [draftScope, importingReceipt, form])
+
+  // Keep the draft alive while its form is on screen — see `touchExpenseDraft`. Only while
+  // visible: a backgrounded tab is someone who has left, and their two minutes should be running.
+  useEffect(() => {
+    if (importingReceipt) return
+    const touch = () => {
+      if (document.visibilityState === 'visible') touchExpenseDraft(draftScope)
+    }
+    const timer = window.setInterval(touch, 30_000)
+    document.addEventListener('visibilitychange', touch)
+    return () => {
+      window.clearInterval(timer)
+      document.removeEventListener('visibilitychange', touch)
+    }
   }, [draftScope, importingReceipt])
 
   // Deciding when a draft is worth keeping is fiddlier than it looks. `formState.isDirty` is
@@ -779,6 +812,7 @@ export function ExpenseForm({
       initialValuesRef.current = fingerprint(form.getValues())
     }
     const subscription = form.watch((values) => {
+      if (discardedRef.current) return
       const unchanged = fingerprint(values) === initialValuesRef.current
       // Changed, but changed into nothing: a cleared title leaves behind the category the
       // extractor guessed from it, a cleared amount leaves `""` where a `0` was. Neither is an
@@ -1053,33 +1087,23 @@ export function ExpenseForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(submit)}>
-        {pendingDraft && (
-          <div className="mb-4 flex flex-col gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm sm:flex-row sm:items-center">
-            <span className="flex-1">{t('Draft.prompt')}</span>
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                size="sm"
-                onClick={() => {
-                  form.reset(pendingDraft)
-                  setPendingDraft(null)
-                  setShowMoreOptions(true)
-                }}
-              >
-                {t('Draft.restore')}
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => {
-                  clearExpenseDraft(draftScope)
-                  setPendingDraft(null)
-                }}
-              >
-                {t('Draft.discard')}
-              </Button>
-            </div>
+        {restoredDraft && (
+          <div className="mb-3 flex items-center justify-between gap-3 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
+            <span className="min-w-0 truncate">{t('Draft.restored')}</span>
+            <button
+              type="button"
+              data-testid="draft-start-fresh"
+              className="shrink-0 font-medium text-primary underline-offset-2 hover:underline"
+              onClick={() => {
+                clearExpenseDraft(draftScope)
+                if (pristineValuesRef.current) {
+                  form.reset(pristineValuesRef.current)
+                }
+                setRestoredDraft(false)
+              }}
+            >
+              {t('Draft.startFresh')}
+            </button>
           </div>
         )}
 
@@ -2068,7 +2092,18 @@ export function ExpenseForm({
               onDelete={() => onDelete(activeUserId ?? undefined)}
             ></DeletePopup>
           )}
-          <Button variant="ghost" className="h-11 sm:h-10" asChild>
+          {/* Cancel is the one exit that says, unambiguously, throw this away — so it does. No
+              dialog: it was asked for without one, and a confirm on the deliberate exit taxes it
+              to protect the accidental one, which is what the draft is already for. */}
+          <Button
+            variant="ghost"
+            className="h-11 sm:h-10"
+            asChild
+            onClick={() => {
+              discardedRef.current = true
+              clearExpenseDraft(draftScope)
+            }}
+          >
             <Link href={`/groups/${group.id}`}>{t('cancel')}</Link>
           </Button>
         </div>

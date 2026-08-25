@@ -12,6 +12,18 @@ import type { ExpenseFormValues } from '@/lib/schemas'
 
 const draftKey = (scope: string) => `${scope}-expenseDraft`
 
+/**
+ * How long a half-typed expense is worth keeping.
+ *
+ * The draft exists for an accident — a mistaken back, a phone that killed the tab — and an accident
+ * is something you notice immediately. Past a couple of minutes the odds invert: you are far more
+ * likely to have moved on than to be coming back, and a form that fills itself in with something
+ * you have forgotten about is worse than an empty one.
+ */
+const MAX_AGE_MS = 2 * 60 * 1000
+
+type StoredDraft = { savedAt: number; values: ExpenseFormValues }
+
 /** Create and edit are separate drafts: an unsaved new expense must not overwrite an edit. */
 export const createDraftScope = (groupId: string) => `group-${groupId}`
 export const editDraftScope = (expenseId: string) => `expense-${expenseId}`
@@ -50,10 +62,25 @@ export function draftHasContent(values: ExpenseFormValues): boolean {
 export function saveExpenseDraft(scope: string, values: ExpenseFormValues) {
   if (typeof localStorage === 'undefined') return
   try {
-    localStorage.setItem(draftKey(scope), JSON.stringify(values))
+    const stored: StoredDraft = { savedAt: Date.now(), values }
+    localStorage.setItem(draftKey(scope), JSON.stringify(stored))
   } catch {
     // A full or unavailable storage quota must never take the form down with it.
   }
+}
+
+/**
+ * Keep a draft alive while its form is on screen.
+ *
+ * The clock has to measure the time since someone left the form, not the time since their last
+ * keystroke — otherwise reading a receipt for three minutes before being interrupted loses exactly
+ * the work this is here to protect. The caller re-stamps while the form is visible; a draft that
+ * has already run out is not revived, so coming back to a backgrounded tab an hour later still
+ * finds nothing.
+ */
+export function touchExpenseDraft(scope: string) {
+  const alive = readExpenseDraft(scope)
+  if (alive) saveExpenseDraft(scope, alive)
 }
 
 export function clearExpenseDraft(scope: string) {
@@ -71,7 +98,19 @@ export function readExpenseDraft(scope: string): ExpenseFormValues | null {
   const stored = localStorage.getItem(draftKey(scope))
   if (!stored) return null
   try {
-    const parsed = JSON.parse(stored) as ExpenseFormValues
+    const envelope = JSON.parse(stored) as Partial<StoredDraft>
+    // Anything without a timestamp was written before drafts had a lifetime. There is no way to
+    // tell how old it is, so it is treated as expired — which is also how the draft sitting in
+    // someone's browser right now stops following them around.
+    if (typeof envelope?.savedAt !== 'number' || !envelope.values) {
+      clearExpenseDraft(scope)
+      return null
+    }
+    if (Date.now() - envelope.savedAt > MAX_AGE_MS) {
+      clearExpenseDraft(scope)
+      return null
+    }
+    const parsed = envelope.values
     const date = new Date(parsed.expenseDate as unknown as string)
     if (isNaN(date.getTime())) return null
     const revived = { ...parsed, expenseDate: date }

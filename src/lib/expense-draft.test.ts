@@ -1,5 +1,11 @@
 import type { ExpenseFormValues } from '@/lib/schemas'
-import { draftHasContent } from './expense-draft'
+import {
+  clearExpenseDraft,
+  draftHasContent,
+  readExpenseDraft,
+  saveExpenseDraft,
+  touchExpenseDraft,
+} from './expense-draft'
 
 /**
  * The banner said "You have an unsaved expense from earlier" for drafts that held no expense.
@@ -139,5 +145,98 @@ describe('draftHasContent', () => {
     expect(
       draftHasContent({ paidBy: 'nonsense' } as unknown as ExpenseFormValues),
     ).toBe(false)
+  })
+})
+
+/**
+ * A draft has a lifetime because it exists for an accident, and an accident is something you
+ * notice at once. These drive the store directly rather than through a form, which is the only
+ * way to hold a timestamp still.
+ */
+describe('the draft store', () => {
+  const scope = 'group-test'
+  const key = `${scope}-expenseDraft`
+  const store = new Map<string, string>()
+
+  beforeAll(() => {
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: {
+        getItem: (k: string) => store.get(k) ?? null,
+        setItem: (k: string, v: string) => void store.set(k, v),
+        removeItem: (k: string) => void store.delete(k),
+      },
+    })
+  })
+  beforeEach(() => store.clear())
+
+  const dinner = blank({ title: 'Dinner', notes: 'with Dana' })
+
+  it('gives back what it was given', () => {
+    saveExpenseDraft(scope, dinner)
+    const read = readExpenseDraft(scope)
+    expect(read?.title).toBe('Dinner')
+    // A Date on the way in, a string in JSON, a Date again on the way out.
+    expect(read?.expenseDate).toBeInstanceOf(Date)
+  })
+
+  it('keeps one saved a moment ago', () => {
+    store.set(
+      key,
+      JSON.stringify({ savedAt: Date.now() - 30_000, values: dinner }),
+    )
+    expect(readExpenseDraft(scope)?.title).toBe('Dinner')
+  })
+
+  it('drops one older than two minutes, and forgets it', () => {
+    store.set(
+      key,
+      JSON.stringify({ savedAt: Date.now() - 3 * 60_000, values: dinner }),
+    )
+    expect(readExpenseDraft(scope)).toBeNull()
+    expect(store.has(key)).toBe(false)
+  })
+
+  it('drops one written before drafts had a lifetime', () => {
+    // The old shape: the values alone, with no way to tell how old they are.
+    store.set(key, JSON.stringify(dinner))
+    expect(readExpenseDraft(scope)).toBeNull()
+    expect(store.has(key)).toBe(false)
+  })
+
+  it('drops one holding nothing, whatever its age', () => {
+    store.set(key, JSON.stringify({ savedAt: Date.now(), values: blank() }))
+    expect(readExpenseDraft(scope)).toBeNull()
+    expect(store.has(key)).toBe(false)
+  })
+
+  it('drops unparseable rubbish rather than half-restoring a form', () => {
+    store.set(key, '{not json')
+    expect(readExpenseDraft(scope)).toBeNull()
+  })
+
+  it('touching a live draft restarts its clock', () => {
+    store.set(
+      key,
+      JSON.stringify({ savedAt: Date.now() - 110_000, values: dinner }),
+    )
+    touchExpenseDraft(scope)
+    const savedAt = JSON.parse(store.get(key)!).savedAt
+    expect(Date.now() - savedAt).toBeLessThan(1_000)
+  })
+
+  it('touching an expired draft does not revive it', () => {
+    store.set(
+      key,
+      JSON.stringify({ savedAt: Date.now() - 3 * 60_000, values: dinner }),
+    )
+    touchExpenseDraft(scope)
+    expect(store.has(key)).toBe(false)
+  })
+
+  it('clearing means clearing', () => {
+    saveExpenseDraft(scope, dinner)
+    clearExpenseDraft(scope)
+    expect(readExpenseDraft(scope)).toBeNull()
   })
 })

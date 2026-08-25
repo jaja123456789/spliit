@@ -389,9 +389,8 @@
       "lineHasError": "Check this line"
     },
     "Draft": {
-      "prompt": "You have an unsaved expense from earlier.",
-      "restore": "Restore",
-      "discard": "Discard"
+      "restored": "Restored from earlier",
+      "startFresh": "Start fresh"
     },
     "itemizeField": {
       "label": "Split by item",
