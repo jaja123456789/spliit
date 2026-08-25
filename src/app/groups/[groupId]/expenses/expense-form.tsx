@@ -1121,7 +1121,7 @@ export function ExpenseForm({
                                 // A glyph in a grey square is a picture; the chevron is what makes
                                 // it a control. Same 44px height, ~8px wider, and the name it
                                 // switches between is spelled out in the label row above.
-                                className="flex h-11 w-14 shrink-0 items-center justify-center gap-0.5 rounded-md bg-muted px-1 text-muted-foreground transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
+                                className="flex h-11 w-14 shrink-0 items-center justify-center gap-0.5 rounded-md bg-muted px-1 text-muted-foreground sm:h-10 transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
                               >
                                 {isCategoryLoading ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -1137,7 +1137,7 @@ export function ExpenseForm({
                           />
                         )}
                       />
-                      <div className="min-w-0 flex-1 rounded-md border border-input p-0.5 transition-colors focus-within:border-primary">
+                      <div className="min-w-0 flex-1 rounded-md bg-muted transition-shadow focus-within:ring-2 focus-within:ring-primary">
                         <FormControl>
                           <Input
                             placeholder={t(
@@ -1218,7 +1218,7 @@ export function ExpenseForm({
                                   type="button"
                                   data-testid="currency-trigger"
                                   title={t('changeCurrency')}
-                                  className="flex h-11 w-14 shrink-0 items-center justify-center gap-0.5 rounded-md bg-muted px-1 font-mono text-base font-medium text-muted-foreground transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
+                                  className="flex h-11 w-14 shrink-0 items-center justify-center gap-0.5 rounded-md bg-muted px-1 font-mono text-base font-medium text-muted-foreground sm:h-10 transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
                                 >
                                   {expenseCurrency.symbol || group.currency}
                                   <ChevronDown className="h-4 w-4 opacity-40" />
@@ -1230,11 +1230,11 @@ export function ExpenseForm({
                       ) : (
                         // No chevron here on purpose: with no exchange rate to convert from there
                         // is nothing to pick, and this is a label, not a control.
-                        <span className="grid h-11 w-14 shrink-0 place-items-center rounded-md bg-muted font-mono text-base font-medium text-muted-foreground">
+                        <span className="grid h-11 w-14 shrink-0 place-items-center rounded-md bg-muted sm:h-10 font-mono text-base font-medium text-muted-foreground">
                           {expenseCurrency.symbol || group.currency}
                         </span>
                       )}
-                      <div className="min-w-0 flex-1 rounded-md border border-input p-0.5 transition-colors focus-within:border-primary">
+                      <div className="min-w-0 flex-1 rounded-md bg-muted transition-shadow focus-within:ring-2 focus-within:ring-primary">
                         {isMultiPayer ? (
                           // Only several payers make the total a derived figure: it is their sum,
                           // so there is nothing to type into it. An itemised bill is not such a
@@ -1291,17 +1291,12 @@ export function ExpenseForm({
               />
             </div>
 
-            {/* Paid By Section.
-
-                Full-bleed (`-mx-6`, each row paying the padding back with `px-6`): the concept's
-                thesis is a ledger of hairline rules spanning the sheet, and a rule that stops 24px
-                short on both sides reads as another stacked box instead. */}
-            {/* The ledger opens on a rule. Without one it simply began — and "Paid by" is a
-                14px muted label at x=24 exactly like "Amount" directly above it, so the two
-                typed fields and the first picked row read as one undifferentiated run. The
-                hairline is what says the boxes stopped and the ledger started. */}
-            <div className="col-span-2 -mx-6 mt-1 border-t">
-              <div className="border-b">
+            {/* Paid By Section. */}
+            {/* Full-bleed so a row's hover runs to the sheet's edge; the rules that used to
+                close each of these are gone. What separates one row from the next is the space
+                between them, and what says a control is a control is its fill. */}
+            <div className="col-span-2 -mx-6">
+              <div>
                 {isMultiPayer && (
                   <FormLabel className="block px-6 pb-1 pt-2 text-sm font-normal text-muted-foreground">
                     {t(`${sExpense}.paidByField.label`)}
@@ -1329,7 +1324,7 @@ export function ExpenseForm({
                           // a shadow and a red bin, which is a different form's visual language
                           // sitting inside this one.
                           'flex items-center justify-between gap-2 px-6 transition-colors',
-                          index < payerFields.length - 1 && 'border-b',
+                          index < payerFields.length - 1 && '',
                         )}
                       >
                         <FormField
@@ -1359,19 +1354,17 @@ export function ExpenseForm({
                                   <SelectTrigger
                                     data-testid={`paid-by-select-${index}`}
                                     className={cn(
-                                      // A row, not a full-width box: this is a statement of fact
-                                      // you occasionally change, so it reads as the value in a row
-                                      // rather than as an empty field. The chevron stays — the
-                                      // concept draws this row without one, but the concept's row
-                                      // is a picture of a value and this one opens a picker, and a
-                                      // control that looks like static text is the fault the
-                                      // assign strip had.
-                                      'h-11 sm:h-10 gap-1 border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0 [&>svg]:opacity-40',
-                                      // With one payer the target is everything right of the
-                                      // label; with several the name leads the row.
+                                      // A pill that hugs its value, not a full-width field: this
+                                      // is a statement of fact you occasionally change. The fill
+                                      // is what says it can be changed and the chevron says how —
+                                      // a control that looks like static text is the fault the
+                                      // assign strip had. It used to stretch to everything right
+                                      // of the label, which was a fine invisible target and a
+                                      // very odd visible one once the fill arrived.
+                                      'h-11 gap-1 rounded-md border-0 bg-muted px-3 font-medium shadow-none focus:ring-0 sm:h-10 [&>svg]:opacity-40',
                                       isMultiPayer
                                         ? 'w-auto justify-start'
-                                        : 'flex-1 justify-end',
+                                        : 'w-auto justify-end',
                                     )}
                                   >
                                     <div className="flex items-center gap-2">
@@ -1416,7 +1409,7 @@ export function ExpenseForm({
                                     column, figure right-aligned and tabular so the decimals line
                                     up down the column, the box tracking its value, and the
                                     calculator inside the field rather than beside it. */}
-                                <div className="flex w-[116px] items-center gap-1 rounded-md border border-input p-0.5 transition-colors focus-within:border-primary pl-2 [&_button]:relative [&_button]:h-7 [&_button]:w-7 [&_button]:after:absolute [&_button]:after:inset-x-0 [&_button]:after:-inset-y-2 [&_button]:after:content-[''] sm:[&_button]:after:hidden">
+                                <div className="flex w-[116px] items-center gap-1 rounded-md bg-muted pl-2 transition-shadow focus-within:ring-2 focus-within:ring-primary [&_button]:relative [&_button]:h-7 [&_button]:w-7 [&_button]:after:absolute [&_button]:after:inset-x-0 [&_button]:after:-inset-y-2 [&_button]:after:content-[''] sm:[&_button]:after:hidden">
                                   <span className="font-mono text-xs text-subtle-foreground">
                                     {expenseCurrency.symbol || group.currency}
                                   </span>
@@ -1456,10 +1449,9 @@ export function ExpenseForm({
                 </div>
 
                 {/* The action that adds a payer belongs to the payers, so it sits directly under
-                  them and inside the same group — the date used to be wedged between the two,
-                  which put a control and the thing it acts on either side of an unrelated field.
-                  No rule between the last payer and this; one rule closes the group. That is the
-                  same shape as the item list, where "Add a line" follows the lines. */}
+                  them — the date used to be wedged between the two, which put a control and the
+                  thing it acts on either side of an unrelated field. Same shape as the item list,
+                  where "Add a line" follows the lines. */}
                 <Button
                   type="button"
                   variant="ghost"
@@ -1478,13 +1470,13 @@ export function ExpenseForm({
                 control={form.control}
                 name="expenseDate"
                 render={({ field }) => (
-                  <FormItem className="flex items-center justify-between gap-2 space-y-0 border-b px-6">
+                  <FormItem className="flex items-center justify-between gap-2 space-y-0 px-6 py-1">
                     <FormLabel className="text-sm font-normal text-muted-foreground">
                       {t(`${sExpense}.DateField.label`)}
                     </FormLabel>
                     <FormControl>
                       <Input
-                        className="date-base h-11 sm:h-10 w-auto border-0 bg-transparent px-0 text-right font-medium shadow-none focus-visible:ring-0"
+                        className="date-base h-11 w-auto rounded-md border-0 bg-muted px-3 text-right font-medium shadow-none focus-visible:ring-2 focus-visible:ring-primary sm:h-10"
                         name="expenseDate"
                         type="date"
                         value={formatDate(field.value)}
@@ -1504,7 +1496,7 @@ export function ExpenseForm({
             {/* One control for how the expense is split. Three positions, because two of them
                 cover almost everything people do and the third is where the rest lives. */}
             {!form.watch('isReimbursement') && (
-              <div className="border-b px-6 py-3" data-testid="split-control">
+              <div className="px-6 py-3" data-testid="split-control">
                 <Label className="text-sm font-normal text-muted-foreground">
                   {t('SplitMode.title')}
                 </Label>
@@ -1581,7 +1573,7 @@ export function ExpenseForm({
                       trigger={
                         <Button
                           type="button"
-                          variant="outline"
+                          variant="secondary"
                           className="mt-2 h-11 w-full sm:h-10"
                           data-testid="scan-receipt-in-form"
                         >
@@ -1607,7 +1599,7 @@ export function ExpenseForm({
                 <Button
                   type="button"
                   variant="ghost"
-                  className="h-11 w-full justify-between rounded-none border-b px-6 text-sm font-normal text-muted-foreground hover:text-foreground sm:h-10"
+                  className="h-11 w-full justify-between rounded-none px-6 text-sm font-normal text-muted-foreground hover:text-foreground sm:h-10"
                 >
                   {t('moreOptions')}
                   <ChevronDown
@@ -1622,7 +1614,7 @@ export function ExpenseForm({
                   Radix sets when this closes — a class beats a UA attribute selector — so the
                   collapsed section kept rendering as a grid and reserving its 16px of top padding
                   under a rule with nothing beneath it. */}
-              <CollapsibleContent className="grid gap-x-6 gap-y-0 sm:grid-cols-2">
+              <CollapsibleContent className="grid gap-x-6 gap-y-1 pt-1 sm:grid-cols-2">
                 {/* The category control is the icon beside the title now. Two controls writing
                     one field is the mistake 09841a4 fixed for the split mode. */}
 
@@ -1631,7 +1623,7 @@ export function ExpenseForm({
                     not become a different mistake one section further down. */}
                 <div
                   className={cn(
-                    'col-span-2 space-y-2 border-b px-6 py-3 sm:col-span-1',
+                    'col-span-2 space-y-2 px-6 py-2 sm:col-span-1',
                     !conversionRequired && 'hidden sm:block sm:invisible',
                   )}
                 >
@@ -1726,7 +1718,7 @@ export function ExpenseForm({
                   control={form.control}
                   name="notes"
                   render={({ field }) => (
-                    <FormItem className="col-span-2 space-y-1 border-b px-6 py-3">
+                    <FormItem className="col-span-2 space-y-1 px-6 py-2">
                       <FormLabel className="text-sm font-normal text-muted-foreground">
                         {t('notesField.label')}
                       </FormLabel>
@@ -1734,7 +1726,7 @@ export function ExpenseForm({
                           rounded bordered box filled with `--background`, which is the *ground*
                           colour sitting on a `--card` sheet — a faintly grey panel on white, and
                           the only field here that had one. */}
-                      <div className="rounded-md border border-input p-0.5 transition-colors focus-within:border-primary">
+                      <div className="rounded-md bg-muted transition-shadow focus-within:ring-2 focus-within:ring-primary">
                         <FormControl>
                           <Textarea
                             className="min-h-[60px] resize-none rounded-[8px] border-0 bg-transparent px-2.5 py-2 text-base sm:text-base shadow-none focus-visible:ring-0"
@@ -1750,7 +1742,7 @@ export function ExpenseForm({
                   control={form.control}
                   name="recurrenceRule"
                   render={({ field }) => (
-                    <FormItem className="flex items-center justify-between gap-2 space-y-0 border-b px-6">
+                    <FormItem className="flex items-center justify-between gap-2 space-y-0 px-6 py-1">
                       {/* One choice, one value: the same row as Paid by and the date rather than
                           a full-width combobox under a heading. */}
                       <FormLabel className="text-sm font-normal text-muted-foreground">
@@ -1760,7 +1752,7 @@ export function ExpenseForm({
                         onValueChange={field.onChange}
                         defaultValue={field.value}
                       >
-                        <SelectTrigger className="h-11 sm:h-10 w-auto justify-end gap-1 border-0 bg-transparent px-0 font-medium shadow-none focus:ring-0 [&>svg]:opacity-40">
+                        <SelectTrigger className="h-11 w-auto justify-end gap-1 rounded-md border-0 bg-muted px-3 font-medium shadow-none focus:ring-0 sm:h-10 [&>svg]:opacity-40">
                           <SelectValue placeholder="NONE" />
                         </SelectTrigger>
                         <SelectContent>
@@ -1792,7 +1784,7 @@ export function ExpenseForm({
                       // 176px of dead row between the end of the words and a 16px box pinned to
                       // the right edge. Stretching the label across that gap makes the whole row
                       // the target, which is what a row like this looks like it is.
-                      <FormItem className="col-span-2 flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 border-b px-6 sm:min-h-10">
+                      <FormItem className="col-span-2 flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 px-6 sm:min-h-10">
                         <FormLabel className="flex-1 cursor-pointer py-3 text-sm font-normal text-muted-foreground">
                           {t('isReimbursementField.label')}
                         </FormLabel>
@@ -1814,7 +1806,7 @@ export function ExpenseForm({
                   control={form.control}
                   name="saveDefaultSplittingOptions"
                   render={({ field }) => (
-                    <FormItem className="col-span-2 flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 border-b px-6 sm:min-h-10">
+                    <FormItem className="col-span-2 flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 px-6 sm:min-h-10">
                       <FormLabel className="flex-1 cursor-pointer py-3 text-sm font-normal text-muted-foreground">
                         {t('SplitModeField.saveAsDefault')}
                       </FormLabel>
@@ -2157,7 +2149,7 @@ function PaidForList({
               // A ruled row, not a card that tints when selected: the checkbox already says
               // whether this person is in, and a bordered tinted box per participant was the last
               // surface on this screen still speaking the old language.
-              'flex flex-wrap items-center gap-y-3 border-b px-1 py-2 transition-colors',
+              'flex flex-wrap items-center gap-y-3 px-1 py-2 transition-colors',
               !isSelected && 'opacity-60',
             )}
           >

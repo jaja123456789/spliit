@@ -106,10 +106,12 @@ export function EvenlyChips({
               data-testid={`evenly-chip-${participant.name}`}
               onClick={() => toggle(participant.id)}
               className={cn(
-                'flex min-h-11 min-w-0 items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3 text-sm transition-colors',
+                'flex min-h-11 min-w-0 items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3 text-sm transition-colors',
+                // No outline: a fill says "control" everywhere else on this form now, so it
+                // says it here too, and the difference between in and out is the fill's tone.
                 on
-                  ? 'border-primary/40 bg-primary/5 text-foreground'
-                  : 'border-input text-muted-foreground',
+                  ? 'bg-primary/10 text-foreground'
+                  : 'bg-muted text-muted-foreground',
               )}
             >
               <ProfileAvatar

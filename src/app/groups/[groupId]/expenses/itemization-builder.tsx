@@ -322,7 +322,7 @@ export function ItemizationBuilder({
           {isSelecting && (
             <div
               data-testid="selection-bar"
-              className="flex min-h-[52px] items-center justify-between gap-3 border-b bg-primary/5 px-6 py-2"
+              className="flex min-h-[52px] items-center justify-between gap-3 bg-primary/5 px-6 py-2"
             >
               {selectedIndexes.length > 0 ? (
                 <>
@@ -377,7 +377,7 @@ export function ItemizationBuilder({
                 data-testid={`item-row-${index}`}
                 data-testid-error={rowError ? 'true' : undefined}
                 className={cn(
-                  'border-b-2 border-divider px-6 transition-colors',
+                  'px-6 transition-colors',
                   isRowSelected && 'bg-primary/5',
                   isOpen && 'bg-muted/30',
                   // The line the message at the foot of the list is talking about. A left edge
@@ -420,18 +420,14 @@ export function ItemizationBuilder({
                                 printed text. A soft fill is the lightest thing that still says
                                 "field" without putting a bordered control back in every row —
                                 the box is the shape, the border is what made it a slab. */}
-                            {/* One idiom, one state change. The rest state was a dotted rule and
-                                the focus state added a filled background *and* changed the rule —
-                                a line field and a filled field at once, which is why the two
-                                fought. It is a line field: a boundary at rest, the same boundary
-                                in the accent on focus, and nothing else moves.
-
-                                The boundary is `--input`, now a WCAG 1.4.11 3:1 colour. That is
-                                what stops it reading as a divider: the rule between rows is
-                                `--divider` at 1.62, less than half the contrast, and full-bleed
-                                where this one is inset. Tone and extent, not a different kind of
-                                line. */}
-                            <div className="rounded-md border border-input p-0.5 transition-colors focus-within:border-primary">
+                            {/* A fill, not a boundary. Every control on this form is a tinted
+                                shape now and every rule is gone, so there is no divider left for
+                                a field's outline to be confused with. The cost is real and
+                                deliberate: `--muted` is 1.15:1 against the sheet where the old
+                                `--input` boundary was 3.46:1, so at rest the fields lean on their
+                                labels and placeholders to identify themselves. Focus is where the
+                                contrast went — a full-strength primary ring at 5.10:1. */}
+                            <div className="rounded-md bg-muted transition-shadow focus-within:ring-2 focus-within:ring-primary">
                               <FormControl>
                                 <Input
                                   {...field}
@@ -507,7 +503,7 @@ export function ItemizationBuilder({
                                 which is aligned to the button's width. What it gains is the
                                 field's full height as a target — a 28x44 hit area on a 28x28
                                 face, which costs no layout at all. */}
-                            <div className="flex w-[100px] items-center gap-0.5 rounded-md border border-input p-0.5 transition-colors focus-within:border-primary pl-1.5 [&_button]:relative [&_button]:h-7 [&_button]:w-7 [&_button]:after:absolute [&_button]:after:inset-x-0 [&_button]:after:-inset-y-2 [&_button]:after:content-[''] sm:[&_button]:after:hidden">
+                            <div className="flex w-[100px] items-center gap-0.5 rounded-md bg-muted pl-1.5 transition-shadow focus-within:ring-2 focus-within:ring-primary [&_button]:relative [&_button]:h-7 [&_button]:w-7 [&_button]:after:absolute [&_button]:after:inset-x-0 [&_button]:after:-inset-y-2 [&_button]:after:content-[''] sm:[&_button]:after:hidden">
                               <span className="font-mono text-xs text-subtle-foreground">
                                 {currency.symbol || group.currency}
                               </span>
@@ -721,7 +717,11 @@ export function ItemizationBuilder({
           )}
         </div>
 
-        {/* The strip: one sunken bar at the foot carrying whatever is left to decide.
+        {/* The strip: one bar at the foot carrying whatever is left to decide. Deliberately a
+            *lighter* tone than the controls above it — on a form where a fill means "you can
+            change this", a summary must not wear the same fill as a field. It reads as the foot
+            because it runs to both edges while every control is an inset shape.
+
             What is left over after the lines is almost always tax and service. Splitting that
             evenly is wrong whenever people ordered different amounts — a 20% service charge on a
             £60 order is not the same as on a £15 one — so proportional leads. Even is still
@@ -730,11 +730,11 @@ export function ItemizationBuilder({
           <div
             data-testid="remainder-strip"
             className={cn(
-              '-mx-6 flex flex-col gap-2 border-t px-6 py-3 sm:flex-row sm:items-center sm:gap-3',
+              '-mx-6 mt-2 flex flex-col gap-2 px-6 py-3 sm:flex-row sm:items-center sm:gap-3',
               // A mismatch is the strip's own subject: the amount left over *is* the reason the
               // form will not submit. Colouring it is what keeps the foot of a long list from
               // going quiet when the message moves up to the amount field.
-              itemsSumError ? 'bg-destructive/10' : 'bg-muted',
+              itemsSumError ? 'bg-destructive/10' : 'bg-secondary/70',
             )}
           >
             <span className="flex items-baseline justify-between gap-3 sm:flex-1">
@@ -782,7 +782,7 @@ export function ItemizationBuilder({
             </span>
           </div>
         ) : (
-          <div className="-mx-6 flex items-baseline justify-between gap-3 border-t bg-muted px-6 py-3">
+          <div className="-mx-6 mt-2 flex items-baseline justify-between gap-3 bg-secondary/70 px-6 py-3">
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Check className="h-3.5 w-3.5 text-credit" />
               {t('allAssigned')}
@@ -841,7 +841,7 @@ function ParticipantChooser({
 
   return (
     <div className="space-y-1">
-      <div className="flex justify-between items-center px-2 pb-2 border-b mb-1">
+      <div className="flex justify-between items-center px-2 pb-2 mb-1">
         <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
           {t('splitAmong')}
         </span>
