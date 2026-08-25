@@ -673,12 +673,16 @@ export function ItemizationBuilder({
             each press used to push the line you had just filled in further off screen. The new
             line inherits the previous line's people, because consecutive lines on a receipt are
             usually shared by the same people — the exception is what needs the tap, not the rule. */}
-        <div className="flex items-center gap-2">
+        {/* The same shape as "Add Payer", because it is the same act: a quiet full-bleed row that
+            follows the things it adds to. It was an outlined dashed slab and Add Payer a ghost
+            row, which made one form ask for the same thing in two voices. "Select" keeps its
+            place at the right of that row rather than becoming a second one. */}
+        <div className="-mx-6 flex items-center gap-2 pr-6">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             data-testid="add-item"
-            className="h-11 flex-1 justify-center gap-2 border-dashed sm:h-10"
+            className="h-11 flex-1 justify-start rounded-none px-6 text-sm font-normal text-muted-foreground hover:text-foreground sm:h-10"
             onClick={() => {
               const nextAmount =
                 unassignedRemainder > 0
@@ -695,7 +699,7 @@ export function ItemizationBuilder({
               })
             }}
           >
-            <Plus className="w-4 h-4" />
+            <Plus className="mr-2 h-4 w-4" />
             {t('addLine')}
           </Button>
           {fields.length > 1 && (

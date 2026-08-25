@@ -1056,8 +1056,7 @@ export function ExpenseForm({
               Open, the last thing is ordinary content, which does want the padding. */}
           <CardContent
             className={cn(
-              'grid sm:grid-cols-2 gap-6 pt-6',
-              !showMoreOptions && 'pb-0',
+              'grid gap-6 pb-0 pt-6 sm:grid-cols-2',
             )}
           >
             {/* Title over amount, each with the control that qualifies it in a tinted square to
@@ -1494,7 +1493,6 @@ export function ExpenseForm({
                   </FormItem>
                 )}
               />
-            </div>
 
             {/* The converted total was here, below Paid by and the expense date. It now sits in
                 the amount's own label row, two rows up. */}
@@ -1502,7 +1500,7 @@ export function ExpenseForm({
             {/* One control for how the expense is split. Three positions, because two of them
                 cover almost everything people do and the third is where the rest lives. */}
             {!form.watch('isReimbursement') && (
-              <div className="col-span-2" data-testid="split-control">
+              <div className="border-b px-6 py-3" data-testid="split-control">
                 <Label className="text-sm font-normal text-muted-foreground">
                   {t('SplitMode.title')}
                 </Label>
@@ -1605,7 +1603,7 @@ export function ExpenseForm({
                 <Button
                   type="button"
                   variant="ghost"
-                  className="-mx-6 h-11 sm:h-10 w-[calc(100%+3rem)] justify-between rounded-none border-b px-6 text-sm font-normal text-muted-foreground hover:text-foreground"
+                  className="h-11 w-full justify-between rounded-none border-b px-6 text-sm font-normal text-muted-foreground hover:text-foreground sm:h-10"
                 >
                   {t('moreOptions')}
                   <ChevronDown
@@ -1620,7 +1618,7 @@ export function ExpenseForm({
                   Radix sets when this closes — a class beats a UA attribute selector — so the
                   collapsed section kept rendering as a grid and reserving its 16px of top padding
                   under a rule with nothing beneath it. */}
-              <CollapsibleContent className="grid sm:grid-cols-2 gap-6 pt-4 data-[state=closed]:pt-0">
+              <CollapsibleContent className="grid gap-x-6 gap-y-0 sm:grid-cols-2">
                 {/* The category control is the icon beside the title now. Two controls writing
                     one field is the mistake 09841a4 fixed for the split mode. */}
 
@@ -1629,7 +1627,7 @@ export function ExpenseForm({
                     not become a different mistake one section further down. */}
                 <div
                   className={cn(
-                    'col-span-2 sm:col-span-1 space-y-2',
+                    'col-span-2 space-y-2 border-b px-6 py-3 sm:col-span-1',
                     !conversionRequired && 'hidden sm:block sm:invisible',
                   )}
                 >
@@ -1724,7 +1722,7 @@ export function ExpenseForm({
                   control={form.control}
                   name="notes"
                   render={({ field }) => (
-                    <FormItem className="space-y-1">
+                    <FormItem className="col-span-2 space-y-1 border-b px-6 py-3">
                       <FormLabel className="text-sm font-normal text-muted-foreground">
                         {t('notesField.label')}
                       </FormLabel>
@@ -1748,7 +1746,7 @@ export function ExpenseForm({
                   control={form.control}
                   name="recurrenceRule"
                   render={({ field }) => (
-                    <FormItem className="-mx-6 flex items-center justify-between gap-2 space-y-0 border-b px-6">
+                    <FormItem className="flex items-center justify-between gap-2 space-y-0 border-b px-6">
                       {/* One choice, one value: the same row as Paid by and the date rather than
                           a full-width combobox under a heading. */}
                       <FormLabel className="text-sm font-normal text-muted-foreground">
@@ -1790,7 +1788,7 @@ export function ExpenseForm({
                       // 176px of dead row between the end of the words and a 16px box pinned to
                       // the right edge. Stretching the label across that gap makes the whole row
                       // the target, which is what a row like this looks like it is.
-                      <FormItem className="-mx-6 col-span-2 flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 border-b px-6 sm:min-h-10">
+                      <FormItem className="col-span-2 flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 border-b px-6 sm:min-h-10">
                         <FormLabel className="flex-1 cursor-pointer py-3 text-sm font-normal text-muted-foreground">
                           {t('isReimbursementField.label')}
                         </FormLabel>
@@ -1812,7 +1810,7 @@ export function ExpenseForm({
                   control={form.control}
                   name="saveDefaultSplittingOptions"
                   render={({ field }) => (
-                    <FormItem className="-mx-6 col-span-2 flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 border-b px-6 sm:min-h-10">
+                    <FormItem className="col-span-2 flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 border-b px-6 sm:min-h-10">
                       <FormLabel className="flex-1 cursor-pointer py-3 text-sm font-normal text-muted-foreground">
                         {t('SplitModeField.saveAsDefault')}
                       </FormLabel>
@@ -1827,6 +1825,7 @@ export function ExpenseForm({
                 />
               </CollapsibleContent>
             </Collapsible>
+            </div>
           </CardContent>
         </Card>
         {/* A plain sheet. The dashed double border framed the lines as a foreign object pasted
