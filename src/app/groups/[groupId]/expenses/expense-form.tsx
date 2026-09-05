@@ -57,8 +57,8 @@ import {
 } from '@/lib/currency'
 import {
   clearExpenseDraft,
-  draftHasContent,
   createDraftScope,
+  draftHasContent,
   editDraftScope,
   readExpenseDraft,
   saveExpenseDraft,
@@ -1123,11 +1123,7 @@ export function ExpenseForm({
               the full width — and the card's own 24px of bottom padding left it floating above an
               empty band, reading as a list that had been cut off. Let its rule be the card's edge.
               Open, the last thing is ordinary content, which does want the padding. */}
-          <CardContent
-            className={cn(
-              'grid gap-6 pb-0 pt-6 sm:grid-cols-2',
-            )}
-          >
+          <CardContent className={cn('grid gap-6 pb-0 pt-6 sm:grid-cols-2')}>
             {/* Title over amount, each with the control that qualifies it in a tinted square to
                 its left, over a rule. The amount used to be a 48px figure centred on its own line
                 with the title centred under it — which is the concept's hero, and the concept's
@@ -1573,303 +1569,325 @@ export function ExpenseForm({
                 )}
               />
 
-            {/* The converted total was here, below Paid by and the expense date. It now sits in
+              {/* The converted total was here, below Paid by and the expense date. It now sits in
                 the amount's own label row, two rows up. */}
 
-            {/* One control for how the expense is split. Three positions, because two of them
+              {/* One control for how the expense is split. Three positions, because two of them
                 cover almost everything people do and the third is where the rest lives. */}
-            {!form.watch('isReimbursement') && (
-              <div className="px-6 py-3" data-testid="split-control">
-                <Label className="text-sm font-normal text-muted-foreground">
-                  {t('SplitMode.title')}
-                </Label>
-                <div className="mt-1.5 grid grid-cols-3 gap-1 rounded-md bg-muted p-1">
-                  {(
-                    [
-                      ['EVENLY', 'evenly', t('SplitMode.evenly')],
-                      ['ITEMS', 'items', t('SplitMode.byItem')],
-                    ] as const
-                  ).map(([value, testId, label]) => (
+              {!form.watch('isReimbursement') && (
+                <div className="px-6 py-3" data-testid="split-control">
+                  <Label className="text-sm font-normal text-muted-foreground">
+                    {t('SplitMode.title')}
+                  </Label>
+                  <div className="mt-1.5 grid grid-cols-3 gap-1 rounded-md bg-muted p-1">
+                    {(
+                      [
+                        ['EVENLY', 'evenly', t('SplitMode.evenly')],
+                        ['ITEMS', 'items', t('SplitMode.byItem')],
+                      ] as const
+                    ).map(([value, testId, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        data-testid={`split-mode-${testId}`}
+                        aria-pressed={splitControl === value}
+                        onClick={() => selectSplitControl(value)}
+                        className={cn(
+                          'min-h-11 rounded-md px-2 text-sm font-medium transition-colors',
+                          splitControl === value
+                            ? 'bg-card text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground',
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
                     <button
-                      key={value}
                       type="button"
-                      data-testid={`split-mode-${testId}`}
-                      aria-pressed={splitControl === value}
-                      onClick={() => selectSplitControl(value)}
+                      data-testid="split-mode-more"
+                      aria-pressed={splitControl === 'OTHER'}
+                      onClick={() => setSplitSheetOpen(true)}
                       className={cn(
                         'min-h-11 rounded-md px-2 text-sm font-medium transition-colors',
-                        splitControl === value
+                        splitControl === 'OTHER'
                           ? 'bg-card text-foreground shadow-sm'
                           : 'text-muted-foreground hover:text-foreground',
                       )}
                     >
-                      {label}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    data-testid="split-mode-more"
-                    aria-pressed={splitControl === 'OTHER'}
-                    onClick={() => setSplitSheetOpen(true)}
-                    className={cn(
-                      'min-h-11 rounded-md px-2 text-sm font-medium transition-colors',
-                      splitControl === 'OTHER'
-                        ? 'bg-card text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground',
-                    )}
-                  >
-                    {/* Carries the chosen mode's name once one is active, so the third position
+                      {/* Carries the chosen mode's name once one is active, so the third position
                         never reads as "something unspecified is going on". */}
-                    {splitControl === 'OTHER'
-                      ? shortSplitModeLabel(splitMode)
-                      : t('SplitMode.more')}
-                  </button>
-                </div>
-                <p className="mt-1.5 text-sm text-muted-foreground">
-                  {splitControl === 'ITEMS'
-                    ? t('itemizeField.description')
-                    : t('SplitMode.description')}
-                </p>
-                {/* The hint directly above says "enter each line of the receipt", and until now
+                      {splitControl === 'OTHER'
+                        ? shortSplitModeLabel(splitMode)
+                        : t('SplitMode.more')}
+                    </button>
+                  </div>
+                  <p className="mt-1.5 text-sm text-muted-foreground">
+                    {splitControl === 'ITEMS'
+                      ? t('itemizeField.description')
+                      : t('SplitMode.description')}
+                  </p>
+                  {/* The hint directly above says "enter each line of the receipt", and until now
                     this screen had no way to reach the thing that reads receipts — the scanner's
                     only entry point in the whole app was an icon in the expense list's header. The
                     itemised path is the one that most wants OCR, so it is the one that gets the
                     offer, and it fills the lines in place rather than navigating anywhere. */}
-                {/* Evenly is most expenses, and who is in is the thing people actually change on
+                  {/* Evenly is most expenses, and who is in is the thing people actually change on
                     it. It used to live in a second card at the far end of a page one and a half
                     screens long; here it is under the control that decides it, each chip carrying
                     that person's share. */}
-                {splitControl === 'EVENLY' && (
-                  <EvenlyChips
-                    form={form}
-                    group={group}
-                    currency={expenseCurrency}
-                    totalAmount={effectiveTotal}
-                    activeUserId={activeUserId}
-                  />
-                )}
-                {isCreate &&
-                  splitControl === 'ITEMS' &&
-                  runtimeFeatureFlags.enableReceiptExtract && (
-                    <CreateFromReceiptButton
-                      onExtracted={applyReceiptData}
-                      trigger={
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          className="mt-2 h-11 w-full sm:h-10"
-                          data-testid="scan-receipt-in-form"
-                        >
-                          <Receipt className="mr-2 h-4 w-4" />
-                          {tReceipt('scanEntry')}
-                        </Button>
-                      }
+                  {splitControl === 'EVENLY' && (
+                    <EvenlyChips
+                      form={form}
+                      group={group}
+                      currency={expenseCurrency}
+                      totalAmount={effectiveTotal}
+                      activeUserId={activeUserId}
                     />
                   )}
-              </div>
-            )}
+                  {isCreate &&
+                    splitControl === 'ITEMS' &&
+                    runtimeFeatureFlags.enableReceiptExtract && (
+                      <CreateFromReceiptButton
+                        onExtracted={applyReceiptData}
+                        trigger={
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="mt-2 h-11 w-full sm:h-10"
+                            data-testid="scan-receipt-in-form"
+                          >
+                            <Receipt className="mr-2 h-4 w-4" />
+                            {tReceipt('scanEntry')}
+                          </Button>
+                        }
+                      />
+                    )}
+                </div>
+              )}
 
-            {/* Everything below is optional. The common case is a title, an amount and who
+              {/* Everything below is optional. The common case is a title, an amount and who
                 paid — those stay above the fold; date, category, currency, notes, recurrence
                 and the reimbursement flag used to sit between them, pushing the amount field
                 roughly 1,100px down a 1,900px page on a phone. */}
-            <Collapsible
-              open={showMoreOptions}
-              onOpenChange={setShowMoreOptions}
-              className="col-span-2"
-            >
-              <CollapsibleTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  className="h-11 w-full justify-between rounded-none px-6 text-sm font-normal text-muted-foreground hover:text-foreground sm:h-10"
-                >
-                  {t('moreOptions')}
-                  <ChevronDown
-                    className={cn(
-                      'h-4 w-4 opacity-40 transition-transform',
-                      showMoreOptions && 'rotate-180',
-                    )}
-                  />
-                </Button>
-              </CollapsibleTrigger>
-              {/* `data-[state=closed]:pt-0` because `grid` quietly defeats the `hidden` attribute
+              <Collapsible
+                open={showMoreOptions}
+                onOpenChange={setShowMoreOptions}
+                className="col-span-2"
+              >
+                <CollapsibleTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="h-11 w-full justify-between rounded-none px-6 text-sm font-normal text-muted-foreground hover:text-foreground sm:h-10"
+                  >
+                    {t('moreOptions')}
+                    <ChevronDown
+                      className={cn(
+                        'h-4 w-4 opacity-40 transition-transform',
+                        showMoreOptions && 'rotate-180',
+                      )}
+                    />
+                  </Button>
+                </CollapsibleTrigger>
+                {/* `data-[state=closed]:pt-0` because `grid` quietly defeats the `hidden` attribute
                   Radix sets when this closes — a class beats a UA attribute selector — so the
                   collapsed section kept rendering as a grid and reserving its 16px of top padding
                   under a rule with nothing beneath it. */}
-              <CollapsibleContent className="grid gap-x-6 gap-y-1 pt-1 sm:grid-cols-2">
-                {/* The category control is the icon beside the title now. Two controls writing
+                <CollapsibleContent className="grid gap-x-6 gap-y-1 pt-1 sm:grid-cols-2">
+                  {/* The category control is the icon beside the title now. Two controls writing
                     one field is the mistake 09841a4 fixed for the split mode. */}
 
-                {/* The currency control is the symbol beside the amount now. Two controls
+                  {/* The currency control is the symbol beside the amount now. Two controls
                     writing one field is the mistake 09841a4 fixed for the split mode; it does
                     not become a different mistake one section further down. */}
-                <div
-                  className={cn(
-                    'col-span-2 space-y-2 px-6 py-2 sm:col-span-1',
-                    !conversionRequired && 'hidden sm:block sm:invisible',
-                  )}
-                >
-                  <FormItem>
-                    <FormLabel className="text-sm font-normal text-muted-foreground">
-                      {t('convertedTotalField.label', {
-                        currency: group.currencyCode ?? group.currency,
-                      })}
-                    </FormLabel>
-                    <div className="flex items-baseline gap-2 h-10">
-                      <span className="text-base font-medium">
-                        {formatCurrency(
-                          groupCurrency,
-                          effectiveRate ? effectiveTotal * effectiveRate : 0,
-                          locale,
-                          true,
-                        )}
-                      </span>
-                    </div>
-                    <FormDescription>
-                      {isNaN(form.getValues('expenseDate').getTime()) ? (
-                        t('conversionRateState.noDate')
-                      ) : form.getValues('expenseDate') &&
-                        !usingCustomConversionRate ? (
-                        <>
-                          {conversionRateMessage}
-                          {!exchangeRate.isLoading && (
-                            <Button
-                              className="h-auto py-0"
-                              variant="link"
-                              type="button"
-                              onClick={() => exchangeRate.refresh()}
-                            >
-                              {t('conversionRateState.refresh')}
-                            </Button>
-                          )}
-                        </>
-                      ) : (
-                        t('conversionRateState.customRate')
-                      )}
-                    </FormDescription>
-                  </FormItem>
-                  <Collapsible
-                    open={usingCustomConversionRate}
-                    onOpenChange={setUsingCustomConversionRate}
+                  <div
+                    className={cn(
+                      'col-span-2 space-y-2 px-6 py-2 sm:col-span-1',
+                      !conversionRequired && 'hidden sm:block sm:invisible',
+                    )}
                   >
-                    <CollapsibleTrigger asChild>
-                      <Button variant="link" type="button" className="-mx-4">
-                        {usingCustomConversionRate
-                          ? t('conversionRateField.useApi')
-                          : t('conversionRateField.useCustom')}
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent>
-                      <FormField
-                        control={form.control}
-                        name="conversionRate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="text-sm font-normal text-muted-foreground">
-                              {t('conversionRateField.label')}
-                            </FormLabel>
-                            <div className="flex items-baseline gap-2">
-                              <span>
-                                {expenseCurrency.symbol} 1 = {group.currency}
-                              </span>
-                              <FormControl>
-                                <Input
-                                  className="text-base sm:text-base max-w-"
-                                  type="text"
-                                  inputMode="decimal"
-                                  placeholder="0.00"
-                                  {...field}
-                                  value={field.value ?? ''}
-                                  onChange={(e) =>
-                                    field.onChange(
-                                      enforceCurrencyPattern(e.target.value),
-                                    )
-                                  }
-                                />
-                              </FormControl>
-                            </div>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </CollapsibleContent>
-                  </Collapsible>
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
-                    <FormItem className="col-span-2 space-y-1 px-6 py-2">
+                    <FormItem>
                       <FormLabel className="text-sm font-normal text-muted-foreground">
-                        {t('notesField.label')}
+                        {t('convertedTotalField.label', {
+                          currency: group.currencyCode ?? group.currency,
+                        })}
                       </FormLabel>
-                      {/* A line field like every other place you type on this form. It was a
+                      <div className="flex items-baseline gap-2 h-10">
+                        <span className="text-base font-medium">
+                          {formatCurrency(
+                            groupCurrency,
+                            effectiveRate ? effectiveTotal * effectiveRate : 0,
+                            locale,
+                            true,
+                          )}
+                        </span>
+                      </div>
+                      <FormDescription>
+                        {isNaN(form.getValues('expenseDate').getTime()) ? (
+                          t('conversionRateState.noDate')
+                        ) : form.getValues('expenseDate') &&
+                          !usingCustomConversionRate ? (
+                          <>
+                            {conversionRateMessage}
+                            {!exchangeRate.isLoading && (
+                              <Button
+                                className="h-auto py-0"
+                                variant="link"
+                                type="button"
+                                onClick={() => exchangeRate.refresh()}
+                              >
+                                {t('conversionRateState.refresh')}
+                              </Button>
+                            )}
+                          </>
+                        ) : (
+                          t('conversionRateState.customRate')
+                        )}
+                      </FormDescription>
+                    </FormItem>
+                    <Collapsible
+                      open={usingCustomConversionRate}
+                      onOpenChange={setUsingCustomConversionRate}
+                    >
+                      <CollapsibleTrigger asChild>
+                        <Button variant="link" type="button" className="-mx-4">
+                          {usingCustomConversionRate
+                            ? t('conversionRateField.useApi')
+                            : t('conversionRateField.useCustom')}
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <FormField
+                          control={form.control}
+                          name="conversionRate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-sm font-normal text-muted-foreground">
+                                {t('conversionRateField.label')}
+                              </FormLabel>
+                              <div className="flex items-baseline gap-2">
+                                <span>
+                                  {expenseCurrency.symbol} 1 = {group.currency}
+                                </span>
+                                <FormControl>
+                                  <Input
+                                    className="text-base sm:text-base max-w-"
+                                    type="text"
+                                    inputMode="decimal"
+                                    placeholder="0.00"
+                                    {...field}
+                                    value={field.value ?? ''}
+                                    onChange={(e) =>
+                                      field.onChange(
+                                        enforceCurrencyPattern(e.target.value),
+                                      )
+                                    }
+                                  />
+                                </FormControl>
+                              </div>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem className="col-span-2 space-y-1 px-6 py-2">
+                        <FormLabel className="text-sm font-normal text-muted-foreground">
+                          {t('notesField.label')}
+                        </FormLabel>
+                        {/* A line field like every other place you type on this form. It was a
                           rounded bordered box filled with `--background`, which is the *ground*
                           colour sitting on a `--card` sheet — a faintly grey panel on white, and
                           the only field here that had one. */}
-                      <div className="rounded-md bg-muted transition-shadow focus-within:ring-2 focus-within:ring-primary">
-                        <FormControl>
-                          <Textarea
-                            className="min-h-[60px] resize-none rounded-[8px] border-0 bg-transparent px-2.5 py-2 text-base sm:text-base shadow-none focus-visible:ring-0"
-                            {...field}
-                          />
-                        </FormControl>
-                      </div>
-                    </FormItem>
-                  )}
-                />
+                        <div className="rounded-md bg-muted transition-shadow focus-within:ring-2 focus-within:ring-primary">
+                          <FormControl>
+                            <Textarea
+                              className="min-h-[60px] resize-none rounded-[8px] border-0 bg-transparent px-2.5 py-2 text-base sm:text-base shadow-none focus-visible:ring-0"
+                              {...field}
+                            />
+                          </FormControl>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
 
-                <FormField
-                  control={form.control}
-                  name="recurrenceRule"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center justify-between gap-2 space-y-0 px-6 py-1">
-                      {/* One choice, one value: the same row as Paid by and the date rather than
-                          a full-width combobox under a heading. */}
-                      <FormLabel className="text-sm font-normal text-muted-foreground">
-                        {t(`${sExpense}.recurrenceRule.label`)}
-                      </FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                      >
-                        <SelectTrigger className="h-11 w-auto justify-end gap-1 rounded-md border-0 bg-muted px-3 font-medium shadow-none focus:ring-0 sm:h-10 [&>svg]:opacity-40">
-                          <SelectValue placeholder="NONE" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="NONE">
-                            {t(`${sExpense}.recurrenceRule.none`)}
-                          </SelectItem>
-                          <SelectItem value="DAILY">
-                            {t(`${sExpense}.recurrenceRule.daily`)}
-                          </SelectItem>
-                          <SelectItem value="WEEKLY">
-                            {t(`${sExpense}.recurrenceRule.weekly`)}
-                          </SelectItem>
-                          <SelectItem value="MONTHLY">
-                            {t(`${sExpense}.recurrenceRule.monthly`)}
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {!isIncome && !isMultiPayer && (
                   <FormField
                     control={form.control}
-                    name="isReimbursement"
+                    name="recurrenceRule"
                     render={({ field }) => (
-                      // The label already carried the click — what it did not carry was the
-                      // 176px of dead row between the end of the words and a 16px box pinned to
-                      // the right edge. Stretching the label across that gap makes the whole row
-                      // the target, which is what a row like this looks like it is.
+                      <FormItem className="flex items-center justify-between gap-2 space-y-0 px-6 py-1">
+                        {/* One choice, one value: the same row as Paid by and the date rather than
+                          a full-width combobox under a heading. */}
+                        <FormLabel className="text-sm font-normal text-muted-foreground">
+                          {t(`${sExpense}.recurrenceRule.label`)}
+                        </FormLabel>
+                        <Select
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                        >
+                          <SelectTrigger className="h-11 w-auto justify-end gap-1 rounded-md border-0 bg-muted px-3 font-medium shadow-none focus:ring-0 sm:h-10 [&>svg]:opacity-40">
+                            <SelectValue placeholder="NONE" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="NONE">
+                              {t(`${sExpense}.recurrenceRule.none`)}
+                            </SelectItem>
+                            <SelectItem value="DAILY">
+                              {t(`${sExpense}.recurrenceRule.daily`)}
+                            </SelectItem>
+                            <SelectItem value="WEEKLY">
+                              {t(`${sExpense}.recurrenceRule.weekly`)}
+                            </SelectItem>
+                            <SelectItem value="MONTHLY">
+                              {t(`${sExpense}.recurrenceRule.monthly`)}
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {!isIncome && !isMultiPayer && (
+                    <FormField
+                      control={form.control}
+                      name="isReimbursement"
+                      render={({ field }) => (
+                        // The label already carried the click — what it did not carry was the
+                        // 176px of dead row between the end of the words and a 16px box pinned to
+                        // the right edge. Stretching the label across that gap makes the whole row
+                        // the target, which is what a row like this looks like it is.
+                        <FormItem className="col-span-2 flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 px-6 sm:min-h-10">
+                          <FormLabel className="flex-1 cursor-pointer py-3 text-sm font-normal text-muted-foreground">
+                            {t('isReimbursementField.label')}
+                          </FormLabel>
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {/* Deliberately out here rather than in the split sheet: this applies to any
+                    split, and the sheet is only reachable from the third position — so putting it
+                    there would make it impossible to remember an even split. */}
+                  <FormField
+                    control={form.control}
+                    name="saveDefaultSplittingOptions"
+                    render={({ field }) => (
                       <FormItem className="col-span-2 flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 px-6 sm:min-h-10">
                         <FormLabel className="flex-1 cursor-pointer py-3 text-sm font-normal text-muted-foreground">
-                          {t('isReimbursementField.label')}
+                          {t('SplitModeField.saveAsDefault')}
                         </FormLabel>
                         <FormControl>
                           <Checkbox
@@ -1880,30 +1898,8 @@ export function ExpenseForm({
                       </FormItem>
                     )}
                   />
-                )}
-
-                {/* Deliberately out here rather than in the split sheet: this applies to any
-                    split, and the sheet is only reachable from the third position — so putting it
-                    there would make it impossible to remember an even split. */}
-                <FormField
-                  control={form.control}
-                  name="saveDefaultSplittingOptions"
-                  render={({ field }) => (
-                    <FormItem className="col-span-2 flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 px-6 sm:min-h-10">
-                      <FormLabel className="flex-1 cursor-pointer py-3 text-sm font-normal text-muted-foreground">
-                        {t('SplitModeField.saveAsDefault')}
-                      </FormLabel>
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-              </CollapsibleContent>
-            </Collapsible>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
           </CardContent>
         </Card>

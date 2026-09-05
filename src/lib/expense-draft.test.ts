@@ -128,7 +128,9 @@ describe('draftHasContent', () => {
   it('keeps a receipt line that has a price, even with no name yet', () => {
     expect(
       draftHasContent(
-        blank({ items: [{ name: '', price: 18.5, participantIds: [] }] } as any),
+        blank({
+          items: [{ name: '', price: 18.5, participantIds: [] }],
+        } as any),
       ),
     ).toBe(true)
   })
