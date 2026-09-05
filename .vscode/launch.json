@@ -1,0 +1,253 @@
+{
+  // Run/debug configurations for Spliit (Next.js + tRPC + Prisma + Jest + Playwright).
+  //
+  // BASE PATH — read this first. `next.config.mjs` serves the app under
+  // `NEXT_PUBLIC_BASE_PATH`, and this repo's `.env` sets it to `/spliit`, so
+  // `http://localhost:3000/` returns 404 and `http://localhost:3000/spliit` is the app.
+  // The browser configs below encode that prefix. If you serve at the root instead
+  // (`NEXT_PUBLIC_BASE_PATH=` in `.env` / `.env.local`), drop `/spliit` from `url`
+  // and from `uriFormat`.
+  "version": "0.2.0",
+  "configurations": [
+    // ---------------------------------------------------------------- app --
+    {
+      // Breakpoints in Server Components, Server Actions, tRPC procedures, `src/lib/*`.
+      "name": "Next: dev server (server-side)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+    },
+    {
+      // Same, bound to 0.0.0.0 so a phone on the LAN can reach it. `next.config.mjs`
+      // already allowlists this machine's IPv4 addresses for dev origins and Server Actions.
+      "name": "Next: dev server on LAN (0.0.0.0)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev:lan",
+      "cwd": "${workspaceFolder}",
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+    },
+    {
+      // Browser-side breakpoints. Needs a dev server already running.
+      "name": "Next: browser (client-side)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:3000/spliit",
+      "webRoot": "${workspaceFolder}"
+    },
+    {
+      // Starts the dev server and opens Chrome once it prints "- Local: http://…".
+      // Next logs that URL without the base path, so `uriFormat` appends it.
+      "name": "Next: full stack (server + browser)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}",
+      "serverReadyAction": {
+        "action": "debugWithChrome",
+        "pattern": "- Local:\\s+(https?://\\S+)",
+        "uriFormat": "%s/spliit",
+        "webRoot": "${workspaceFolder}"
+      },
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+    },
+    {
+      // For a server you started yourself with an inspector open:
+      //   npm run dev -- --inspect
+      //
+      // Use the CLI flag, not `NODE_OPTIONS=--inspect`. `next dev` forks the real server as a
+      // child process, and when it finds an inspect address in NODE_OPTIONS it hands the child
+      // `port + 1` — so 9229 would attach to the CLI parent, where no app code runs and no
+      // breakpoint ever binds. The `--inspect` flag is passed through unshifted. Either way the
+      // server prints the truth as "- Debugger port:" in its startup banner.
+      "name": "Next: attach to running server (:9229)",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "restart": true,
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+    },
+    {
+      // Production run. `npm start` does NOT work here — `output: 'standalone'`.
+      // Build first, and copy the assets the standalone bundle does not include:
+      //   npm run build
+      //   cp -r .next/static .next/standalone/.next/ && cp -r public .next/standalone/
+      "name": "Next: standalone production server",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/.next/standalone/server.js",
+      "cwd": "${workspaceFolder}/.next/standalone",
+      "env": { "PORT": "3000" },
+      "console": "integratedTerminal",
+      "skipFiles": ["<node_internals>/**"]
+    },
+
+    // --------------------------------------------------------------- jest --
+    // `--experimental-vm-modules` is a Node flag, so it belongs in `runtimeArgs`.
+    // `--runTestsByPath` (rather than a bare positional) because Jest reads positionals
+    // as regexes, and a Windows `${relativeFile}` contains backslashes that would be
+    // parsed as escape sequences and silently match nothing.
+    //
+    // `src/lib/api.test.ts` and the other DB-backed suites need a reachable Postgres in
+    // POSTGRES_PRISMA_URL / POSTGRES_URL_NON_POOLING. `next/jest` skips `.env.local`
+    // under NODE_ENV=test, so if `.env` does not point somewhere real, add them here:
+    //   "env": { "POSTGRES_PRISMA_URL": "postgresql://…", "POSTGRES_URL_NON_POOLING": "…" }
+    {
+      "name": "Jest: current file",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "runtimeArgs": ["--experimental-vm-modules"],
+      "args": [
+        "--testEnvironment=node",
+        "--runInBand",
+        "--runTestsByPath",
+        "${relativeFile}"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+    },
+    {
+      "name": "Jest: current file (watch)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "runtimeArgs": ["--experimental-vm-modules"],
+      "args": [
+        "--testEnvironment=node",
+        "--runInBand",
+        "--watch",
+        "--runTestsByPath",
+        "${relativeFile}"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+    },
+    {
+      // Mirrors `npm test`, minus the parallelism, so breakpoints are hit in one process.
+      "name": "Jest: all tests",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/jest/bin/jest.js",
+      "runtimeArgs": ["--experimental-vm-modules"],
+      "args": ["--testEnvironment=node", "--runInBand", "./src"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+    },
+
+    // --------------------------------------------------------- playwright --
+    // Two env vars below, both load-bearing:
+    //
+    // NODE_OPTIONS=--experimental-require-module — the specs import from `src/`, which
+    //   reaches ESM-only packages (nanoid, superjson) through Playwright's CommonJS
+    //   transpilation. Node < 22.12 cannot `require()` those, and `playwright.config.ts`
+    //   throws with this exact instruction. Harmless on Node >= 22.12, so it stays
+    //   unconditional. It has to be in `env`, not `runtimeArgs` — the config reads
+    //   `process.env.NODE_OPTIONS` to decide whether to throw.
+    //
+    // NEXT_PUBLIC_BASE_PATH="" — `playwright.config.ts` pins the base path to empty for
+    //   the server it starts, but that only reaches the server. The test *runner* loads
+    //   `.env` through its own import chain, so without this the API helpers post to
+    //   `/spliit/api/trpc` against a root-served app and get the 404 HTML page back
+    //   ("Unexpected token '<'").
+    //
+    // Stop any dev server on :3000 first. `reuseExistingServer` is true off-CI, so
+    // Playwright will adopt a `/spliit`-served dev server — every spec then fails, and the
+    // run writes test groups into whichever database that server is pointed at.
+    //
+    // The "current spec" configs pass `${fileBasename}`, not `${relativeFile}`. Playwright
+    // turns each positional into `new RegExp(arg, 'gi')`, so a Windows relative path like
+    // `tests\e2e\ui.spec.ts` has its `\e` and `\u` eaten as identity escapes and matches
+    // nothing ("Total: 0 tests in 0 files"). A bare basename has no separators to mangle.
+    // Caveat: it matches by name, so two specs sharing a basename would both run.
+    {
+      "name": "Playwright: current spec (headed)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/@playwright/test/cli.js",
+      "args": [
+        "test",
+        "${fileBasename}",
+        "--project=chromium",
+        "--headed",
+        "--workers=1",
+        "--reporter=line"
+      ],
+      "env": {
+        "NODE_OPTIONS": "--experimental-require-module",
+        "NEXT_PUBLIC_BASE_PATH": ""
+      },
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+    },
+    {
+      // Playwright's own step-through inspector rather than the VS Code debugger.
+      "name": "Playwright: current spec (inspector)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/@playwright/test/cli.js",
+      "args": [
+        "test",
+        "${fileBasename}",
+        "--project=chromium",
+        "--debug",
+        "--workers=1"
+      ],
+      "env": {
+        "NODE_OPTIONS": "--experimental-require-module",
+        "NEXT_PUBLIC_BASE_PATH": ""
+      },
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+    },
+    {
+      "name": "Playwright: all specs (chromium)",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/@playwright/test/cli.js",
+      "args": [
+        "test",
+        "--project=chromium",
+        "--workers=4",
+        "--retries=2",
+        "--reporter=line"
+      ],
+      "env": {
+        "NODE_OPTIONS": "--experimental-require-module",
+        "NEXT_PUBLIC_BASE_PATH": ""
+      },
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+    },
+
+    // ------------------------------------------------------------ scripts --
+    {
+      // Runs the open `.ts` file — `src/scripts/generateCurrencyData.ts`, `import.ts`,
+      // `migrate.ts`. `transpile-only` matches the `-T` in the npm scripts; the `@/*`
+      // alias and `.env` loading come from the `ts-node` block in `tsconfig.json`.
+      "name": "ts-node: current TypeScript file",
+      "type": "node",
+      "request": "launch",
+      "runtimeArgs": ["-r", "ts-node/register/transpile-only"],
+      "program": "${file}",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**", "${workspaceFolder}/node_modules/**"]
+    }
+  ]
+}

@@ -1,0 +1,260 @@
+{
+  // Build / lint / test / Prisma tasks for Spliit. Run with `Ctrl+Shift+P` → "Tasks: Run Task",
+  // or `Ctrl+Shift+B` for the default build task.
+  //
+  // Debugging (dev server, Jest, Playwright with breakpoints) lives in `launch.json` instead.
+  // The base-path and Playwright env traps are explained there and apply here too.
+  "version": "2.0.0",
+  "tasks": [
+    // --------------------------------------------------------------- build --
+    {
+      "label": "Build: production (next build)",
+      "type": "shell",
+      "command": "npm run build",
+      "group": { "kind": "build", "isDefault": true },
+      // No `$tsc` matcher: Next does not print build errors in tsc's format, so it would only
+      // ever match nothing. Use the type-check task for clickable diagnostics.
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true },
+      "detail": "next build. Output is `standalone` — see the standalone launch config for how to run it."
+    },
+    {
+      // `.next/standalone` does not include these, so a standalone run is unstyled and
+      // 404s on `/public` assets until they are copied over.
+      //
+      // Done through node rather than `cp -r`, which PowerShell does not have — and `bash` is
+      // not a safe fallback on Windows, where it usually resolves to WSL's bash rather than
+      // Git Bash, putting the command in a different filesystem namespace.
+      "label": "Build: copy static + public into standalone",
+      "type": "process",
+      "command": "node",
+      "args": [
+        "-e",
+        "const fs=require('fs');fs.cpSync('.next/static','.next/standalone/.next/static',{recursive:true});fs.cpSync('public','.next/standalone/public',{recursive:true});console.log('copied static + public into .next/standalone')"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "dependsOn": ["Build: production (next build)"],
+      "detail": "Run after a build, before the standalone server."
+    },
+    {
+      "label": "Build: docker image",
+      "type": "shell",
+      "command": "npm run build-image",
+      "problemMatcher": [],
+      "detail": "scripts/build-image.sh — tags spliit2:<version> and spliit2:latest. Needs a running Docker daemon."
+    },
+    {
+      "label": "Docker: start app container (compose)",
+      "type": "shell",
+      "command": "npm run start-container",
+      "isBackground": true,
+      "problemMatcher": [],
+      "detail": "docker compose --env-file container.env up. Copy container.env.example to container.env first."
+    },
+    {
+      // Git Bash is named explicitly on Windows. A bare `bash` resolves to `System32\bash.exe`
+      // — WSL — whose cwd here is `/mnt/l/...`, so the script's `-v "/$(pwd)/postgres-data:…"`
+      // bind mount would be built from a Linux path that Docker Desktop on the host cannot use.
+      "label": "Docker: start local Postgres",
+      "type": "shell",
+      "command": "./scripts/start-local-db.sh",
+      "options": { "shell": { "executable": "bash", "args": ["-c"] } },
+      "windows": {
+        "options": {
+          "shell": {
+            "executable": "C:\\Program Files\\Git\\bin\\bash.exe",
+            "args": ["-c"]
+          }
+        }
+      },
+      "problemMatcher": [],
+      "detail": "Starts the `spliit-db` container on :5432 (postgres/1234) if it isn't already up. Needs a running Docker daemon."
+    },
+
+    // ------------------------------------------------------------- quality --
+    {
+      "label": "Check: types (tsc --noEmit)",
+      "type": "shell",
+      "command": "npm run check-types",
+      "group": "build",
+      "problemMatcher": ["$tsc"],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      "label": "Check: types (watch)",
+      "type": "shell",
+      "command": "npx tsc --noEmit --watch --preserveWatchOutput",
+      "isBackground": true,
+      "problemMatcher": ["$tsc-watch"],
+      "presentation": { "reveal": "never", "panel": "dedicated" }
+    },
+    {
+      "label": "Check: lint (eslint)",
+      "type": "shell",
+      "command": "npm run lint",
+      "group": "build",
+      "problemMatcher": ["$eslint-stylish"],
+      "detail": "A clean tree reports warnings but zero errors — check the error count, not the total, before assuming a regression."
+    },
+    {
+      // NOTE: this task fails on a Windows checkout even with no local edits, and it is not a
+      // real failure. `core.autocrlf=true` with no `.gitattributes` checks files out as CRLF
+      // while Prettier expects LF, so it flags files nobody has touched. Use the task below to
+      // tell that apart from genuine formatting drift. CI checks out LF and is unaffected.
+      "label": "Check: formatting (CI parity, strict LF)",
+      "type": "shell",
+      "command": "npm run check-formatting",
+      "problemMatcher": [],
+      "detail": "prettier -c src. Expected to fail on Windows checkouts for line-ending reasons only."
+    },
+    {
+      // The discriminator. If this passes and the strict task above fails, the difference is
+      // line endings alone. Do NOT "fix" that by running the format-write task over the repo —
+      // it rewrites every file to LF and shows dozens of untouched files as modified.
+      "label": "Check: formatting (ignore line endings)",
+      "type": "shell",
+      "command": "npx prettier --end-of-line auto -c src",
+      "problemMatcher": [],
+      "detail": "Real formatting check for local use."
+    },
+    {
+      "label": "Format: write (prettier -w src)",
+      "type": "shell",
+      "command": "npm run prettier",
+      "problemMatcher": [],
+      "detail": "Rewrites src/ in place — on a Windows checkout this also converts every file to LF. Prefer formatting just the files you edited."
+    },
+    {
+      // The local stand-in for a CI run. Uses the line-ending-tolerant formatting check so a
+      // CRLF checkout does not fail it spuriously. To answer "will CI actually be green",
+      // check the committed tree out with `git -c core.autocrlf=false worktree add` and run
+      // the npm scripts there.
+      "label": "Verify: types + lint + format + tests",
+      "dependsOrder": "sequence",
+      "dependsOn": [
+        "Check: types (tsc --noEmit)",
+        "Check: lint (eslint)",
+        "Check: formatting (ignore line endings)",
+        "Test: jest (all)"
+      ],
+      "group": "test",
+      "problemMatcher": []
+    },
+
+    // ---------------------------------------------------------------- test --
+    {
+      // Some suites (src/lib/api.test.ts) need a reachable Postgres in POSTGRES_PRISMA_URL /
+      // POSTGRES_URL_NON_POOLING. `next/jest` skips `.env.local` under NODE_ENV=test, so if
+      // `.env` does not point somewhere real, add "options": { "env": { ... } } here.
+      "label": "Test: jest (all)",
+      "type": "shell",
+      "command": "npm test",
+      "group": { "kind": "test", "isDefault": true },
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "Test: jest (watch)",
+      "type": "shell",
+      "command": "npm test -- --watch",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated" }
+    },
+    {
+      // `type: process` rather than `shell` on purpose: this needs NEXT_PUBLIC_BASE_PATH to be
+      // the empty string, and an empty value is dropped rather than passed through when it goes
+      // via a Windows shell. A direct spawn preserves it.
+      //
+      // Both vars are load-bearing — see the Playwright section of launch.json for why. And stop
+      // any dev server on :3000 first: `reuseExistingServer` is true off-CI, so Playwright will
+      // adopt a `/spliit`-served dev server, fail every spec, and write test data into whatever
+      // database that server is using.
+      "label": "Test: playwright (chromium)",
+      "type": "process",
+      "command": "node",
+      "args": [
+        "node_modules/@playwright/test/cli.js",
+        "test",
+        "--project=chromium",
+        "--workers=4",
+        "--retries=2",
+        "--reporter=line"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "NODE_OPTIONS": "--experimental-require-module",
+          "NEXT_PUBLIC_BASE_PATH": ""
+        }
+      },
+      "group": "test",
+      "problemMatcher": [],
+      "presentation": { "reveal": "always", "panel": "dedicated", "clear": true }
+    },
+    {
+      "label": "Test: playwright (show HTML report)",
+      "type": "shell",
+      "command": "npx playwright show-report",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+
+    // -------------------------------------------------------------- prisma --
+    // TRAP 1 — the Prisma CLI reads `.env`, never `.env.local`. Next reads both and lets
+    // `.env.local` win, so the app and these tasks can disagree about which database they are
+    // talking to. If `.env` does not point at a database that exists on this machine, add the
+    // URLs per task rather than editing `.env`:
+    //   "options": { "env": { "POSTGRES_PRISMA_URL": "postgresql://…",
+    //                         "POSTGRES_URL_NON_POOLING": "postgresql://…" } }
+    //
+    // TRAP 2 — a migration directory with no `migration.sql` makes `migrate deploy` abort with
+    // P3015. Git does not track empty directories, so such a directory is a local-only artifact
+    // and CI never sees it: move it aside for the run and put it back afterwards. Do NOT commit
+    // a "fix" for it.
+    {
+      "label": "Prisma: generate client",
+      "type": "shell",
+      "command": "npm run prisma-generate",
+      "problemMatcher": [],
+      "detail": "Regenerates @prisma/client from prisma/schema.prisma. No database needed."
+    },
+    {
+      "label": "Prisma: migrate deploy",
+      "type": "shell",
+      "command": "npm run prisma-migrate",
+      "problemMatcher": [],
+      "detail": "Applies pending migrations. See TRAP 1 and TRAP 2 above."
+    },
+    {
+      "label": "Prisma: migrate dev (create migration)",
+      "type": "shell",
+      "command": "npx prisma migrate dev",
+      "problemMatcher": [],
+      "detail": "Prompts for a migration name. Development databases only — it will reset on drift."
+    },
+    {
+      "label": "Prisma: migrate status",
+      "type": "shell",
+      "command": "npx prisma migrate status",
+      "problemMatcher": [],
+      "detail": "Which migrations are applied. The quickest way to confirm the CLI is pointed at the database you think it is."
+    },
+    {
+      "label": "Prisma: studio",
+      "type": "shell",
+      "command": "npx prisma studio",
+      "isBackground": true,
+      "problemMatcher": [],
+      "detail": "Data browser on http://localhost:5555. Opens whichever database `.env` names — see TRAP 1."
+    },
+    {
+      "label": "Prisma: validate schema",
+      "type": "shell",
+      "command": "npx prisma validate",
+      "problemMatcher": [],
+      "detail": "Schema syntax only. No database needed."
+    }
+  ]
+}
