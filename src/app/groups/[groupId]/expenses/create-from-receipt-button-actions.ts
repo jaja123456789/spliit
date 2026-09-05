@@ -157,7 +157,7 @@ async function extractWithGemini(images: ReceiptImage[], prompt: string) {
     // spellings and occasionally a different total on consecutive runs, which is indistinguishable
     // from the extractor being unreliable. Determinism is not guaranteed across a provider's own
     // serving changes, but the deliberate randomness is ours to remove.
-    temperature: 0,
+    temperature: 0.05,
     // Same reason: pin the tie-breaks the sampler would otherwise make freely.
     topP: 1,
     topK: 1,
@@ -166,7 +166,7 @@ async function extractWithGemini(images: ReceiptImage[], prompt: string) {
     responseMimeType: 'application/json',
     responseJsonSchema: receiptJsonSchema,
     ...(model.startsWith('gemini-3.')
-      ? { thinkingConfig: { thinkingLevel: 'MEDIUM' } }
+      ? { thinkingConfig: { thinkingLevel: 'LOW' } }
       : {}),
   }
 

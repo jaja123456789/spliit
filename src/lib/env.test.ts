@@ -26,7 +26,7 @@ describe('env', () => {
   it('defaults to the Gemini Flash-Lite receipt model', async () => {
     const { env } = await loadEnv()
 
-    expect(env.GEMINI_RECEIPT_MODEL).toBe('gemini-3.1-flash-lite')
+    expect(env.GEMINI_RECEIPT_MODEL).toBe('gemini-3.5-flash-lite')
   })
 
   it('requires Gemini and OpenRouter for receipt extraction', async () => {

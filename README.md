@@ -120,7 +120,7 @@ services:
       # --- AI Features (Receipt Scanning) ---
       # Gemini is used first. Get a free key at https://aistudio.google.com/
       GEMINI_API_KEY: 'your_gemini_key'
-      GEMINI_RECEIPT_MODEL: 'gemini-3.1-flash-lite'
+      GEMINI_RECEIPT_MODEL: 'gemini-3.5-flash-lite'
       # OpenRouter is used as a fallback if Gemini returns a 429 rate-limit error.
       OPENROUTER_API_KEY: 'your_openrouter_key'
       OPENROUTER_RECEIPT_MODEL: 'openrouter/free'

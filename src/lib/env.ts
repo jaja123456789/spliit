@@ -41,9 +41,9 @@ const envSchema = z
     ),
     GEMINI_API_KEY: z.string().optional(),
     GEMINI_RECEIPT_MODEL: z
-      .enum(['gemini-3.1-flash-lite', 'gemini-2.5-flash-lite'])
+      .enum(['gemini-3.5-flash-lite', 'gemini-2.5-flash-lite'])
       .optional()
-      .default('gemini-3.1-flash-lite'),
+      .default('gemini-3.5-flash-lite'),
     OPENROUTER_API_KEY: z.string().optional(),
     OPENROUTER_CATEGORY_MODEL: z.string().optional().default('openrouter/free'),
     OPENROUTER_RECEIPT_MODEL: z.string().optional().default('openrouter/free'),

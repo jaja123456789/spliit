@@ -129,7 +129,7 @@ describe('extractExpenseInformationFromImage', () => {
     expect(mockOpenRouterCreate).not.toHaveBeenCalled()
 
     const [url, request] = fetchMock.mock.calls[0]
-    expect(url).toContain('/gemini-3.1-flash-lite:generateContent')
+    expect(url).toContain('/gemini-3.5-flash-lite:generateContent')
     const body = JSON.parse((request as RequestInit).body as string)
     expect(body.generationConfig.responseMimeType).toBe('application/json')
     expect(body.contents[0].parts[1].inline_data).toEqual({
