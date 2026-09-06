@@ -606,13 +606,17 @@ export function ItemizationBuilder({
                          receipt is — and only puts boxes round the one you opened. Every row
                          being permanently editable made four lines of a bill into eight input
                          boxes, all shouting equally, none of them the one you were working on. */
-                      <div className="flex items-center gap-2.5 py-2">
+                      <div className="flex items-center gap-2.5">
                         <button
                           type="button"
                           data-testid={`edit-line-${index}`}
                           disabled={isSelecting}
                           onClick={() => setOpenRowId(field.id)}
-                          className="flex min-h-11 min-w-0 flex-1 items-baseline gap-3 rounded-md text-left disabled:opacity-100"
+                          // 32px of type with the hit area grown around it, the same trick the
+                          // bin and the calculator use: two stacked 44px targets made a closed
+                          // line 110px tall for two lines of text, and the card is mostly the
+                          // space between them.
+                          className="relative flex min-w-0 flex-1 items-baseline gap-3 rounded-md py-1.5 text-left after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-[''] disabled:opacity-100"
                         >
                           <span
                             className={cn(
@@ -649,7 +653,7 @@ export function ItemizationBuilder({
                         aria-expanded={isOpen}
                         disabled={isSelecting}
                         onClick={() => setOpenRowId(isOpen ? null : field.id)}
-                        className="mb-1 flex min-h-11 w-full items-center gap-2 rounded-md py-1.5 pr-[31px] text-left transition-colors hover:bg-muted/60 disabled:opacity-100 disabled:hover:bg-transparent sm:min-h-[40px]"
+                        className="flex min-h-11 w-full items-center gap-2 rounded-md pb-1 pr-[31px] text-left transition-colors hover:bg-muted/60 disabled:opacity-100 disabled:hover:bg-transparent sm:min-h-10"
                       >
                         {/* The stack goes when the row is open: the grid below is the same set of
                         people at four times the size, and the concept's open row drops it too. */}
