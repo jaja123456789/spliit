@@ -1135,7 +1135,7 @@ export function ExpenseForm({
                         a full row away from the glyph it names and left the two ends of that line
                         unrelated. It reads as a caption under the title now — the same relation
                         the conversion has to the amount one box down. */}
-                    <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 transition-shadow focus-within:ring-2 focus-within:ring-primary">
+                    <div className="flex items-center gap-3 rounded-xl border bg-card px-3 py-3 transition-shadow focus-within:ring-2 focus-within:ring-primary">
                       <FormField
                         control={form.control}
                         name="category"
@@ -1157,12 +1157,11 @@ export function ExpenseForm({
                                 )}: ${tCategories(
                                   `${category.grouping}.${category.name}`,
                                 )}`}
-                                // A glyph in a grey square is a picture; the chevron is what
-                                // makes it a control. The concept tints this square with the
-                                // accent; it stays neutral here because green already means
-                                // three things on this form — the action, a link, and what is
-                                // selected — and a category is none of them.
-                                className="flex h-11 w-12 shrink-0 items-center justify-center gap-0.5 rounded-md bg-muted px-1 text-muted-foreground transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
+                                // A glyph in a square is a picture; the chevron is what makes
+                                // it a control. Tinted with the accent, as the concept draws it:
+                                // it is the one control inside these two boxes, and a grey plate
+                                // on a white box had nothing to separate it from the box.
+                                className="flex h-12 w-14 shrink-0 items-center justify-center gap-0.5 rounded-lg bg-primary/10 px-1 text-primary transition-colors hover:bg-primary/20"
                               >
                                 {isCategoryLoading ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -1184,7 +1183,7 @@ export function ExpenseForm({
                             placeholder={t(
                               `${sExpense}.TitleField.placeholder`,
                             )}
-                            className="h-auto border-0 bg-transparent px-1 py-1 text-base sm:text-base font-medium shadow-none placeholder:font-normal placeholder:text-subtle-foreground focus-visible:ring-0"
+                            className="h-auto border-0 bg-transparent px-1 py-0 text-lg sm:text-lg font-semibold leading-tight shadow-none placeholder:font-normal placeholder:text-subtle-foreground focus-visible:ring-0"
                             {...field}
                             onBlur={async () => {
                               field.onBlur()
@@ -1215,7 +1214,7 @@ export function ExpenseForm({
                         {selectedCategory && (
                           <p
                             data-testid="category-name"
-                            className="truncate px-1 text-sm text-muted-foreground"
+                            className="truncate px-1 pt-0.5 text-sm text-muted-foreground"
                           >
                             {tCategories(
                               `${selectedCategory.grouping}.${selectedCategory.name}`,
@@ -1245,8 +1244,8 @@ export function ExpenseForm({
                         Bordered rather than filled: this box holds a control and a reading, and
                         the sunken fill the rest of the form uses to mean "type here" would be
                         claiming that about the conversion line too. */}
-                    <div className="rounded-lg border bg-card px-3 py-2.5 transition-shadow focus-within:ring-2 focus-within:ring-primary">
-                      <div className="flex items-center gap-2">
+                    <div className="rounded-xl border bg-card px-3 py-3 transition-shadow focus-within:ring-2 focus-within:ring-primary">
+                      <div className="flex items-center gap-3">
                         {/* An expense can be entered in another currency than the group's, and that
                           lived as a Select buried in More options. Inert for a group with a custom
                           symbol: there is no exchange rate to convert from, which is why the old
@@ -1268,7 +1267,7 @@ export function ExpenseForm({
                                     title={t('changeCurrency')}
                                     /* Symbol and code rather than the symbol alone: "$" is a dozen
                                      currencies, and the code is the half that says which. */
-                                    className="flex h-11 shrink-0 items-center gap-1 rounded-md border bg-background px-2 font-mono text-sm font-medium text-foreground transition-colors hover:bg-muted sm:h-10"
+                                    className="flex h-12 shrink-0 items-center gap-1 rounded-lg border bg-background px-2.5 font-mono text-sm font-medium text-foreground transition-colors hover:bg-muted"
                                   >
                                     <span>
                                       {expenseCurrency.symbol || group.currency}
@@ -1285,7 +1284,7 @@ export function ExpenseForm({
                         ) : (
                           // No chevron here on purpose: with no exchange rate to convert from there
                           // is nothing to pick, and this is a label, not a control.
-                          <span className="grid h-11 shrink-0 place-items-center rounded-md border bg-background px-3 font-mono text-sm font-medium text-muted-foreground sm:h-10">
+                          <span className="grid h-12 shrink-0 place-items-center rounded-lg border bg-background px-3 font-mono text-sm font-medium text-muted-foreground">
                             {expenseCurrency.symbol || group.currency}
                           </span>
                         )}
@@ -1300,7 +1299,7 @@ export function ExpenseForm({
                             // itemised expense they reopened.
                             <span
                               data-testid="derived-total"
-                              className="flex h-10 items-center px-2.5 font-mono text-2xl font-semibold tabular-nums"
+                              className="flex h-12 items-center justify-center px-1 text-4xl font-bold tabular-nums"
                             >
                               {formatCurrency(
                                 expenseCurrency,
@@ -1313,8 +1312,10 @@ export function ExpenseForm({
                             <FormControl>
                               <CalculatorInput
                                 placeholder="0.00"
-                                className="h-11 sm:h-10 w-full border-0 bg-transparent shadow-none"
-                                inputClassName="h-11 sm:h-10 w-full border-0 bg-transparent px-1 font-mono text-2xl sm:text-2xl font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                                // The box around this field already answers focus with a ring. InputGroup draws its
+                                // own on top, so a tap on the amount lit two rings, one inside the other.
+                                className="h-12 w-full border-0 bg-transparent shadow-none has-[[data-slot=input-group-control]:focus-visible]:ring-0"
+                                inputClassName="h-12 w-full border-0 bg-transparent px-1 text-center text-4xl sm:text-4xl font-bold tabular-nums shadow-none focus-visible:ring-0"
                                 {...field}
                                 onValueChange={(val) =>
                                   handlePayerAmountChange(0, val)
@@ -1327,7 +1328,7 @@ export function ExpenseForm({
                       {conversionRequired && (
                         <p
                           data-testid="converted-total"
-                          className="mt-0.5 pl-1 text-sm tabular-nums text-muted-foreground"
+                          className="mt-1 text-center text-sm tabular-nums text-muted-foreground"
                         >
                           ≈{' '}
                           {formatCurrency(
@@ -1339,7 +1340,7 @@ export function ExpenseForm({
                         </p>
                       )}
                       {isMultiPayer && (
-                        <p className="mt-0.5 pl-1 text-xs text-muted-foreground">
+                        <p className="mt-1 text-center text-xs text-muted-foreground">
                           {t('derivedFromPayers', {
                             count: payerFields.length,
                           })}
