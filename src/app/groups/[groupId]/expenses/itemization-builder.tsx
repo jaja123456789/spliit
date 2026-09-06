@@ -232,6 +232,22 @@ export function ItemizationBuilder({
   const [openRowId, setOpenRowId] = useState<string | null>(null)
 
   /**
+   * The newest line is the one you are writing, so it opens itself — including the first, which
+   * arrives with the switch to itemised.
+   *
+   * Deriving "is this line being edited" from the line instead (no name yet, say) does not work:
+   * the first character you type into the name would close the row under your hands, taking the
+   * price field with it. Being edited is a fact about the reader, not about the value.
+   */
+  const seenCount = useRef(0)
+  useEffect(() => {
+    if (fields.length > seenCount.current) {
+      setOpenRowId(fields[fields.length - 1]?.id ?? null)
+    }
+    seenCount.current = fields.length
+  }, [fields])
+
+  /**
    * Whether the marks are individual targets in the row instead of a stack you tap to open.
    *
    * The concept draws it both ways deliberately: a phone row has space for a stack and nothing
@@ -258,7 +274,7 @@ export function ItemizationBuilder({
   // price field, your share, the bin, the gaps between them, and enough of the name to read a
   // dish off. `- 48` is the rows' own `px-6`, which the measured container does not pay.
   const MARK_WIDTH = 34
-  const ROW_RESERVE = 120 + 56 + 36 + 30
+  const ROW_RESERVE = 120 + 56 + 36 + 30 + 24
   const NAME_MIN = 132
   const inlineMarks =
     rowsWidth > 0 &&
@@ -345,7 +361,7 @@ export function ItemizationBuilder({
         {/* The lines, as one run of ruled rows spanning the sheet rather than a stack of cards.
             `-mx-6` with each row paying it back: a rule that stops at the card's padding reads as
             another box, which is the shape the concept trades away. */}
-        <div className="-mx-6" ref={rowsRef}>
+        <div className="-mx-6 space-y-2" ref={rowsRef}>
           {/* Selection mode announces itself in one bar at the head of the run — the count, the
               money it adds up to, and the action. It was a floating rounded slab wedged between
               the last line and "Add a line", which is the one place on the sheet nothing else
@@ -402,6 +418,7 @@ export function ItemizationBuilder({
             const isOpen = openRowId === field.id
             const rowError =
               (Array.isArray(itemErrors) && itemErrors[index]) || undefined
+            const isEditing = isOpen
 
             return (
               <div
@@ -409,14 +426,13 @@ export function ItemizationBuilder({
                 data-testid={`item-row-${index}`}
                 data-testid-error={rowError ? 'true' : undefined}
                 className={cn(
-                  'px-6 transition-colors',
-                  isRowSelected && 'bg-primary/5',
-                  isOpen && 'bg-muted/30',
+                  'mx-6 rounded-lg border px-3 transition-colors',
+                  isRowSelected && 'border-primary/40 bg-primary/5',
+                  isOpen ? 'bg-primary/5' : 'bg-card',
                   // The line the message at the foot of the list is talking about. A left edge
                   // rather than a full destructive fill: the row is still a line on a receipt and
                   // still has to be read, and nine tinted rows would say nothing at all.
-                  rowError &&
-                    'border-l-4 border-l-destructive bg-destructive/5 pl-5',
+                  rowError && 'border-destructive bg-destructive/5',
                   // The excluded line stays legible — it is still a line on the receipt, and its
                   // own strip already says "not shared". A dashed border and a tinted card said it
                   // three more times.
@@ -433,156 +449,186 @@ export function ItemizationBuilder({
                     />
                   )}
                   <div className="min-w-0 flex-1">
-                    <div
-                      className={cn(
-                        'flex items-center gap-2.5 pt-3',
-                        inlineMarks ? 'pb-3' : 'pb-0.5',
-                      )}
-                    >
-                      {/* Name and price are the receipt line. Borderless: a bordered box around each
-                      is the "control array" the concept trades away — four lines of a bill became
-                      eight bordered inputs stacked in four bordered cards. */}
-                      <FormField
-                        control={control}
-                        name={`items.${index}.name`}
-                        render={({ field }) => (
-                          <FormItem className="min-w-0 flex-1 space-y-0">
-                            {/* Borderless was a step too far: with no box, no rule and no fill,
-                                the two things on this row you are meant to type into looked like
-                                printed text. A soft fill is the lightest thing that still says
-                                "field" without putting a bordered control back in every row —
-                                the box is the shape, the border is what made it a slab. */}
-                            {/* Bordered again, and on the card fill. That note argued for a fill
-                                because "every control on this form is a tinted shape now and
-                                every rule is gone" — which stopped being true when the amount,
-                                the title, the payers and the date all became bordered boxes. A
-                                receipt line is the same kind of thing they are, and it was the
-                                last fill left on the sheet. */}
-                            <div className="rounded-md border bg-card transition-shadow focus-within:ring-2 focus-within:ring-primary">
-                              <FormControl>
-                                <Input
-                                  {...field}
-                                  placeholder={t('itemNamePlaceholder')}
-                                  className={cn(
-                                    'h-11 sm:h-8 border-0 bg-transparent px-2.5 text-base sm:text-sm font-medium shadow-none focus-visible:ring-0',
-                                    isExcluded && 'line-through',
-                                  )}
-                                />
-                              </FormControl>
-                            </div>
-                            <FormMessage className="text-xs" />
-                          </FormItem>
+                    {isEditing ? (
+                      <div
+                        className={cn(
+                          'flex items-center gap-2.5 pt-3',
+                          inlineMarks ? 'pb-3' : 'pb-0.5',
                         )}
-                      />
-
-                      {/* Desktop, small group: the marks are individual targets in the row itself, as
-                      the concept has them — "desktop rows are wide enough for individual targets
-                      again". Past six people they stop fitting and the row falls back to the
-                      stack-and-open form below. */}
-                      {/* Mounted on every row, drawn only on a wide one.
-
-                          This used to be wrapped in `{inlineMarks && …}`, which meant that on a
-                          phone — and on any desktop group of more than six — nothing ever
-                          registered `items.N.participantIds` with the form. React Hook Form prunes
-                          keys it has no registered field for when a field array is rebuilt, so an
-                          expense arriving through `form.reset` lost the assignment on exactly those
-                          layouts: a scanned receipt landed with every line marked "not shared", and
-                          the same nine lines came through fully shared at 1280px. Registering the
-                          field unconditionally is what keeps the value; whether the marks are drawn
-                          is a separate question, answered inside. */}
-                      <FormField
-                        control={control}
-                        name={`items.${index}.participantIds`}
-                        render={({ field }) =>
-                          inlineMarks ? (
-                            <FormItem className="space-y-0">
-                              <MarkRow
-                                value={field.value || []}
-                                onChange={(val) => {
-                                  field.onChange(val)
-                                  trigger('items')
-                                }}
-                                group={group}
-                                activeUserId={activeUserId}
-                                rowIndex={index}
-                              />
+                      >
+                        {/* Name and price are the receipt line. Borderless: a bordered box around each
+                        is the "control array" the concept trades away — four lines of a bill became
+                        eight bordered inputs stacked in four bordered cards. */}
+                        <FormField
+                          control={control}
+                          name={`items.${index}.name`}
+                          render={({ field }) => (
+                            <FormItem className="min-w-0 flex-1 space-y-0">
+                              {/* Borderless was a step too far: with no box, no rule and no fill,
+                                  the two things on this row you are meant to type into looked like
+                                  printed text. A soft fill is the lightest thing that still says
+                                  "field" without putting a bordered control back in every row —
+                                  the box is the shape, the border is what made it a slab. */}
+                              {/* Bordered again, and on the card fill. That note argued for a fill
+                                  because "every control on this form is a tinted shape now and
+                                  every rule is gone" — which stopped being true when the amount,
+                                  the title, the payers and the date all became bordered boxes. A
+                                  receipt line is the same kind of thing they are, and it was the
+                                  last fill left on the sheet. */}
+                              <div className="rounded-md border bg-card transition-shadow focus-within:ring-2 focus-within:ring-primary">
+                                <FormControl>
+                                  <Input
+                                    {...field}
+                                    placeholder={t('itemNamePlaceholder')}
+                                    className={cn(
+                                      'h-11 sm:h-8 border-0 bg-transparent px-2.5 text-base sm:text-sm font-medium shadow-none focus-visible:ring-0',
+                                      isExcluded && 'line-through',
+                                    )}
+                                  />
+                                </FormControl>
+                              </div>
+                              <FormMessage className="text-xs" />
                             </FormItem>
-                          ) : (
-                            <></>
-                          )
-                        }
-                      />
+                          )}
+                        />
 
-                      <FormField
-                        control={control}
-                        name={`items.${index}.price`}
-                        render={({ field }) => (
-                          <FormItem className="shrink-0 space-y-0">
-                            {/* The calculator lives inside the field rather than beside it, so
-                                the symbol, the figure and the way to work the figure out are one
-                                control instead of three things in a row.
+                        {/* Desktop, small group: the marks are individual targets in the row itself, as
+                        the concept has them — "desktop rows are wide enough for individual targets
+                        again". Past six people they stop fitting and the row falls back to the
+                        stack-and-open form below. */}
+                        {/* Mounted on every row, drawn only on a wide one.
 
-                                The box tracks the value rather than reserving room for the
-                                longest one, so the symbol sits against its own digits instead of
-                                26px away. The figures still line up: right-aligned and tabular,
-                                so the decimal point lands in the same column whatever the
-                                value's length — only the symbol moves, which is what it does on
-                                a printed statement too. */}
-                            {/* The calculator keeps its 28px face: the box is 100px wide and the
-                                digits need the rest of it, and widening the button would also
-                                move the price's right edge away from the "you 6.17" below it,
-                                which is aligned to the button's width. What it gains is the
-                                field's full height as a target — a 28x44 hit area on a 28x28
-                                face, which costs no layout at all. */}
-                            <div className="flex w-[104px] items-center gap-0.5 rounded-md border bg-card pl-1.5 transition-shadow focus-within:ring-2 focus-within:ring-primary [&_button]:relative [&_button]:h-7 [&_button]:w-7 [&_button]:after:absolute [&_button]:after:inset-x-0 [&_button]:after:-inset-y-2 [&_button]:after:content-[''] sm:[&_button]:after:hidden">
-                              <span className="font-mono text-xs text-subtle-foreground">
-                                {currency.symbol || group.currency}
-                              </span>
-                              <FormControl>
-                                <CalculatorInput
-                                  {...field}
-                                  // A new line is prefilled with whatever is left unassigned,
-                                  // which is the useful thing to do — but when nothing is left
-                                  // that prefill is the number 0, and you had to select it and
-                                  // delete it before you could type, while the name field beside
-                                  // it politely showed a placeholder. Only the untouched numeric
-                                  // 0 is blanked: anything typed arrives as a string, so "0" on
-                                  // the way to "0.50" is left alone.
-                                  value={field.value === 0 ? '' : field.value}
-                                  placeholder="0.00"
-                                  className="h-11 sm:h-8 min-w-0 flex-1 border-0 bg-transparent shadow-none"
-                                  inputClassName="h-11 sm:h-8 w-full border-0 bg-transparent px-0 text-right font-mono text-base sm:text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
-                                  onValueChange={(val: string) => {
+                            This used to be wrapped in `{inlineMarks && …}`, which meant that on a
+                            phone — and on any desktop group of more than six — nothing ever
+                            registered `items.N.participantIds` with the form. React Hook Form prunes
+                            keys it has no registered field for when a field array is rebuilt, so an
+                            expense arriving through `form.reset` lost the assignment on exactly those
+                            layouts: a scanned receipt landed with every line marked "not shared", and
+                            the same nine lines came through fully shared at 1280px. Registering the
+                            field unconditionally is what keeps the value; whether the marks are drawn
+                            is a separate question, answered inside. */}
+                        <FormField
+                          control={control}
+                          name={`items.${index}.participantIds`}
+                          render={({ field }) =>
+                            inlineMarks ? (
+                              <FormItem className="space-y-0">
+                                <MarkRow
+                                  value={field.value || []}
+                                  onChange={(val) => {
                                     field.onChange(val)
                                     trigger('items')
-                                    trigger('paidBy')
                                   }}
+                                  group={group}
+                                  activeUserId={activeUserId}
+                                  rowIndex={index}
                                 />
-                              </FormControl>
-                            </div>
-                            <FormMessage className="mt-1 text-right text-xs" />
-                          </FormItem>
+                              </FormItem>
+                            ) : (
+                              <></>
+                            )
+                          }
+                        />
+
+                        <FormField
+                          control={control}
+                          name={`items.${index}.price`}
+                          render={({ field }) => (
+                            <FormItem className="shrink-0 space-y-0">
+                              {/* The calculator lives inside the field rather than beside it, so
+                                  the symbol, the figure and the way to work the figure out are one
+                                  control instead of three things in a row.
+
+                                  The box tracks the value rather than reserving room for the
+                                  longest one, so the symbol sits against its own digits instead of
+                                  26px away. The figures still line up: right-aligned and tabular,
+                                  so the decimal point lands in the same column whatever the
+                                  value's length — only the symbol moves, which is what it does on
+                                  a printed statement too. */}
+                              {/* The calculator keeps its 28px face: the box is 100px wide and the
+                                  digits need the rest of it, and widening the button would also
+                                  move the price's right edge away from the "you 6.17" below it,
+                                  which is aligned to the button's width. What it gains is the
+                                  field's full height as a target — a 28x44 hit area on a 28x28
+                                  face, which costs no layout at all. */}
+                              <div className="flex w-[104px] items-center gap-0.5 rounded-md border bg-card pl-1.5 transition-shadow focus-within:ring-2 focus-within:ring-primary [&_button]:relative [&_button]:h-7 [&_button]:w-7 [&_button]:after:absolute [&_button]:after:inset-x-0 [&_button]:after:-inset-y-2 [&_button]:after:content-[''] sm:[&_button]:after:hidden">
+                                <span className="font-mono text-xs text-subtle-foreground">
+                                  {currency.symbol || group.currency}
+                                </span>
+                                <FormControl>
+                                  <CalculatorInput
+                                    {...field}
+                                    // A new line is prefilled with whatever is left unassigned,
+                                    // which is the useful thing to do — but when nothing is left
+                                    // that prefill is the number 0, and you had to select it and
+                                    // delete it before you could type, while the name field beside
+                                    // it politely showed a placeholder. Only the untouched numeric
+                                    // 0 is blanked: anything typed arrives as a string, so "0" on
+                                    // the way to "0.50" is left alone.
+                                    value={field.value === 0 ? '' : field.value}
+                                    placeholder="0.00"
+                                    className="h-11 sm:h-8 min-w-0 flex-1 border-0 bg-transparent shadow-none"
+                                    inputClassName="h-11 sm:h-8 w-full border-0 bg-transparent px-0 text-right font-mono text-base sm:text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                                    onValueChange={(val: string) => {
+                                      field.onChange(val)
+                                      trigger('items')
+                                      trigger('paidBy')
+                                    }}
+                                  />
+                                </FormControl>
+                              </div>
+                              <FormMessage className="mt-1 text-right text-xs" />
+                            </FormItem>
+                          )}
+                        />
+
+                        {inlineMarks && (
+                          <span className="w-14 shrink-0 text-right">
+                            <YourShare
+                              currency={currency}
+                              amount={perPersonAmount}
+                              show={itemPrice > 0}
+                              isMine={isMeInvolved}
+                              withLabel={false}
+                            />
+                          </span>
                         )}
-                      />
 
-                      {inlineMarks && (
-                        <span className="w-14 shrink-0 text-right">
-                          <YourShare
-                            currency={currency}
-                            amount={perPersonAmount}
-                            show={itemPrice > 0}
-                            isMine={isMeInvolved}
-                            withLabel={false}
-                          />
-                        </span>
-                      )}
-
-                      {/* The bin stays put. A control that appears on hover is gone the moment
-                          the pointer leaves, and on focus-within it vanishes as soon as you click
-                          the title above — so the row's only destructive action was there or not
-                          depending on where the cursor had last been. Quiet and permanent beats
-                          loud and intermittent. */}
-                    </div>
+                        {/* The bin stays put. A control that appears on hover is gone the moment
+                            the pointer leaves, and on focus-within it vanishes as soon as you click
+                            the title above — so the row's only destructive action was there or not
+                            depending on where the cursor had last been. Quiet and permanent beats
+                            loud and intermittent. */}
+                      </div>
+                    ) : (
+                      /* A line you are not editing is a line, not a pair of fields. The concept
+                         draws it as printed text with the money on the right — which is what a
+                         receipt is — and only puts boxes round the one you opened. Every row
+                         being permanently editable made four lines of a bill into eight input
+                         boxes, all shouting equally, none of them the one you were working on. */
+                      <div className="flex items-center gap-2.5 py-2">
+                        <button
+                          type="button"
+                          data-testid={`edit-line-${index}`}
+                          disabled={isSelecting}
+                          onClick={() => setOpenRowId(field.id)}
+                          className="flex min-h-11 min-w-0 flex-1 items-baseline gap-3 rounded-md text-left disabled:opacity-100"
+                        >
+                          <span
+                            className={cn(
+                              'min-w-0 flex-1 truncate font-medium',
+                              isExcluded && 'line-through',
+                              !currentItem.name && 'text-subtle-foreground',
+                            )}
+                          >
+                            {currentItem.name || t('itemNamePlaceholder')}
+                          </span>
+                          <span className="shrink-0 font-mono font-semibold tabular-nums">
+                            {formatCurrency(currency, itemPrice, locale, true)}
+                          </span>
+                        </button>
+                      </div>
+                    )}
 
                     {/* The second line is the whole target. "Tap a row to change who" — one place to
                     aim at instead of a 36px icon button in the row's most crowded corner, and it
@@ -592,7 +638,11 @@ export function ItemizationBuilder({
                         the right of the price digits directly above it — two money figures in one
                         row on two different edges, which is the thing a column of figures exists
                         to avoid. */}
-                    {!inlineMarks && (
+                    {/* Who shares the line. The marks in the row above are an editing
+                        affordance and only exist while the row is open, so a closed row says it
+                        here whatever the width — otherwise a wide screen showed a collapsed card
+                        with a name, a price and nothing at all about who was on it. */}
+                    {(!inlineMarks || !isEditing) && (
                       <button
                         type="button"
                         data-testid={`assign-row-${index}`}

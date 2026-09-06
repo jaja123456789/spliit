@@ -54,7 +54,8 @@ test.describe('Assigning several lines at once', () => {
 
     // Both selected lines moved; the unselected one did not.
     await expect(page.getByTestId('selection-bar')).toHaveCount(0)
-    const rows = page.locator('input[name^="items."][name$=".name"]')
+    // Counted as lines, not as name inputs: only the line being edited has fields in it now.
+    const rows = page.locator('[data-testid^="item-row-"]')
     await expect(rows).toHaveCount(3)
 
     // A row states who shares it two ways depending on the width it has. Wide enough, and every
