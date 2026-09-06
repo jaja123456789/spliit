@@ -1479,7 +1479,13 @@ export function ExpenseForm({
                       <FormField
                         control={form.control}
                         name="items"
-                        render={() => <FormMessage className="mt-1" />}
+                        // Only what is wrong with the lines as a set. A row's own complaint —
+                        // a missing name — belongs to that row, which shows it and takes a
+                        // destructive border; surfaced here it appeared under the amount and
+                        // pointed at the one field that was not the problem.
+                        render={() => (
+                          <FormMessage className="mt-1" ownErrorOnly />
+                        )}
                       />
                     )}
                   </FormItem>

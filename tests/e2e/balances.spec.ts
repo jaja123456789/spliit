@@ -290,7 +290,9 @@ test('Create reimbursement expense', async ({ page }) => {
   await createExpenseLink.click()
   await page.waitForURL(/\/groups\/[^/]+\/expenses\/create/)
 
-  await page.getByLabel(/title/i).fill('Reimbursement from Bob')
+  // By name, not by label text: /title/i matched "Expense title" and nothing after the
+  // label became "Description".
+  await page.locator('[name="title"]').fill('Reimbursement from Bob')
 
   // Use the amount field with name="amount" specifically
   await page.locator(AMOUNT_INPUT).fill('100')

@@ -206,12 +206,12 @@
       "create": "Create income",
       "edit": "Edit income",
       "TitleField": {
-        "label": "Income title",
+        "label": "Description",
         "placeholder": "Monday evening restaurant",
         "description": "Enter a description for the income."
       },
       "DateField": {
-        "label": "Income date",
+        "label": "Date",
         "description": "Enter the date the income was received."
       },
       "currencyField": {
@@ -235,12 +235,12 @@
       "create": "Create expense",
       "edit": "Edit expense",
       "TitleField": {
-        "label": "Expense title",
+        "label": "Description",
         "placeholder": "Monday evening restaurant",
         "description": "Enter a description for the expense."
       },
       "DateField": {
-        "label": "Expense date",
+        "label": "Date",
         "description": "Enter the date the expense was paid."
       },
       "currencyField": {

@@ -45,7 +45,8 @@ test('Expense displays with selected category', async ({ page }) => {
   await page.waitForURL(/\/groups\/[^/]+\/expenses\/create$/)
 
   // Fill expense details
-  await page.getByRole('textbox', { name: 'Expense title' }).fill(expenseTitle)
+  // By name, not by label text: this broke when the label became "Description".
+  await page.locator('[name="title"]').fill(expenseTitle)
   await page.getByRole('textbox', { name: 'Amount' }).fill('40.00')
 
   // Select payer

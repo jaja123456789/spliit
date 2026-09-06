@@ -141,10 +141,23 @@ const FormDescription = React.forwardRef<
 })
 FormDescription.displayName = "FormDescription"
 
-const FormMessage = React.forwardRef<
-  HTMLParagraphElement,
-  React.HTMLAttributes<HTMLParagraphElement>
->(({ className, children, ...props }, ref) => {
+type FormMessageProps = React.HTMLAttributes<HTMLParagraphElement> & {
+  /**
+   * For a field array, say only what is wrong with the array itself and stay silent about its
+   * rows.
+   *
+   * The fallback below — surface the first row's message when the array has nothing of its own —
+   * is right at the foot of a list, where the rows are on screen and the message tells you to go
+   * and look. It is wrong anywhere the array's message has been moved next to something else: an
+   * expense form puts "the lines do not add up to the total" beside the total, and there the
+   * fallback made a missing item *name* appear under the amount, pointing at the one field that
+   * was not the problem.
+   */
+  ownErrorOnly?: boolean
+}
+
+const FormMessage = React.forwardRef<HTMLParagraphElement, FormMessageProps>(
+  ({ className, children, ownErrorOnly, ...props }, ref) => {
   const messages = useMessages()
   const { error, formMessageId } = useFormField()
   // `String(undefined)` is `"undefined"`, and that is what this used to render — in destructive
@@ -167,6 +180,8 @@ const FormMessage = React.forwardRef<
   if (error) {
     if (typeof ownMessage === 'string' && ownMessage.length > 0) {
       body = translate(ownMessage)
+    } else if (ownErrorOnly) {
+      body = null
     } else if (Array.isArray(error)) {
       // A field array's error is one entry per row, most of them empty. This used to render the
       // string "Please check all inputs" — hardcoded, untranslated, and true of nothing in
