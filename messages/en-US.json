@@ -370,6 +370,7 @@
       "title": "Itemisation",
       "subtitle": "Enter each line of the receipt and choose who shared it.",
       "itemNamePlaceholder": "Item name…",
+      "whoShared": "Who shared {name}?",
       "splitAmong": "Split among",
       "selectAll": "Select everyone",
       "clearAll": "Nobody (exclude the line)",

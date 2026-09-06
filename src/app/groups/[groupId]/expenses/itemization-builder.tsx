@@ -34,7 +34,7 @@ import {
   formatCurrency,
 } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
-import { Check, ChevronDown, Plus, Trash2, Users } from 'lucide-react'
+import { Check, ChevronRight, Plus, Trash2, Users } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useEffect, useRef, useState } from 'react'
 import { useFormContext } from 'react-hook-form'
@@ -509,29 +509,6 @@ export function ItemizationBuilder({
                             is a separate question, answered inside. */}
                         <FormField
                           control={control}
-                          name={`items.${index}.participantIds`}
-                          render={({ field }) =>
-                            inlineMarks ? (
-                              <FormItem className="space-y-0">
-                                <MarkRow
-                                  value={field.value || []}
-                                  onChange={(val) => {
-                                    field.onChange(val)
-                                    trigger('items')
-                                  }}
-                                  group={group}
-                                  activeUserId={activeUserId}
-                                  rowIndex={index}
-                                />
-                              </FormItem>
-                            ) : (
-                              <></>
-                            )
-                          }
-                        />
-
-                        <FormField
-                          control={control}
                           name={`items.${index}.price`}
                           render={({ field }) => (
                             <FormItem className="shrink-0 space-y-0">
@@ -581,18 +558,6 @@ export function ItemizationBuilder({
                             </FormItem>
                           )}
                         />
-
-                        {inlineMarks && (
-                          <span className="w-14 shrink-0 text-right">
-                            <YourShare
-                              currency={currency}
-                              amount={perPersonAmount}
-                              show={itemPrice > 0}
-                              isMine={isMeInvolved}
-                              withLabel={false}
-                            />
-                          </span>
-                        )}
 
                         {/* The bin stays put. A control that appears on hover is gone the moment
                             the pointer leaves, and on focus-within it vanishes as soon as you click
@@ -647,65 +612,74 @@ export function ItemizationBuilder({
                         here whatever the width — otherwise a wide screen showed a collapsed card
                         with a name, a price and nothing at all about who was on it. */}
                     {(!inlineMarks || !isEditing) && (
-                      <button
-                        type="button"
-                        data-testid={`assign-row-${index}`}
-                        aria-expanded={isOpen}
-                        disabled={isSelecting}
-                        onClick={() => setOpenRowId(isOpen ? null : field.id)}
-                        className="flex min-h-11 w-full items-center gap-2 rounded-md pb-1 pr-[31px] text-left transition-colors hover:bg-muted/60 disabled:opacity-100 disabled:hover:bg-transparent sm:min-h-10"
-                      >
-                        {/* The stack goes when the row is open: the grid below is the same set of
-                        people at four times the size, and the concept's open row drops it too. */}
-                        {!isOpen && (
-                          <ParticipantStack
-                            participantIds={participantIds}
-                            group={group}
-                            activeUserId={activeUserId}
-                          />
-                        )}
-                        <span className="min-w-0 truncate text-xs text-muted-foreground">
-                          {summaryText}
-                          {isOpen &&
-                            participantIds.length > 1 &&
-                            itemPrice > 0 && (
-                              <>
-                                {' · '}
-                                {t('perHeadEach', {
-                                  amount: formatCurrency(
-                                    currency,
-                                    perPersonAmount,
-                                    locale,
-                                    true,
-                                  ),
-                                })}
-                              </>
+                      <RowPeoplePicker
+                        isDesktop={isDesktop}
+                        title={
+                          currentItem.name
+                            ? t('whoShared', { name: currentItem.name })
+                            : t('splitAmong')
+                        }
+                        value={participantIds}
+                        onChange={(val) => {
+                          setValue(`items.${index}.participantIds`, val, {
+                            shouldDirty: true,
+                          })
+                          trigger('items')
+                        }}
+                        group={group}
+                        activeUserId={activeUserId}
+                        previousIds={
+                          watchedItems[index - 1]?.participantIds ?? null
+                        }
+                        previousName={watchedItems[index - 1]?.name ?? ''}
+                        rowIndex={index}
+                        trigger={
+                          <button
+                            type="button"
+                            data-testid={`assign-row-${index}`}
+                            disabled={isSelecting}
+                            className={cn(
+                              'flex min-h-11 w-full items-center gap-2 rounded-md text-left transition-colors disabled:opacity-100 disabled:hover:bg-transparent sm:min-h-10',
+                              // Open, it is the one control under the two fields, and the concept
+                              // draws it as a box of its own on the tinted card. Closed, it is a quiet
+                              // strip inside the line.
+                              isEditing
+                                ? 'border bg-card px-2.5 hover:bg-muted/40'
+                                : 'pb-1 pr-[31px] hover:bg-muted/60',
                             )}
-                        </span>
-                        <ChevronDown
-                          className={cn(
-                            'h-4 w-4 shrink-0 text-subtle-foreground transition-transform',
-                            isOpen && 'rotate-180',
-                          )}
-                        />
-                        <span className="flex-1" />
-                        <YourShare
-                          currency={currency}
-                          amount={perPersonAmount}
-                          show={itemPrice > 0}
-                          isMine={isMeInvolved}
-                          withLabel
-                        />
-                      </button>
+                          >
+                            <ParticipantStack
+                              participantIds={participantIds}
+                              group={group}
+                              activeUserId={activeUserId}
+                            />
+                            <span className="min-w-0 truncate text-xs text-muted-foreground">
+                              {summaryText}
+                              {/* Just who. The per-head figure was appended here when the row
+                                  was open, which put two money figures in one strip — and on a
+                                  phone the first was the one truncated away. */}
+                            </span>
+                            <span className="flex-1" />
+                            <YourShare
+                              currency={currency}
+                              amount={perPersonAmount}
+                              show={itemPrice > 0}
+                              isMine={isMeInvolved}
+                              withLabel
+                            />
+                            <ChevronRight className="h-4 w-4 shrink-0 text-subtle-foreground" />
+                          </button>
+                        }
+                      />
                     )}
 
-                    {isOpen && (
-                      <FormField
-                        control={control}
-                        name={`items.${index}.participantIds`}
-                        render={({ field }) => (
-                          <FormItem className="space-y-0 pb-3">
-                            <RowPicker
+                    <FormField
+                      control={control}
+                      name={`items.${index}.participantIds`}
+                      render={({ field }) =>
+                        isEditing && inlineMarks ? (
+                          <FormItem className="flex items-center gap-2 space-y-0 pb-2">
+                            <MarkRow
                               value={field.value || []}
                               onChange={(val) => {
                                 field.onChange(val)
@@ -713,16 +687,23 @@ export function ItemizationBuilder({
                               }}
                               group={group}
                               activeUserId={activeUserId}
-                              previousIds={
-                                watchedItems[index - 1]?.participantIds ?? null
-                              }
-                              previousName={watchedItems[index - 1]?.name ?? ''}
                               rowIndex={index}
                             />
+                            <span className="ml-auto shrink-0 text-right">
+                              <YourShare
+                                currency={currency}
+                                amount={perPersonAmount}
+                                show={itemPrice > 0}
+                                isMine={isMeInvolved}
+                                withLabel
+                              />
+                            </span>
                           </FormItem>
-                        )}
-                      />
-                    )}
+                        ) : (
+                          <></>
+                        )
+                      }
+                    />
                   </div>
                   {/* Delete stays on the right of the row, but beside *both* its lines rather than
                       inside the first one. On the line it was the only thing between the price and
@@ -1065,6 +1046,60 @@ function BulkAssign({
       <DrawerContent>
         <DrawerHeader className="text-left">
           <DrawerTitle>{t('splitAmong')}</DrawerTitle>
+        </DrawerHeader>
+        <div className="px-4 pb-8">{body}</div>
+      </DrawerContent>
+    </Drawer>
+  )
+}
+
+/**
+ * The picker for one line's people: a popover where there is room beside the row, a sheet over the
+ * form where there is not.
+ *
+ * It used to unroll into the row itself, which pushed the lines under it down by the height of a
+ * grid of everyone in the group — on a phone that is most of the screen, and the line you were
+ * reading moved every time you opened one. The concept puts it over the form instead, so the
+ * receipt stays where it is.
+ */
+function RowPeoplePicker({
+  trigger,
+  title,
+  isDesktop,
+  ...picker
+}: {
+  trigger: React.ReactNode
+  title: string
+  isDesktop: boolean
+  value: string[]
+  onChange: (val: string[]) => void
+  group: Group
+  activeUserId?: string | null
+  previousIds: string[] | null
+  previousName: string
+  rowIndex: number
+}) {
+  const [open, setOpen] = useState(false)
+  useMobilePopoverState(open, setOpen, isDesktop)
+  const body = <RowPicker {...picker} />
+
+  if (isDesktop) {
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>{trigger}</PopoverTrigger>
+        <PopoverContent className="w-80 p-3" align="start">
+          {body}
+        </PopoverContent>
+      </Popover>
+    )
+  }
+
+  return (
+    <Drawer open={open} onOpenChange={setOpen}>
+      <DrawerTrigger asChild>{trigger}</DrawerTrigger>
+      <DrawerContent>
+        <DrawerHeader className="text-left">
+          <DrawerTitle>{title}</DrawerTitle>
         </DrawerHeader>
         <div className="px-4 pb-8">{body}</div>
       </DrawerContent>
