@@ -141,7 +141,7 @@ test.describe('Scanning a receipt', () => {
     await expect(page.locator('[name="title"]')).toBeVisible()
   })
 
-  test('is reachable from the empty group and from the itemised split', async ({
+  test('is reachable from the empty group and from the top of a new expense', async ({
     page,
   }) => {
     // The scanner used to have exactly one entry point in the whole app — an icon in the expense
@@ -158,10 +158,19 @@ test.describe('Scanning a receipt', () => {
     ).toBeVisible()
 
     await page.goto(`/groups/${groupId}/expenses/create`)
-    // Evenly is the default, and it has nothing to do with receipts.
-    await expect(page.getByTestId('scan-receipt-in-form')).toHaveCount(0)
+    const scan = page.getByTestId('scan-receipt-in-form')
+    await expect(scan).toBeVisible()
+
+    // Above the title, not inside the split. Reading a receipt replaces the whole expense rather
+    // than adding to it, so it is offered before anything has been typed — from under "By item"
+    // it arrived after the title and the amount and threw both away.
+    const scanBox = await scan.boundingBox()
+    const titleBox = await page.locator('[name="title"]').boundingBox()
+    expect(scanBox!.y).toBeLessThan(titleBox!.y)
 
     await page.getByTestId('split-mode-items').click()
-    await expect(page.getByTestId('scan-receipt-in-form')).toBeVisible()
+    await expect(page.getByTestId('split-control')).not.toContainText(
+      /scan a receipt/i,
+    )
   })
 })

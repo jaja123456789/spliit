@@ -1178,6 +1178,31 @@ export function ExpenseForm({
               empty band, reading as a list that had been cut off. Let its rule be the card's edge.
               Open, the last thing is ordinary content, which does want the padding. */}
           <CardContent className={cn('flex flex-col gap-6 pb-0 pt-6')}>
+            {/* Reading a receipt is not a thing you do to the split — it is how you fill the whole
+                expense in. `applyReceiptData` calls `form.reset`, so it does not add lines to what
+                you have written, it replaces what you have written. Offered from inside "By item",
+                that arrived after the title and the amount had been typed by hand and threw both
+                away without saying so: the highest cost the action has, at the moment it has the
+                least left to give.
+                Here it is the first thing on an empty form, which is the only moment "start from
+                a receipt" is both true and free. Create only — there is nothing to start on an
+                expense that already exists — and quiet, because most expenses are not receipts. */}
+            {isCreate && runtimeFeatureFlags.enableReceiptExtract && (
+              <CreateFromReceiptButton
+                onExtracted={applyReceiptData}
+                trigger={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="-mt-1 -mb-3 h-11 w-full justify-center gap-2 text-sm font-normal text-muted-foreground hover:text-foreground sm:h-10"
+                    data-testid="scan-receipt-in-form"
+                  >
+                    <Receipt className="h-4 w-4" />
+                    {tReceipt('scanEntry')}
+                  </Button>
+                }
+              />
+            )}
             {/* Title over amount, each with the control that qualifies it in a tinted square to
                 its left, over a rule. The amount used to be a 48px figure centred on its own line
                 with the title centred under it — which is the concept's hero, and the concept's
@@ -2038,24 +2063,6 @@ export function ExpenseForm({
                       activeUserId={activeUserId}
                     />
                   )}
-                  {isCreate &&
-                    splitControl === 'ITEMS' &&
-                    runtimeFeatureFlags.enableReceiptExtract && (
-                      <CreateFromReceiptButton
-                        onExtracted={applyReceiptData}
-                        trigger={
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            className="mt-2 h-11 w-full sm:h-10"
-                            data-testid="scan-receipt-in-form"
-                          >
-                            <Receipt className="mr-2 h-4 w-4" />
-                            {tReceipt('scanEntry')}
-                          </Button>
-                        }
-                      />
-                    )}
                   {isItemized && (
                     <div className="mt-3">
                       <ItemizationBuilder
