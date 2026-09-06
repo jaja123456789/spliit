@@ -475,13 +475,13 @@ export function ItemizationBuilder({
                                   the title, the payers and the date all became bordered boxes. A
                                   receipt line is the same kind of thing they are, and it was the
                                   last fill left on the sheet. */}
-                              <div className="rounded-md border bg-card transition-shadow focus-within:ring-2 focus-within:ring-primary">
+                              <div className="flex h-11 items-center rounded-md border border-input bg-card transition-shadow focus-within:ring-2 focus-within:ring-primary">
                                 <FormControl>
                                   <Input
                                     {...field}
                                     placeholder={t('itemNamePlaceholder')}
                                     className={cn(
-                                      'h-11 sm:h-8 border-0 bg-transparent px-2.5 text-base sm:text-sm font-medium shadow-none focus-visible:ring-0',
+                                      'h-full border-0 bg-transparent px-2.5 text-base font-medium shadow-none focus-visible:ring-0',
                                       isExcluded && 'line-through',
                                     )}
                                   />
@@ -528,7 +528,7 @@ export function ItemizationBuilder({
                                   which is aligned to the button's width. What it gains is the
                                   field's full height as a target — a 28x44 hit area on a 28x28
                                   face, which costs no layout at all. */}
-                              <div className="flex w-[104px] items-center gap-0.5 rounded-md border bg-card pl-1.5 transition-shadow focus-within:ring-2 focus-within:ring-primary [&_button]:relative [&_button]:h-7 [&_button]:w-7 [&_button]:after:absolute [&_button]:after:inset-x-0 [&_button]:after:-inset-y-2 [&_button]:after:content-[''] sm:[&_button]:after:hidden">
+                              <div className="flex h-11 w-[104px] items-center gap-0.5 rounded-md border border-input bg-card pl-1.5 transition-shadow focus-within:ring-2 focus-within:ring-primary [&_button]:relative [&_button]:h-7 [&_button]:w-7 [&_button]:after:absolute [&_button]:after:inset-x-0 [&_button]:after:-inset-y-2 [&_button]:after:content-[''] sm:[&_button]:after:hidden">
                                 <span className="font-mono text-xs text-subtle-foreground">
                                   {currency.symbol || group.currency}
                                 </span>
@@ -544,8 +544,8 @@ export function ItemizationBuilder({
                                     // the way to "0.50" is left alone.
                                     value={field.value === 0 ? '' : field.value}
                                     placeholder="0.00"
-                                    className="h-11 sm:h-8 min-w-0 flex-1 border-0 bg-transparent shadow-none"
-                                    inputClassName="h-11 sm:h-8 w-full border-0 bg-transparent px-0 text-right font-mono text-base sm:text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                                    className="h-full min-w-0 flex-1 border-0 bg-transparent shadow-none"
+                                    inputClassName="h-full w-full border-0 bg-transparent px-0 text-right font-mono text-base font-semibold tabular-nums shadow-none focus-visible:ring-0"
                                     onValueChange={(val: string) => {
                                       field.onChange(val)
                                       trigger('items')
@@ -644,7 +644,7 @@ export function ItemizationBuilder({
                               // draws it as a box of its own on the tinted card. Closed, it is a quiet
                               // strip inside the line.
                               isEditing
-                                ? 'border bg-card px-2.5 hover:bg-muted/40'
+                                ? 'border border-input bg-card px-2.5 hover:bg-muted/40'
                                 : 'pb-1 pr-[31px] hover:bg-muted/60',
                             )}
                           >

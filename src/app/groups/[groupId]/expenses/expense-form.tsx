@@ -1201,7 +1201,7 @@ export function ExpenseForm({
                         a full row away from the glyph it names and left the two ends of that line
                         unrelated. It reads as a caption under the title now — the same relation
                         the conversion has to the amount one box down. */}
-                    <div className="flex items-center gap-3 rounded-xl border bg-card px-3 py-3 transition-shadow focus-within:ring-2 focus-within:ring-primary">
+                    <div className="flex items-center gap-3 rounded-xl border border-input bg-card px-3 py-3 transition-shadow focus-within:ring-2 focus-within:ring-primary">
                       <FormField
                         control={form.control}
                         name="category"
@@ -1310,7 +1310,7 @@ export function ExpenseForm({
                         Bordered rather than filled: this box holds a control and a reading, and
                         the sunken fill the rest of the form uses to mean "type here" would be
                         claiming that about the conversion line too. */}
-                    <div className="rounded-xl border bg-card px-3 py-3 transition-shadow focus-within:ring-2 focus-within:ring-primary">
+                    <div className="rounded-xl border border-input bg-card px-3 py-3 transition-shadow focus-within:ring-2 focus-within:ring-primary">
                       <div className="flex items-center gap-3">
                         {/* An expense can be entered in another currency than the group's, and that
                           lived as a Select buried in More options. Inert for a group with a custom
@@ -1333,7 +1333,7 @@ export function ExpenseForm({
                                     title={t('changeCurrency')}
                                     /* Symbol and code rather than the symbol alone: "$" is a dozen
                                      currencies, and the code is the half that says which. */
-                                    className="flex h-12 shrink-0 items-center gap-1 rounded-lg border bg-background px-2.5 font-mono text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                                    className="flex h-12 shrink-0 items-center gap-1 rounded-lg border border-input bg-background px-2.5 font-mono text-sm font-medium text-foreground transition-colors hover:bg-muted"
                                   >
                                     <span>
                                       {expenseCurrency.symbol || group.currency}
@@ -1350,7 +1350,7 @@ export function ExpenseForm({
                         ) : (
                           // No chevron here on purpose: with no exchange rate to convert from there
                           // is nothing to pick, and this is a label, not a control.
-                          <span className="grid h-12 shrink-0 place-items-center rounded-lg border bg-background px-3 font-mono text-sm font-medium text-muted-foreground">
+                          <span className="grid h-12 shrink-0 place-items-center rounded-lg border border-input bg-background px-3 font-mono text-sm font-medium text-muted-foreground">
                             {expenseCurrency.symbol || group.currency}
                           </span>
                         )}
@@ -1573,7 +1573,7 @@ export function ExpenseForm({
                                     column, figure right-aligned and tabular so the decimals line
                                     up down the column, the box tracking its value, and the
                                     calculator inside the field rather than beside it. */}
-                                  <div className="flex h-11 items-center gap-1 rounded-md border bg-card pl-2 transition-shadow focus-within:ring-2 focus-within:ring-primary [&_button]:h-8 [&_button]:w-8">
+                                  <div className="flex h-11 items-center gap-1 rounded-md border border-input bg-card pl-2 transition-shadow focus-within:ring-2 focus-within:ring-primary [&_button]:h-8 [&_button]:w-8">
                                     <span className="font-mono text-xs text-subtle-foreground">
                                       {expenseCurrency.symbol || group.currency}
                                     </span>
@@ -2390,7 +2390,7 @@ function PaidForList({
                 )}
                 <FormControl>
                   <CalculatorInput
-                    className="h-9 w-[104px] rounded-md border bg-card shadow-none has-[[data-slot=input-group-control]:focus-visible]:ring-0"
+                    className="h-9 w-[104px] rounded-md border border-input bg-card shadow-none has-[[data-slot=input-group-control]:focus-visible]:ring-0"
                     inputClassName="h-9 w-full border-0 bg-transparent px-2 text-right font-mono text-base tabular-nums shadow-none focus-visible:ring-0"
                     placeholder="0.00"
                     decimalPlaces={expenseCurrency.decimal_digits}
