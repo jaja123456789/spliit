@@ -141,9 +141,11 @@ test.describe('A half-typed expense', () => {
     expect(await formState(page)).toMatchObject({ title: '', restored: false })
   })
 
-  test('is thrown away by Cancel, which is what Cancel means', async ({
-    page,
-  }) => {
+  // Cancel used to be the one exit that discarded, and this test asserted that. There is no
+  // Cancel any more: every way out of the form is now the same way out, and it keeps what was
+  // typed. Discarding moved to the banner on the way back in, which the first test in this file
+  // already covers.
+  test('survives leaving the form, however you leave it', async ({ page }) => {
     const groupId = await newGroup(page)
     await openCreateForm(page, groupId)
     await page.locator('input[name="title"]').fill('Never mind')
@@ -151,15 +153,21 @@ test.describe('A half-typed expense', () => {
     await page.locator('input[name="title"]').blur()
     await page.waitForTimeout(800)
 
-    await page
-      .getByRole('link', { name: /^cancel$/i })
-      .first()
-      .click()
+    await page.goBack()
     await page.waitForURL((url) => !/\/create/.test(url.pathname))
     await page.waitForTimeout(800)
 
     await openCreateForm(page, groupId)
-    expect(await formState(page)).toMatchObject({ title: '', restored: false })
+    expect(await formState(page)).toMatchObject({
+      title: 'Never mind',
+      restored: true,
+    })
+  })
+
+  test('offers no Cancel to discard through', async ({ page }) => {
+    const groupId = await newGroup(page)
+    await openCreateForm(page, groupId)
+    await expect(page.getByRole('link', { name: /^cancel$/i })).toHaveCount(0)
   })
 
   test('comes back when it is half a minute old', async ({ page }) => {
@@ -233,7 +241,10 @@ test.describe('What is not an expense is not kept', () => {
       await page.waitForTimeout(700)
 
       await openCreateForm(page, groupId)
-      expect(await formState(page)).toMatchObject({ title: '', restored: false })
+      expect(await formState(page)).toMatchObject({
+        title: '',
+        restored: false,
+      })
     })
   }
 })

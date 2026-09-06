@@ -345,6 +345,7 @@
     "reimbursement": "Reimbursement",
     "moreOptions": "More options",
     "addPayer": "Add Payer",
+    "multiplePayers": "Multiple payers…",
     "removePayer": "Remove this payer",
     "total": "Total",
     "excludedItems": "excluded from group",

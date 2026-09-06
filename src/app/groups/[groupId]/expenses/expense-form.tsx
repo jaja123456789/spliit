@@ -98,7 +98,6 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
@@ -456,6 +455,8 @@ export function ExpenseForm({
   )
   const isIncome = totalAmount < 0
   const isMultiPayer = payerFields.length > 1
+  // Not a participant id, and it never reaches the form: `onValueChange` intercepts it.
+  const MULTI_PAYER_OPTION = '__multiple_payers__'
   const sExpense = isIncome ? 'Income' : 'Expense'
   const maxAmount = Math.max(...paidByValues.map((p) => Number(p.amount) || 0))
 
@@ -506,12 +507,6 @@ export function ExpenseForm({
   // back as you left it and says so quietly, with a way out for the time you did not want it.
   const [restoredDraft, setRestoredDraft] = useState(false)
   const pristineValuesRef = useRef<ExpenseFormValues | null>(null)
-  // Cancel throws the draft away, and a watch tick can still land between the click and the
-  // unmount. Without this the form would save back the draft that was just discarded.
-  const discardedRef = useRef(false)
-  // Set on Cancel's *pointer* down rather than its click, because the title's blur fires in
-  // between the two — which is exactly the moment the category guess used to start.
-  const abandoningRef = useRef(false)
   const lastExtractedTitleRef = useRef<string | null>(null)
 
   // Track manual edits for BY_AMOUNT mode
@@ -817,7 +812,6 @@ export function ExpenseForm({
       initialValuesRef.current = fingerprint(form.getValues())
     }
     const subscription = form.watch((values) => {
-      if (discardedRef.current) return
       const unchanged = fingerprint(values) === initialValuesRef.current
       // Changed, but changed into nothing: a cleared title leaves behind the category the
       // extractor guessed from it, a cleared amount leaves `""` where a `0` was. Neither is an
@@ -1091,14 +1085,7 @@ export function ExpenseForm({
 
   return (
     <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(submit)}
-        // Pressing Cancel and sliding off it without releasing leaves nothing behind: touching
-        // any field again says this form is still being filled in.
-        onFocusCapture={() => {
-          abandoningRef.current = false
-        }}
-      >
+      <form onSubmit={form.handleSubmit(submit)}>
         {restoredDraft && (
           <div className="mb-3 flex items-center justify-between gap-3 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
             <span className="min-w-0 truncate">{t('Draft.restored')}</span>
@@ -1124,7 +1111,7 @@ export function ExpenseForm({
               the full width — and the card's own 24px of bottom padding left it floating above an
               empty band, reading as a list that had been cut off. Let its rule be the card's edge.
               Open, the last thing is ordinary content, which does want the padding. */}
-          <CardContent className={cn('grid gap-6 pb-0 pt-6 sm:grid-cols-2')}>
+          <CardContent className={cn('flex flex-col gap-6 pb-0 pt-6')}>
             {/* Title over amount, each with the control that qualifies it in a tinted square to
                 its left, over a rule. The amount used to be a 48px figure centred on its own line
                 with the title centred under it — which is the concept's hero, and the concept's
@@ -1135,34 +1122,20 @@ export function ExpenseForm({
                 The category and the currency each sit beside the field they qualify. Both were a
                 row apiece further down before, the category behind More options — two taps and a
                 scroll from the words that determine it. */}
-            <div className="col-span-2 flex min-w-0 flex-col gap-4">
+            <div className="flex min-w-0 flex-col gap-4">
               <FormField
                 control={form.control}
                 name="title"
                 render={({ field }) => (
                   <FormItem className="space-y-0">
-                    {/* Visible, like every other label on this form. These two were the only
-                        `sr-only` ones left — a leftover from when the title and the amount were
-                        styled as heroes big enough to need no naming, which they no longer are.
-                        The row carries the category's name on the right, so the glyph in the
-                        square has something to be read against and the label line does the work
-                        instead of a second row. */}
-                    <div className="mb-1 flex items-baseline justify-between gap-3">
-                      <FormLabel className="text-sm font-normal text-muted-foreground">
-                        {t(`${sExpense}.TitleField.label`)}
-                      </FormLabel>
-                      {selectedCategory && (
-                        <span
-                          data-testid="category-name"
-                          className="min-w-0 truncate text-sm text-muted-foreground"
-                        >
-                          {tCategories(
-                            `${selectedCategory.grouping}.${selectedCategory.name}`,
-                          )}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3">
+                    <FormLabel className="mb-1 block text-sm font-normal text-muted-foreground">
+                      {t(`${sExpense}.TitleField.label`)}
+                    </FormLabel>
+                    {/* The category's name used to sit at the right of the label row, which put it
+                        a full row away from the glyph it names and left the two ends of that line
+                        unrelated. It reads as a caption under the title now — the same relation
+                        the conversion has to the amount one box down. */}
+                    <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 transition-shadow focus-within:ring-2 focus-within:ring-primary">
                       <FormField
                         control={form.control}
                         name="category"
@@ -1184,10 +1157,12 @@ export function ExpenseForm({
                                 )}: ${tCategories(
                                   `${category.grouping}.${category.name}`,
                                 )}`}
-                                // A glyph in a grey square is a picture; the chevron is what makes
-                                // it a control. Same 44px height, ~8px wider, and the name it
-                                // switches between is spelled out in the label row above.
-                                className="flex h-11 w-14 shrink-0 items-center justify-center gap-0.5 rounded-md bg-muted px-1 text-muted-foreground sm:h-10 transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
+                                // A glyph in a grey square is a picture; the chevron is what
+                                // makes it a control. The concept tints this square with the
+                                // accent; it stays neutral here because green already means
+                                // three things on this form — the action, a link, and what is
+                                // selected — and a category is none of them.
+                                className="flex h-11 w-12 shrink-0 items-center justify-center gap-0.5 rounded-md bg-muted px-1 text-muted-foreground transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
                               >
                                 {isCategoryLoading ? (
                                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -1203,28 +1178,24 @@ export function ExpenseForm({
                           />
                         )}
                       />
-                      <div className="min-w-0 flex-1 rounded-md bg-muted transition-shadow focus-within:ring-2 focus-within:ring-primary">
+                      <div className="min-w-0 flex-1">
                         <FormControl>
                           <Input
                             placeholder={t(
                               `${sExpense}.TitleField.placeholder`,
                             )}
-                            className="h-11 sm:h-10 border-0 bg-transparent px-2.5 text-base sm:text-base font-medium shadow-none placeholder:font-normal placeholder:text-subtle-foreground focus-visible:ring-0"
+                            className="h-auto border-0 bg-transparent px-1 py-1 text-base sm:text-base font-medium shadow-none placeholder:font-normal placeholder:text-subtle-foreground focus-visible:ring-0"
                             {...field}
                             onBlur={async () => {
                               field.onBlur()
-                              // Guessing the category costs a round trip to a model, so it should
-                              // happen when there is a new title to guess from and not merely
-                              // whenever the field loses focus. It used to run on every blur:
-                              // clicking into the amount and back re-asked about a title nobody
-                              // had touched, and leaving through Cancel asked about an expense on
-                              // its way to being thrown away — which is the spinner you could
-                              // catch on the way out the door.
+                              // Guessing the category costs a round trip to a model, so it
+                              // should happen when there is a new title to guess from and not
+                              // merely whenever the field loses focus: clicking into the amount
+                              // and back used to re-ask about a title nobody had touched.
                               const title = field.value?.trim() ?? ''
                               if (
                                 !runtimeFeatureFlags.enableCategoryExtract ||
                                 !title ||
-                                abandoningRef.current ||
                                 title === lastExtractedTitleRef.current
                               ) {
                                 return
@@ -1234,15 +1205,23 @@ export function ExpenseForm({
                               try {
                                 const { categoryId } =
                                   await extractCategoryFromTitle(title)
-                                if (!abandoningRef.current) {
-                                  form.setValue('category', categoryId)
-                                }
+                                form.setValue('category', categoryId)
                               } finally {
                                 setCategoryLoading(false)
                               }
                             }}
                           />
                         </FormControl>
+                        {selectedCategory && (
+                          <p
+                            data-testid="category-name"
+                            className="truncate px-1 text-sm text-muted-foreground"
+                          >
+                            {tCategories(
+                              `${selectedCategory.grouping}.${selectedCategory.name}`,
+                            )}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <FormMessage className="mt-1" />
@@ -1255,18 +1234,100 @@ export function ExpenseForm({
                 name="paidBy.0.amount"
                 render={({ field }) => (
                   <FormItem className="space-y-0">
-                    {/* The converted total used to sit two rows further down, under Paid by and
-                        the date — it qualifies the amount, so it belongs to the amount. Here it
-                        occupies the same right-hand slot the category name does one row up, and
-                        costs no height of its own. */}
-                    <div className="mb-1 flex items-baseline justify-between gap-3">
-                      <FormLabel className="text-sm font-normal text-muted-foreground">
-                        {t(`${sExpense}.amountLabel`)}
-                      </FormLabel>
+                    <FormLabel className="mb-1 block text-sm font-normal text-muted-foreground">
+                      {t(`${sExpense}.amountLabel`)}
+                    </FormLabel>
+                    {/* One box around the three things that describe the figure: what currency it
+                        is in, the figure, and what it comes to in the group's currency. They were
+                        a label row and a control row, which put the conversion at the far right of
+                        a line whose left half was the word "Amount". It qualifies the number, so
+                        it belongs under the number.
+                        Bordered rather than filled: this box holds a control and a reading, and
+                        the sunken fill the rest of the form uses to mean "type here" would be
+                        claiming that about the conversion line too. */}
+                    <div className="rounded-lg border bg-card px-3 py-2.5 transition-shadow focus-within:ring-2 focus-within:ring-primary">
+                      <div className="flex items-center gap-2">
+                        {/* An expense can be entered in another currency than the group's, and that
+                          lived as a Select buried in More options. Inert for a group with a custom
+                          symbol: there is no exchange rate to convert from, which is why the old
+                          Select was disabled there too. */}
+                        {conversionAvailable ? (
+                          <FormField
+                            control={form.control}
+                            name="originalCurrency"
+                            render={({ field: currencyField }) => (
+                              <CurrencySelector
+                                currencies={defaultCurrencyList(locale, '')}
+                                defaultValue={currencyField.value ?? ''}
+                                isLoading={false}
+                                onValueChange={currencyField.onChange}
+                                renderTrigger={() => (
+                                  <button
+                                    type="button"
+                                    data-testid="currency-trigger"
+                                    title={t('changeCurrency')}
+                                    /* Symbol and code rather than the symbol alone: "$" is a dozen
+                                     currencies, and the code is the half that says which. */
+                                    className="flex h-11 shrink-0 items-center gap-1 rounded-md border bg-background px-2 font-mono text-sm font-medium text-foreground transition-colors hover:bg-muted sm:h-10"
+                                  >
+                                    <span>
+                                      {expenseCurrency.symbol || group.currency}
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                      {expenseCurrency.code}
+                                    </span>
+                                    <ChevronDown className="h-4 w-4 opacity-40" />
+                                  </button>
+                                )}
+                              />
+                            )}
+                          />
+                        ) : (
+                          // No chevron here on purpose: with no exchange rate to convert from there
+                          // is nothing to pick, and this is a label, not a control.
+                          <span className="grid h-11 shrink-0 place-items-center rounded-md border bg-background px-3 font-mono text-sm font-medium text-muted-foreground sm:h-10">
+                            {expenseCurrency.symbol || group.currency}
+                          </span>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          {isMultiPayer ? (
+                            // Only several payers make the total a derived figure: it is their sum,
+                            // so there is nothing to type into it. An itemised bill is not such a
+                            // case — the total is what was paid, the lines are how it was shared,
+                            // and the difference between them is the tax the strip below offers to
+                            // split. This used to be derived for itemised expenses too, which left
+                            // the one number the reader typed invisible and uneditable on every
+                            // itemised expense they reopened.
+                            <span
+                              data-testid="derived-total"
+                              className="flex h-10 items-center px-2.5 font-mono text-2xl font-semibold tabular-nums"
+                            >
+                              {formatCurrency(
+                                expenseCurrency,
+                                effectiveTotal,
+                                locale,
+                                true,
+                              ).replace(/^[^\d-]+/, '')}
+                            </span>
+                          ) : (
+                            <FormControl>
+                              <CalculatorInput
+                                placeholder="0.00"
+                                className="h-11 sm:h-10 w-full border-0 bg-transparent shadow-none"
+                                inputClassName="h-11 sm:h-10 w-full border-0 bg-transparent px-1 font-mono text-2xl sm:text-2xl font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                                {...field}
+                                onValueChange={(val) =>
+                                  handlePayerAmountChange(0, val)
+                                }
+                              />
+                            </FormControl>
+                          )}
+                        </div>
+                      </div>
                       {conversionRequired && (
-                        <span
+                        <p
                           data-testid="converted-total"
-                          className="min-w-0 truncate text-sm tabular-nums text-muted-foreground"
+                          className="mt-0.5 pl-1 text-sm tabular-nums text-muted-foreground"
                         >
                           ≈{' '}
                           {formatCurrency(
@@ -1275,85 +1336,16 @@ export function ExpenseForm({
                             locale,
                             true,
                           )}
-                        </span>
+                        </p>
+                      )}
+                      {isMultiPayer && (
+                        <p className="mt-0.5 pl-1 text-xs text-muted-foreground">
+                          {t('derivedFromPayers', {
+                            count: payerFields.length,
+                          })}
+                        </p>
                       )}
                     </div>
-                    <div className="flex items-center gap-3">
-                      {/* An expense can be entered in another currency than the group's, and that
-                          lived as a Select buried in More options. Inert for a group with a custom
-                          symbol: there is no exchange rate to convert from, which is why the old
-                          Select was disabled there too. */}
-                      {conversionAvailable ? (
-                        <FormField
-                          control={form.control}
-                          name="originalCurrency"
-                          render={({ field: currencyField }) => (
-                            <CurrencySelector
-                              currencies={defaultCurrencyList(locale, '')}
-                              defaultValue={currencyField.value ?? ''}
-                              isLoading={false}
-                              onValueChange={currencyField.onChange}
-                              renderTrigger={() => (
-                                <button
-                                  type="button"
-                                  data-testid="currency-trigger"
-                                  title={t('changeCurrency')}
-                                  className="flex h-11 w-14 shrink-0 items-center justify-center gap-0.5 rounded-md bg-muted px-1 font-mono text-base font-medium text-muted-foreground sm:h-10 transition-colors hover:bg-muted-foreground/20 hover:text-foreground"
-                                >
-                                  {expenseCurrency.symbol || group.currency}
-                                  <ChevronDown className="h-4 w-4 opacity-40" />
-                                </button>
-                              )}
-                            />
-                          )}
-                        />
-                      ) : (
-                        // No chevron here on purpose: with no exchange rate to convert from there
-                        // is nothing to pick, and this is a label, not a control.
-                        <span className="grid h-11 w-14 shrink-0 place-items-center rounded-md bg-muted sm:h-10 font-mono text-base font-medium text-muted-foreground">
-                          {expenseCurrency.symbol || group.currency}
-                        </span>
-                      )}
-                      <div className="min-w-0 flex-1 rounded-md bg-muted transition-shadow focus-within:ring-2 focus-within:ring-primary">
-                        {isMultiPayer ? (
-                          // Only several payers make the total a derived figure: it is their sum,
-                          // so there is nothing to type into it. An itemised bill is not such a
-                          // case — the total is what was paid, the lines are how it was shared,
-                          // and the difference between them is the tax the strip below offers to
-                          // split. This used to be derived for itemised expenses too, which left
-                          // the one number the reader typed invisible and uneditable on every
-                          // itemised expense they reopened.
-                          <span
-                            data-testid="derived-total"
-                            className="flex h-10 items-center px-2.5 font-mono text-2xl font-semibold tabular-nums"
-                          >
-                            {formatCurrency(
-                              expenseCurrency,
-                              effectiveTotal,
-                              locale,
-                              true,
-                            ).replace(/^[^\d-]+/, '')}
-                          </span>
-                        ) : (
-                          <FormControl>
-                            <CalculatorInput
-                              placeholder="0.00"
-                              className="h-11 sm:h-10 w-full border-0 bg-transparent shadow-none"
-                              inputClassName="h-11 sm:h-10 w-full border-0 bg-transparent px-2.5 font-mono text-2xl sm:text-2xl font-semibold tabular-nums shadow-none focus-visible:ring-0"
-                              {...field}
-                              onValueChange={(val) =>
-                                handlePayerAmountChange(0, val)
-                              }
-                            />
-                          </FormControl>
-                        )}
-                      </div>
-                    </div>
-                    {isMultiPayer && (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        {t('derivedFromPayers', { count: payerFields.length })}
-                      </p>
-                    )}
                     <FormMessage className="mt-1" />
                     {/* "The lines do not add up to the total" is an argument about this figure,
                         and it used to be made at the foot of the itemisation block — past every
@@ -1375,305 +1367,251 @@ export function ExpenseForm({
             {/* Full-bleed so a row's hover runs to the sheet's edge; the rules that used to
                 close each of these are gone. What separates one row from the next is the space
                 between them, and what says a control is a control is its fill. */}
-            <div className="col-span-2 -mx-6">
-              <div>
-                {isMultiPayer && (
-                  <FormLabel className="block px-6 pb-1 pt-2 text-sm font-normal text-muted-foreground">
-                    {t(`${sExpense}.paidByField.label`)}
-                  </FormLabel>
+            <div className="-mx-6">
+              <div
+                className={cn(
+                  !isMultiPayer &&
+                    'grid grid-cols-2 items-start gap-3 px-6 py-2',
                 )}
+              >
+                <div>
+                  {isMultiPayer && (
+                    <FormLabel className="block px-6 pb-1 pt-2 text-sm font-normal text-muted-foreground">
+                      {t(`${sExpense}.paidByField.label`)}
+                    </FormLabel>
+                  )}
 
-                <div className="flex flex-col">
-                  {payerFields.map((field, index) => {
-                    // Determine if this specific row is the highest payer
-                    const currentAmount =
-                      Number(paidByValues[index]?.amount) || 0
-                    const isHighest =
-                      isMultiPayer &&
-                      currentAmount > 0 &&
-                      currentAmount === maxAmount
+                  <div className="flex flex-col">
+                    {payerFields.map((field, index) => {
+                      // Determine if this specific row is the highest payer
+                      const currentAmount =
+                        Number(paidByValues[index]?.amount) || 0
+                      const isHighest =
+                        isMultiPayer &&
+                        currentAmount > 0 &&
+                        currentAmount === maxAmount
 
-                    return (
-                      <div
-                        key={field.id}
-                        className={cn(
-                          // One shape for one payer or five: a ruled row at the same height as
-                          // every other row in this section. With several payers the name moves
-                          // to the left and an amount joins it on the right — nothing else
-                          // changes. It used to become a bordered card with a tinted background,
-                          // a shadow and a red bin, which is a different form's visual language
-                          // sitting inside this one.
-                          'flex items-center justify-between gap-2 px-6 transition-colors',
-                          index < payerFields.length - 1 && '',
-                        )}
-                      >
-                        <FormField
-                          control={form.control}
-                          name={`paidBy.${index}.participant`}
-                          render={({ field }) => (
-                            <FormItem
-                              className={cn(
-                                'flex min-w-0 items-center space-y-0',
-                                isMultiPayer
-                                  ? 'flex-none'
-                                  : 'flex-1 justify-between gap-2',
-                              )}
-                            >
-                              {!isMultiPayer && (
-                                <FormLabel className="text-sm font-normal text-muted-foreground">
-                                  {t(`${sExpense}.paidByField.label`)}
-                                </FormLabel>
-                              )}
-                              <Select
-                                onValueChange={field.onChange}
-                                defaultValue={field.value}
-                              >
-                                <FormControl>
-                                  {/* The payer is pre-selected rather than showing a placeholder, so
-                                    there is no stable text to find this control by. */}
-                                  <SelectTrigger
-                                    data-testid={`paid-by-select-${index}`}
-                                    className={cn(
-                                      // A pill that hugs its value, not a full-width field: this
-                                      // is a statement of fact you occasionally change. The fill
-                                      // is what says it can be changed and the chevron says how —
-                                      // a control that looks like static text is the fault the
-                                      // assign strip had. It used to stretch to everything right
-                                      // of the label, which was a fine invisible target and a
-                                      // very odd visible one once the fill arrived.
-                                      'h-11 gap-1 rounded-md border-0 bg-muted px-3 font-medium shadow-none focus:ring-0 sm:h-10 [&>svg]:opacity-40',
-                                      isMultiPayer
-                                        ? 'w-auto justify-start'
-                                        : 'w-auto justify-end',
-                                    )}
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      {/* Optional: Add a subtle icon for the lead payer */}
-                                      {isHighest && (
-                                        <Crown className="w-3 h-3 text-primary" />
-                                      )}
-                                      <SelectValue />
-                                    </div>
-                                  </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                  {group.participants.map(({ id, name }) => (
-                                    <SelectItem
-                                      key={id}
-                                      value={id}
-                                      disabled={getIsParticipantPaying(
-                                        id,
-                                        index,
-                                      )}
-                                    >
-                                      {name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <FormMessage />
-                            </FormItem>
+                      return (
+                        <div
+                          key={field.id}
+                          className={cn(
+                            // One shape for one payer or five: a ruled row at the same height as
+                            // every other row in this section. With several payers the name moves
+                            // to the left and an amount joins it on the right — nothing else
+                            // changes. It used to become a bordered card with a tinted background,
+                            // a shadow and a red bin, which is a different form's visual language
+                            // sitting inside this one.
+                            'flex items-center justify-between gap-2 transition-colors',
+                            // The pair's own grid supplies the gutter when there is one payer.
+                            isMultiPayer && 'px-6',
                           )}
-                        />
-
-                        {/* Only shown once there is more than one payer: with a single payer the
-                          hero above is this field, and rendering both meant typing into one and
-                          watching the other update. */}
-                        {isMultiPayer && (
+                        >
                           <FormField
                             control={form.control}
-                            name={`paidBy.${index}.amount`}
+                            name={`paidBy.${index}.participant`}
                             render={({ field }) => (
-                              <FormItem className="ml-auto shrink-0 space-y-0">
-                                {/* The item row's price field, to the class: symbol in its own
-                                    column, figure right-aligned and tabular so the decimals line
-                                    up down the column, the box tracking its value, and the
-                                    calculator inside the field rather than beside it. */}
-                                <div className="flex w-[116px] items-center gap-1 rounded-md bg-muted pl-2 transition-shadow focus-within:ring-2 focus-within:ring-primary [&_button]:relative [&_button]:h-7 [&_button]:w-7 [&_button]:after:absolute [&_button]:after:inset-x-0 [&_button]:after:-inset-y-2 [&_button]:after:content-[''] sm:[&_button]:after:hidden">
-                                  <span className="font-mono text-xs text-subtle-foreground">
-                                    {expenseCurrency.symbol || group.currency}
-                                  </span>
+                              <FormItem
+                                className={cn(
+                                  'min-w-0 space-y-0',
+                                  isMultiPayer
+                                    ? 'flex flex-none items-center'
+                                    : 'flex w-full flex-col items-stretch gap-1',
+                                )}
+                              >
+                                {!isMultiPayer && (
+                                  <FormLabel className="text-sm font-normal text-muted-foreground">
+                                    {t(`${sExpense}.paidByField.label`)}
+                                  </FormLabel>
+                                )}
+                                <Select
+                                  onValueChange={(value) => {
+                                    if (value === MULTI_PAYER_OPTION) {
+                                      handleAddPayer()
+                                      return
+                                    }
+                                    field.onChange(value)
+                                  }}
+                                  defaultValue={field.value}
+                                >
                                   <FormControl>
-                                    <CalculatorInput
-                                      placeholder="0.00"
-                                      className="h-11 sm:h-8 min-w-0 flex-1 border-0 bg-transparent shadow-none"
-                                      inputClassName="h-11 sm:h-8 w-full border-0 bg-transparent px-0 text-right font-mono text-base sm:text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
-                                      {...field}
-                                      onValueChange={(val) => {
-                                        handlePayerAmountChange(index, val)
-                                      }}
-                                    />
+                                    {/* The payer is pre-selected rather than showing a placeholder, so
+                                    there is no stable text to find this control by. */}
+                                    <SelectTrigger
+                                      data-testid={`paid-by-select-${index}`}
+                                      className={cn(
+                                        // A pill that hugs its value, not a full-width field: this
+                                        // is a statement of fact you occasionally change. The fill
+                                        // is what says it can be changed and the chevron says how —
+                                        // a control that looks like static text is the fault the
+                                        // assign strip had. It used to stretch to everything right
+                                        // of the label, which was a fine invisible target and a
+                                        // very odd visible one once the fill arrived.
+                                        'h-11 gap-1 rounded-md px-3 font-medium shadow-none focus:ring-0 sm:h-10 [&>svg]:opacity-40',
+                                        isMultiPayer
+                                          ? 'w-auto justify-start border-0 bg-muted'
+                                          : // Bordered and full width in the pair, so it matches the
+                                            // date box beside it rather than reading as a loose pill
+                                            // in an empty half-row.
+                                            'w-full justify-between border bg-card',
+                                      )}
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        {/* Optional: Add a subtle icon for the lead payer */}
+                                        {isHighest && (
+                                          <Crown className="w-3 h-3 text-primary" />
+                                        )}
+                                        <SelectValue />
+                                      </div>
+                                    </SelectTrigger>
                                   </FormControl>
-                                </div>
-                                <FormMessage className="mt-1 text-right text-xs" />
+                                  <SelectContent>
+                                    {group.participants.map(({ id, name }) => (
+                                      <SelectItem
+                                        key={id}
+                                        value={id}
+                                        disabled={getIsParticipantPaying(
+                                          id,
+                                          index,
+                                        )}
+                                      >
+                                        {name}
+                                      </SelectItem>
+                                    ))}
+                                    {!isMultiPayer && (
+                                      <SelectItem
+                                        value={MULTI_PAYER_OPTION}
+                                        data-testid="multiple-payers-option"
+                                        className="border-t"
+                                      >
+                                        {t('multiplePayers')}
+                                      </SelectItem>
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
                               </FormItem>
                             )}
                           />
-                        )}
 
-                        {payerFields.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removePayer(index)}
-                            title={t('removePayer')}
-                            className="relative h-8 w-8 shrink-0 text-subtle-foreground after:absolute after:-inset-x-1 after:-inset-y-1.5 after:content-[''] hover:bg-destructive/10 hover:text-destructive sm:after:hidden"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
+                          {/* Only shown once there is more than one payer: with a single payer the
+                          hero above is this field, and rendering both meant typing into one and
+                          watching the other update. */}
+                          {isMultiPayer && (
+                            <FormField
+                              control={form.control}
+                              name={`paidBy.${index}.amount`}
+                              render={({ field }) => (
+                                <FormItem className="ml-auto shrink-0 space-y-0">
+                                  {/* The item row's price field, to the class: symbol in its own
+                                    column, figure right-aligned and tabular so the decimals line
+                                    up down the column, the box tracking its value, and the
+                                    calculator inside the field rather than beside it. */}
+                                  <div className="flex w-[116px] items-center gap-1 rounded-md bg-muted pl-2 transition-shadow focus-within:ring-2 focus-within:ring-primary [&_button]:relative [&_button]:h-7 [&_button]:w-7 [&_button]:after:absolute [&_button]:after:inset-x-0 [&_button]:after:-inset-y-2 [&_button]:after:content-[''] sm:[&_button]:after:hidden">
+                                    <span className="font-mono text-xs text-subtle-foreground">
+                                      {expenseCurrency.symbol || group.currency}
+                                    </span>
+                                    <FormControl>
+                                      <CalculatorInput
+                                        placeholder="0.00"
+                                        className="h-11 sm:h-8 min-w-0 flex-1 border-0 bg-transparent shadow-none"
+                                        inputClassName="h-11 sm:h-8 w-full border-0 bg-transparent px-0 text-right font-mono text-base sm:text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                                        {...field}
+                                        onValueChange={(val) => {
+                                          handlePayerAmountChange(index, val)
+                                        }}
+                                      />
+                                    </FormControl>
+                                  </div>
+                                  <FormMessage className="mt-1 text-right text-xs" />
+                                </FormItem>
+                              )}
+                            />
+                          )}
 
-                {/* The action that adds a payer belongs to the payers, so it sits directly under
+                          {payerFields.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removePayer(index)}
+                              title={t('removePayer')}
+                              className="relative h-8 w-8 shrink-0 text-subtle-foreground after:absolute after:-inset-x-1 after:-inset-y-1.5 after:content-[''] hover:bg-destructive/10 hover:text-destructive sm:after:hidden"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  {/* The action that adds a payer belongs to the payers, so it sits directly under
                   them — the date used to be wedged between the two, which put a control and the
                   thing it acts on either side of an unrelated field. Same shape as the item list,
                   where "Add a line" follows the lines. */}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={handleAddPayer}
-                  className="h-11 sm:h-10 w-full justify-start rounded-none px-6 text-sm font-normal text-muted-foreground hover:text-foreground"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t('addPayer')}
-                </Button>
-              </div>
+                  {isMultiPayer && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={handleAddPayer}
+                      className="h-11 sm:h-10 w-full justify-start rounded-none px-6 text-sm font-normal text-muted-foreground hover:text-foreground"
+                    >
+                      <Plus className="mr-2 h-4 w-4" />
+                      {t('addPayer')}
+                    </Button>
+                  )}
+                </div>
 
-              {/* Out of More options: a date is not an advanced setting, and burying it meant
-                  every backdated expense cost two extra taps. It sits directly under Paid by so
-                  the two read as one run of ruled rows rather than two stranded rules. */}
-              <FormField
-                control={form.control}
-                name="expenseDate"
-                render={({ field }) => (
-                  <FormItem className="flex items-center justify-between gap-2 space-y-0 px-6 py-1">
-                    <FormLabel className="text-sm font-normal text-muted-foreground">
-                      {t(`${sExpense}.DateField.label`)}
-                    </FormLabel>
-                    <FormControl>
-                      <Input
-                        className="date-base h-11 w-auto rounded-md border-0 bg-muted px-3 text-right font-medium shadow-none focus-visible:ring-2 focus-visible:ring-primary sm:h-10"
-                        name="expenseDate"
-                        type="date"
-                        value={formatDate(field.value)}
-                        onChange={(e) =>
-                          field.onChange(new Date(e.target.value))
-                        }
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* The converted total was here, below Paid by and the expense date. It now sits in
-                the amount's own label row, two rows up. */}
-
-              {/* One control for how the expense is split. Three positions, because two of them
-                cover almost everything people do and the third is where the rest lives. */}
-              {!form.watch('isReimbursement') && (
-                <div className="px-6 py-3" data-testid="split-control">
-                  <Label className="text-sm font-normal text-muted-foreground">
-                    {t('SplitMode.title')}
-                  </Label>
-                  <div className="mt-1.5 grid grid-cols-3 gap-1 rounded-md bg-muted p-1">
-                    {(
-                      [
-                        ['EVENLY', 'evenly', t('SplitMode.evenly')],
-                        ['ITEMS', 'items', t('SplitMode.byItem')],
-                      ] as const
-                    ).map(([value, testId, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        data-testid={`split-mode-${testId}`}
-                        aria-pressed={splitControl === value}
-                        onClick={() => selectSplitControl(value)}
+                {/* Out of More options: a date is not an advanced setting, and burying it meant
+                  every backdated expense cost two extra taps. It pairs with Paid by while there
+                  is one payer, and takes a row of its own once there are several. */}
+                <div className="min-w-0">
+                  <FormField
+                    control={form.control}
+                    name="expenseDate"
+                    render={({ field }) => (
+                      <FormItem
                         className={cn(
-                          'min-h-11 rounded-md px-2 text-sm font-medium transition-colors',
-                          splitControl === value
-                            ? 'bg-card text-foreground shadow-sm'
-                            : 'text-muted-foreground hover:text-foreground',
+                          'space-y-0',
+                          isMultiPayer
+                            ? 'flex items-center justify-between gap-2 px-6 py-1'
+                            : 'flex w-full flex-col items-stretch gap-1',
                         )}
                       >
-                        {label}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      data-testid="split-mode-more"
-                      aria-pressed={splitControl === 'OTHER'}
-                      onClick={() => setSplitSheetOpen(true)}
-                      className={cn(
-                        'min-h-11 rounded-md px-2 text-sm font-medium transition-colors',
-                        splitControl === 'OTHER'
-                          ? 'bg-card text-foreground shadow-sm'
-                          : 'text-muted-foreground hover:text-foreground',
-                      )}
-                    >
-                      {/* Carries the chosen mode's name once one is active, so the third position
-                        never reads as "something unspecified is going on". */}
-                      {splitControl === 'OTHER'
-                        ? shortSplitModeLabel(splitMode)
-                        : t('SplitMode.more')}
-                    </button>
-                  </div>
-                  <p className="mt-1.5 text-sm text-muted-foreground">
-                    {splitControl === 'ITEMS'
-                      ? t('itemizeField.description')
-                      : t('SplitMode.description')}
-                  </p>
-                  {/* The hint directly above says "enter each line of the receipt", and until now
-                    this screen had no way to reach the thing that reads receipts — the scanner's
-                    only entry point in the whole app was an icon in the expense list's header. The
-                    itemised path is the one that most wants OCR, so it is the one that gets the
-                    offer, and it fills the lines in place rather than navigating anywhere. */}
-                  {/* Evenly is most expenses, and who is in is the thing people actually change on
-                    it. It used to live in a second card at the far end of a page one and a half
-                    screens long; here it is under the control that decides it, each chip carrying
-                    that person's share. */}
-                  {splitControl === 'EVENLY' && (
-                    <EvenlyChips
-                      form={form}
-                      group={group}
-                      currency={expenseCurrency}
-                      totalAmount={effectiveTotal}
-                      activeUserId={activeUserId}
-                    />
-                  )}
-                  {isCreate &&
-                    splitControl === 'ITEMS' &&
-                    runtimeFeatureFlags.enableReceiptExtract && (
-                      <CreateFromReceiptButton
-                        onExtracted={applyReceiptData}
-                        trigger={
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            className="mt-2 h-11 w-full sm:h-10"
-                            data-testid="scan-receipt-in-form"
-                          >
-                            <Receipt className="mr-2 h-4 w-4" />
-                            {tReceipt('scanEntry')}
-                          </Button>
-                        }
-                      />
+                        <FormLabel className="text-sm font-normal text-muted-foreground">
+                          {t(`${sExpense}.DateField.label`)}
+                        </FormLabel>
+                        <FormControl>
+                          <Input
+                            className={cn(
+                              'date-base h-11 rounded-md px-3 font-medium shadow-none focus-visible:ring-2 focus-visible:ring-primary sm:h-10',
+                              isMultiPayer
+                                ? 'w-auto border-0 bg-muted text-right'
+                                : 'w-full border bg-card',
+                            )}
+                            name="expenseDate"
+                            type="date"
+                            value={formatDate(field.value)}
+                            onChange={(e) =>
+                              field.onChange(new Date(e.target.value))
+                            }
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
                     )}
+                  />
                 </div>
-              )}
+              </div>
 
-              {/* Everything below is optional. The common case is a title, an amount and who
-                paid — those stay above the fold; date, category, currency, notes, recurrence
-                and the reimbursement flag used to sit between them, pushing the amount field
-                roughly 1,100px down a 1,900px page on a phone. */}
+              {/* Optional, and it closes the run of facts about the expense: what it was, how
+                much, who paid, when. Everything past this point is about how the money divides,
+                which is a second question and deserves the bottom of the form to itself — the
+                collapsible used to sit under the split, so opening it pushed Save off a screen
+                the reader had already scrolled to the end of. */}
               <Collapsible
                 open={showMoreOptions}
                 onOpenChange={setShowMoreOptions}
-                className="col-span-2"
               >
                 <CollapsibleTrigger asChild>
                   <Button
@@ -1694,7 +1632,7 @@ export function ExpenseForm({
                   Radix sets when this closes — a class beats a UA attribute selector — so the
                   collapsed section kept rendering as a grid and reserving its 16px of top padding
                   under a rule with nothing beneath it. */}
-                <CollapsibleContent className="grid gap-x-6 gap-y-1 pt-1 sm:grid-cols-2">
+                <CollapsibleContent className="flex flex-col gap-1 pt-1">
                   {/* The category control is the icon beside the title now. Two controls writing
                     one field is the mistake 09841a4 fixed for the split mode. */}
 
@@ -1703,7 +1641,7 @@ export function ExpenseForm({
                     not become a different mistake one section further down. */}
                   <div
                     className={cn(
-                      'col-span-2 space-y-2 px-6 py-2 sm:col-span-1',
+                      'space-y-2 px-6 py-2',
                       !conversionRequired && 'hidden sm:block sm:invisible',
                     )}
                   >
@@ -1798,7 +1736,7 @@ export function ExpenseForm({
                     control={form.control}
                     name="notes"
                     render={({ field }) => (
-                      <FormItem className="col-span-2 space-y-1 px-6 py-2">
+                      <FormItem className="space-y-1 px-6 py-2">
                         <FormLabel className="text-sm font-normal text-muted-foreground">
                           {t('notesField.label')}
                         </FormLabel>
@@ -1864,7 +1802,7 @@ export function ExpenseForm({
                         // 176px of dead row between the end of the words and a 16px box pinned to
                         // the right edge. Stretching the label across that gap makes the whole row
                         // the target, which is what a row like this looks like it is.
-                        <FormItem className="col-span-2 flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 px-6 sm:min-h-10">
+                        <FormItem className="flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 px-6 sm:min-h-10">
                           <FormLabel className="flex-1 cursor-pointer py-3 text-sm font-normal text-muted-foreground">
                             {t('isReimbursementField.label')}
                           </FormLabel>
@@ -1886,7 +1824,7 @@ export function ExpenseForm({
                     control={form.control}
                     name="saveDefaultSplittingOptions"
                     render={({ field }) => (
-                      <FormItem className="col-span-2 flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 px-6 sm:min-h-10">
+                      <FormItem className="flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 px-6 sm:min-h-10">
                         <FormLabel className="flex-1 cursor-pointer py-3 text-sm font-normal text-muted-foreground">
                           {t('SplitModeField.saveAsDefault')}
                         </FormLabel>
@@ -1901,6 +1839,97 @@ export function ExpenseForm({
                   />
                 </CollapsibleContent>
               </Collapsible>
+
+              {!form.watch('isReimbursement') && (
+                <div className="px-6 py-3" data-testid="split-control">
+                  <Label className="text-sm font-normal text-muted-foreground">
+                    {t('SplitMode.title')}
+                  </Label>
+                  <div className="mt-1.5 grid grid-cols-3 gap-1 rounded-md bg-muted p-1">
+                    {(
+                      [
+                        ['EVENLY', 'evenly', t('SplitMode.evenly')],
+                        ['ITEMS', 'items', t('SplitMode.byItem')],
+                      ] as const
+                    ).map(([value, testId, label]) => (
+                      <button
+                        key={value}
+                        type="button"
+                        data-testid={`split-mode-${testId}`}
+                        aria-pressed={splitControl === value}
+                        onClick={() => selectSplitControl(value)}
+                        className={cn(
+                          'min-h-11 rounded-md px-2 text-sm font-medium transition-colors',
+                          splitControl === value
+                            ? 'bg-card text-foreground shadow-sm'
+                            : 'text-muted-foreground hover:text-foreground',
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      data-testid="split-mode-more"
+                      aria-pressed={splitControl === 'OTHER'}
+                      onClick={() => setSplitSheetOpen(true)}
+                      className={cn(
+                        'min-h-11 rounded-md px-2 text-sm font-medium transition-colors',
+                        splitControl === 'OTHER'
+                          ? 'bg-card text-foreground shadow-sm'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      {/* Carries the chosen mode's name once one is active, so the third position
+                        never reads as "something unspecified is going on". */}
+                      {splitControl === 'OTHER'
+                        ? shortSplitModeLabel(splitMode)
+                        : t('SplitMode.more')}
+                    </button>
+                  </div>
+                  <p className="mt-1.5 text-sm text-muted-foreground">
+                    {splitControl === 'ITEMS'
+                      ? t('itemizeField.description')
+                      : t('SplitMode.description')}
+                  </p>
+                  {/* The hint directly above says "enter each line of the receipt", and until now
+                    this screen had no way to reach the thing that reads receipts — the scanner's
+                    only entry point in the whole app was an icon in the expense list's header. The
+                    itemised path is the one that most wants OCR, so it is the one that gets the
+                    offer, and it fills the lines in place rather than navigating anywhere. */}
+                  {/* Evenly is most expenses, and who is in is the thing people actually change on
+                    it. It used to live in a second card at the far end of a page one and a half
+                    screens long; here it is under the control that decides it, each chip carrying
+                    that person's share. */}
+                  {splitControl === 'EVENLY' && (
+                    <EvenlyChips
+                      form={form}
+                      group={group}
+                      currency={expenseCurrency}
+                      totalAmount={effectiveTotal}
+                      activeUserId={activeUserId}
+                    />
+                  )}
+                  {isCreate &&
+                    splitControl === 'ITEMS' &&
+                    runtimeFeatureFlags.enableReceiptExtract && (
+                      <CreateFromReceiptButton
+                        onExtracted={applyReceiptData}
+                        trigger={
+                          <Button
+                            type="button"
+                            variant="secondary"
+                            className="mt-2 h-11 w-full sm:h-10"
+                            data-testid="scan-receipt-in-form"
+                          >
+                            <Receipt className="mr-2 h-4 w-4" />
+                            {tReceipt('scanEntry')}
+                          </Button>
+                        }
+                      />
+                    )}
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -2114,23 +2143,11 @@ export function ExpenseForm({
               onDelete={() => onDelete(activeUserId ?? undefined)}
             ></DeletePopup>
           )}
-          {/* Cancel is the one exit that says, unambiguously, throw this away — so it does. No
-              dialog: it was asked for without one, and a confirm on the deliberate exit taxes it
-              to protect the accidental one, which is what the draft is already for. */}
-          <Button
-            variant="ghost"
-            className="h-11 sm:h-10"
-            asChild
-            onPointerDown={() => {
-              abandoningRef.current = true
-            }}
-            onClick={() => {
-              discardedRef.current = true
-              clearExpenseDraft(draftScope)
-            }}
-          >
-            <Link href={`/groups/${group.id}`}>{t('cancel')}</Link>
-          </Button>
+          {/* Cancel is gone. It duplicated the exit the chevron and the device's own back
+              button already are, and it was the only one of the three that threw the draft away —
+              so the same gesture meant "keep this" or "lose it" depending on which of two
+              adjacent controls you reached for. Leaving now always keeps; discarding is offered
+              on the way back in, on the banner that says a draft was found. */}
         </div>
       </form>
     </Form>
