@@ -67,6 +67,33 @@
        category, over time — is drawn entirely in the neutral. Length does the comparing. */
     --chart-1: 162 88% 24%; /* 5.86 vs the sheet */
     --chart-2: 42 9% 52%; /* 3.47 vs the sheet, 1.69 against --chart-1 */
+    /* Participant plates. The mark used to be the loudest thing on the screen — one of seventeen
+       Tailwind 500-weight hues hashed off the name, encoding nothing — and then it was nothing at
+       all, one neutral plate for everyone with colour reserved for you. Eight hues is the middle:
+       enough to tell a group apart at a glance, chosen rather than borrowed.
+       Every hue sits at least 26° from --credit (162), --debt (16) and --primary (162), so a
+       person is never mistaken for a state, and at least 26° from its neighbours, so two people
+       are never mistaken for each other. Green is absent on purpose: it is the money colour.
+       Pale plate, dark mark; the pairing inverts in dark. Ratios below are mark-on-plate — the
+       worst of the sixteen pairs is 4.97:1, which clears AA body text although the mark is
+       decorative and aria-hidden (the name is always beside it).
+       Derived and measured by scripts/avatar-hues.js. */
+    --avatar-1: 48 62% 84%;
+    --avatar-1-foreground: 48 62% 25%; /* 5.61 */
+    --avatar-2: 78 62% 84%;
+    --avatar-2-foreground: 78 62% 25%; /* 5.25 */
+    --avatar-3: 196 62% 84%;
+    --avatar-3-foreground: 196 62% 25%; /* 6.24 */
+    --avatar-4: 222 62% 84%;
+    --avatar-4-foreground: 222 62% 25%; /* 7.88 */
+    --avatar-5: 250 62% 84%;
+    --avatar-5-foreground: 250 62% 25%; /* 8.45 */
+    --avatar-6: 280 62% 84%;
+    --avatar-6-foreground: 280 62% 25%; /* 7.69 */
+    --avatar-7: 310 62% 84%;
+    --avatar-7-foreground: 310 62% 25%; /* 7.05 */
+    --avatar-8: 336 62% 84%;
+    --avatar-8-foreground: 336 62% 25%; /* 7.28 */
   }
 
   /* Designed rather than inverted. The previous dark theme was a warm brown-black (#0C0A09) with a
@@ -106,6 +133,25 @@
        they stop competing with each other when they sit in the same column. */
     --credit: 158 48% 66%; /* 10.40 · 9.36 · 8.29, and 7.59 at worst on bg-credit/10 */
     --debt: 22 72% 64%; /* 7.61 · 6.85 · 6.07, and 5.85 at worst on bg-debt/10 */
+    /* Same eight hues, the plate and the mark swapped over: a pale plate that reads as a tinted
+       chip on white is a lamp on a dark sheet. Saturation drops to 26% on the plate for the
+       reason the rest of this theme drops it — eight saturated marks in one column fight. */
+    --avatar-1: 48 26% 26%;
+    --avatar-1-foreground: 48 62% 76%; /* 5.99 */
+    --avatar-2: 78 26% 26%;
+    --avatar-2-foreground: 78 62% 76%; /* 6.08 */
+    --avatar-3: 196 26% 26%;
+    --avatar-3-foreground: 196 62% 76%; /* 5.76 */
+    --avatar-4: 222 26% 26%;
+    --avatar-4-foreground: 222 62% 76%; /* 5.28 */
+    --avatar-5: 250 26% 26%;
+    --avatar-5-foreground: 250 62% 76%; /* 4.97 */
+    --avatar-6: 280 26% 26%;
+    --avatar-6-foreground: 280 62% 76%; /* 5.18 */
+    --avatar-7: 310 26% 26%;
+    --avatar-7-foreground: 310 62% 76%; /* 5.30 */
+    --avatar-8: 336 26% 26%;
+    --avatar-8-foreground: 336 62% 76%; /* 5.24 */
   }
 }
 

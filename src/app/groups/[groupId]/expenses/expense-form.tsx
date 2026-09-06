@@ -49,6 +49,7 @@ import {
 import { Textarea } from '@/components/ui/textarea'
 import { Locale } from '@/i18n/request'
 import { readActiveUser } from '@/lib/active-user'
+import { assignAvatarHues } from '@/lib/avatar-hue'
 import {
   Currency,
   defaultCurrencyList,
@@ -2167,6 +2168,7 @@ function PaidForList({
     name: 'isReimbursement',
   })
   const expenseDate = useWatch({ control: form.control, name: 'expenseDate' })
+  const avatarHues = assignAvatarHues(group.participants.map((p) => p.name))
 
   const getCalculatedShare = (participantId: string) => {
     return calculateShare(participantId, {
@@ -2282,6 +2284,7 @@ function PaidForList({
               <FormLabel className="flex flex-1 items-center gap-3 text-sm font-normal">
                 <ProfileAvatar
                   name={name}
+                  hue={avatarHues.get(name)}
                   isActiveUser={activeUserId === id}
                   size={28}
                 />

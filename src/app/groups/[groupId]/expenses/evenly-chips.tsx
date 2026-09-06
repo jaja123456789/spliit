@@ -2,6 +2,7 @@
 
 import { ProfileAvatar } from '@/components/profile-avatar'
 import { Button } from '@/components/ui/button'
+import { assignAvatarHues } from '@/lib/avatar-hue'
 import { Currency } from '@/lib/currency'
 import { ExpenseFormValues } from '@/lib/schemas'
 import {
@@ -45,6 +46,7 @@ export function EvenlyChips({
   const t = useTranslations('ExpenseForm')
   const locale = useLocale()
   const paidFor = useWatch({ control: form.control, name: 'paidFor' }) ?? []
+  const avatarHues = assignAvatarHues(group.participants.map((p) => p.name))
 
   const isOn = (id: string) =>
     paidFor.some((entry: any) => entry.participant === id)
@@ -118,6 +120,7 @@ export function EvenlyChips({
             >
               <ProfileAvatar
                 name={participant.name}
+                hue={avatarHues.get(participant.name)}
                 isActiveUser={!!activeUserId && activeUserId === participant.id}
                 size={26}
                 className={cn(!on && 'opacity-50')}

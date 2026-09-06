@@ -23,6 +23,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { assignAvatarHues } from '@/lib/avatar-hue'
 import { Currency } from '@/lib/currency'
 import { useMediaQuery, useMobilePopoverState } from '@/lib/hooks'
 import {
@@ -61,6 +62,11 @@ function ParticipantStack({
   activeUserId?: string | null
 }) {
   if (participantIds.length === 0) return null
+  // Not memoised: this sits after an early return, so it cannot be a hook, and settling eight
+  // names is cheaper than the array copy on the next line.
+  const avatarHues = assignAvatarHues(group.participants.map((p) => p.name))
+  const nameOfParticipant = (id: string) =>
+    group.participants.find((p) => p.id === id)?.name ?? '?'
   // The active user first, so their mark is never the one hidden behind the "+n".
   const ordered = [...participantIds].sort((a, b) =>
     a === activeUserId ? -1 : b === activeUserId ? 1 : 0,
@@ -84,7 +90,8 @@ function ParticipantStack({
           )}
         >
           <ProfileAvatar
-            name={group.participants.find((p) => p.id === id)?.name ?? '?'}
+            name={nameOfParticipant(id)}
+            hue={avatarHues.get(nameOfParticipant(id))}
             isActiveUser={!!activeUserId && id === activeUserId}
             size={20}
             className="!rounded-full"

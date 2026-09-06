@@ -3,6 +3,7 @@
 import { Money } from '@/components/money'
 import { ProfileAvatar } from '@/components/profile-avatar'
 import { Skeleton } from '@/components/ui/skeleton'
+import { assignAvatarHues } from '@/lib/avatar-hue'
 import { Currency } from '@/lib/currency'
 import { useActiveUser } from '@/lib/hooks'
 import { trpc } from '@/trpc/client'
@@ -40,6 +41,10 @@ export function PaymentList({ groupId, participants, currency }: Props) {
 
   const nameOf = (id: string | null) =>
     participants.find((p) => p.id === id)?.name ?? ''
+
+  // A row titled after the payment rather than after a person falls through to the name's own
+  // preference, which is the right answer: it is not one of the group's people.
+  const avatarHues = assignAvatarHues(participants.map((p) => p.name))
 
   const recordRow = (
     <Link
@@ -85,6 +90,7 @@ export function PaymentList({ groupId, participants, currency }: Props) {
             >
               <ProfileAvatar
                 name={readsAsDirection ? fromName : payment.title}
+                hue={readsAsDirection ? avatarHues.get(fromName) : undefined}
                 isActiveUser={!!activeUserId && activeUserId === payment.from}
                 size={32}
               />

@@ -3,6 +3,7 @@
 import { Money } from '@/components/money'
 import { ProfileAvatar } from '@/components/profile-avatar'
 import { Button } from '@/components/ui/button'
+import { assignAvatarHues } from '@/lib/avatar-hue'
 import { Reimbursement } from '@/lib/balances'
 import { Currency } from '@/lib/currency'
 import { useActiveUser } from '@/lib/hooks'
@@ -38,6 +39,7 @@ export function ReimbursementList({
   const t = useTranslations('Balances.Reimbursements')
   const tBalances = useTranslations('Balances')
   const activeUserId = useActiveUser(groupId)
+  const avatarHues = assignAvatarHues(participants.map((p) => p.name))
 
   if (reimbursements.length === 0) {
     return (
@@ -71,6 +73,7 @@ export function ReimbursementList({
           >
             <ProfileAvatar
               name={fromName}
+              hue={avatarHues.get(fromName)}
               isActiveUser={activeUserId === reimbursement.from}
               size={32}
             />

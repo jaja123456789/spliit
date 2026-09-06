@@ -2,6 +2,7 @@
 
 import { Money } from '@/components/money'
 import { ProfileAvatar } from '@/components/profile-avatar'
+import { assignAvatarHues } from '@/lib/avatar-hue'
 import { Balances } from '@/lib/balances'
 import { Currency } from '@/lib/currency'
 import { useActiveUser } from '@/lib/hooks'
@@ -26,6 +27,10 @@ export function BalancesList({
   const activeUserId = useActiveUser(groupId)
   // `useActiveUser` is null both before its effect runs and when nobody is selected.
   const isActiveUser = (id: string) => !!activeUserId && activeUserId === id
+
+  // Settled once for the whole group rather than per row, so no two people here wear the same
+  // plate and each of them wears it on every other screen too.
+  const avatarHues = assignAvatarHues(participants.map((p) => p.name))
 
   // `Math.max()` of an empty list is -Infinity, which would turn every width into NaN.
   const totals = Object.values(balances).map((b) => Math.abs(b.total))
@@ -52,6 +57,7 @@ export function BalancesList({
           >
             <ProfileAvatar
               name={participant.name}
+              hue={avatarHues.get(participant.name)}
               isActiveUser={isYou}
               size={40}
             />
