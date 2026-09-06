@@ -426,7 +426,7 @@ export function ItemizationBuilder({
                 data-testid={`item-row-${index}`}
                 data-testid-error={rowError ? 'true' : undefined}
                 className={cn(
-                  'mx-6 space-y-2.5 rounded-lg border px-3 py-2.5 transition-colors',
+                  'mx-6 rounded-lg border px-3 py-2.5 transition-colors',
                   isRowSelected && 'border-primary/40 bg-primary/5',
                   isOpen ? 'bg-primary/5' : 'bg-card',
                   // The line the message at the foot of the list is talking about. A left edge
@@ -448,9 +448,9 @@ export function ItemizationBuilder({
                       label={currentItem.name || t('itemNamePlaceholder')}
                     />
                   )}
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 space-y-2.5">
                     {isEditing ? (
-                      <div className={cn('flex items-center gap-2.5')}>
+                      <div className="flex items-start gap-2.5">
                         {/* Name and price are the receipt line. Borderless: a bordered box around each
                         is the "control array" the concept trades away — four lines of a bill became
                         eight bordered inputs stacked in four bordered cards. */}
@@ -609,6 +609,30 @@ export function ItemizationBuilder({
                     {/* Only on the line being edited. Closed, a line is its name and its
                         price and nothing else — the strip is a control, and a card full of
                         controls you are not using is the thing the two states exist to avoid. */}
+                    {!isEditing && (
+                      <div
+                        data-testid={`assign-row-${index}`}
+                        className="flex min-h-8 w-full items-center gap-2 pr-[31px] text-left"
+                      >
+                        <ParticipantStack
+                          participantIds={participantIds}
+                          group={group}
+                          activeUserId={activeUserId}
+                        />
+                        <span className="min-w-0 truncate text-xs text-muted-foreground">
+                          {summaryText}
+                        </span>
+                        <span className="flex-1" />
+                        <YourShare
+                          currency={currency}
+                          amount={perPersonAmount}
+                          show={itemPrice > 0}
+                          isMine={isMeInvolved}
+                          withLabel
+                        />
+                      </div>
+                    )}
+
                     {isEditing && !inlineMarks && (
                       <RowPeoplePicker
                         isDesktop={isDesktop}
@@ -636,15 +660,9 @@ export function ItemizationBuilder({
                             type="button"
                             data-testid={`assign-row-${index}`}
                             disabled={isSelecting}
-                            className={cn(
-                              'flex min-h-11 w-full items-center gap-2 rounded-md text-left transition-colors disabled:opacity-100 disabled:hover:bg-transparent sm:min-h-10',
-                              // Open, it is the one control under the two fields, and the concept
-                              // draws it as a box of its own on the tinted card. Closed, it is a quiet
-                              // strip inside the line.
-                              isEditing
-                                ? 'border border-input bg-card px-2.5 hover:bg-muted/40'
-                                : 'pr-[31px] hover:bg-muted/60',
-                            )}
+                            // A box of its own on the tinted card, as the concept draws the
+                            // open line: the one control under the two fields.
+                            className="flex min-h-11 w-full items-center gap-2 rounded-md border border-input bg-card px-2.5 text-left transition-colors hover:bg-muted/40 disabled:opacity-100 disabled:hover:bg-transparent"
                           >
                             <ParticipantStack
                               participantIds={participantIds}
