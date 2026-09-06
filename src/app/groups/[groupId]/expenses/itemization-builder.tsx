@@ -36,7 +36,7 @@ import {
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { Check, ChevronDown, Plus, Trash2, Users } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useFormContext } from 'react-hook-form'
 
 type Group = NonNullable<AppRouterOutput['groups']['get']['group']>
@@ -235,10 +235,35 @@ export function ItemizationBuilder({
    * Whether the marks are individual targets in the row instead of a stack you tap to open.
    *
    * The concept draws it both ways deliberately: a phone row has space for a stack and nothing
-   * more, a desktop row is "wide enough for individual targets again". Six is where twelve
-   * 28px marks plus a name, a price and a figure stop fitting in a 734px row.
+   * more, a wide row is "wide enough for individual targets again". Which of the two you get is a
+   * question about width, so it is answered by measuring one — this was `isDesktop && count <= 6`,
+   * two proxies for the same thing that between them got a 1024px window with seven people wrong
+   * in one direction and a 900px window with three people wrong in the other.
    */
-  const inlineMarks = isDesktop && group.participants.length <= 6
+  const rowsRef = useRef<HTMLDivElement | null>(null)
+  const [rowsWidth, setRowsWidth] = useState(0)
+  useEffect(() => {
+    const el = rowsRef.current
+    if (!el) return
+    setRowsWidth(el.getBoundingClientRect().width)
+    if (typeof ResizeObserver === 'undefined') return
+    const observer = new ResizeObserver(([entry]) =>
+      setRowsWidth(entry.contentRect.width),
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  // A 30px mark and the 4px gap after it, against what the rest of the line cannot give up: the
+  // price field, your share, the bin, the gaps between them, and enough of the name to read a
+  // dish off. `- 48` is the rows' own `px-6`, which the measured container does not pay.
+  const MARK_WIDTH = 34
+  const ROW_RESERVE = 120 + 56 + 36 + 30
+  const NAME_MIN = 132
+  const inlineMarks =
+    rowsWidth > 0 &&
+    rowsWidth - 48 >=
+      NAME_MIN + ROW_RESERVE + group.participants.length * MARK_WIDTH
 
   const toggleRow = (rowId: string) =>
     setSelectedRowIds((current) =>
@@ -320,7 +345,7 @@ export function ItemizationBuilder({
         {/* The lines, as one run of ruled rows spanning the sheet rather than a stack of cards.
             `-mx-6` with each row paying it back: a rule that stops at the card's padding reads as
             another box, which is the shape the concept trades away. */}
-        <div className="-mx-6">
+        <div className="-mx-6" ref={rowsRef}>
           {/* Selection mode announces itself in one bar at the head of the run — the count, the
               money it adds up to, and the action. It was a floating rounded slab wedged between
               the last line and "Add a line", which is the one place on the sheet nothing else
@@ -427,14 +452,13 @@ export function ItemizationBuilder({
                                 printed text. A soft fill is the lightest thing that still says
                                 "field" without putting a bordered control back in every row —
                                 the box is the shape, the border is what made it a slab. */}
-                            {/* A fill, not a boundary. Every control on this form is a tinted
-                                shape now and every rule is gone, so there is no divider left for
-                                a field's outline to be confused with. The cost is real and
-                                deliberate: `--muted` is 1.15:1 against the sheet where the old
-                                `--input` boundary was 3.46:1, so at rest the fields lean on their
-                                labels and placeholders to identify themselves. Focus is where the
-                                contrast went — a full-strength primary ring at 5.10:1. */}
-                            <div className="rounded-md bg-muted transition-shadow focus-within:ring-2 focus-within:ring-primary">
+                            {/* Bordered again, and on the card fill. That note argued for a fill
+                                because "every control on this form is a tinted shape now and
+                                every rule is gone" — which stopped being true when the amount,
+                                the title, the payers and the date all became bordered boxes. A
+                                receipt line is the same kind of thing they are, and it was the
+                                last fill left on the sheet. */}
+                            <div className="rounded-md border bg-card transition-shadow focus-within:ring-2 focus-within:ring-primary">
                               <FormControl>
                                 <Input
                                   {...field}
@@ -510,7 +534,7 @@ export function ItemizationBuilder({
                                 which is aligned to the button's width. What it gains is the
                                 field's full height as a target — a 28x44 hit area on a 28x28
                                 face, which costs no layout at all. */}
-                            <div className="flex w-[100px] items-center gap-0.5 rounded-md bg-muted pl-1.5 transition-shadow focus-within:ring-2 focus-within:ring-primary [&_button]:relative [&_button]:h-7 [&_button]:w-7 [&_button]:after:absolute [&_button]:after:inset-x-0 [&_button]:after:-inset-y-2 [&_button]:after:content-[''] sm:[&_button]:after:hidden">
+                            <div className="flex w-[104px] items-center gap-0.5 rounded-md border bg-card pl-1.5 transition-shadow focus-within:ring-2 focus-within:ring-primary [&_button]:relative [&_button]:h-7 [&_button]:w-7 [&_button]:after:absolute [&_button]:after:inset-x-0 [&_button]:after:-inset-y-2 [&_button]:after:content-[''] sm:[&_button]:after:hidden">
                               <span className="font-mono text-xs text-subtle-foreground">
                                 {currency.symbol || group.currency}
                               </span>

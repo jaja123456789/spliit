@@ -2056,6 +2056,19 @@ export function ExpenseForm({
                         }
                       />
                     )}
+                  {isItemized && (
+                    <div className="mt-3">
+                      <ItemizationBuilder
+                        group={group}
+                        currency={expenseCurrency}
+                        totalAmount={totalAmount}
+                        fields={itemFields}
+                        append={itemAppend}
+                        remove={itemRemove}
+                        activeUserId={activeUserId}
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -2064,21 +2077,7 @@ export function ExpenseForm({
         {/* A plain sheet. The dashed double border framed the lines as a foreign object pasted
             into the form, and the header repeated, word for word, the hint the split control
             directly above it already shows. */}
-        {isItemized ? (
-          <Card bleed className="mt-4">
-            <CardContent className="pt-0">
-              <ItemizationBuilder
-                group={group}
-                currency={expenseCurrency}
-                totalAmount={totalAmount}
-                fields={itemFields}
-                append={itemAppend}
-                remove={itemRemove}
-                activeUserId={activeUserId}
-              />
-            </CardContent>
-          </Card>
-        ) : null}
+
         {runtimeFeatureFlags.enableExpenseDocuments && (
           <Card bleed className="mt-4">
             <CardHeader>
