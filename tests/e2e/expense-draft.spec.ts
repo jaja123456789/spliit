@@ -4,20 +4,19 @@ import { createGroupViaAPI } from '../helpers/batch-api'
 import { AMOUNT_INPUT } from '../helpers/expense'
 
 /**
- * A half-typed expense survives leaving the form, and comes back without asking.
+ * A half-typed expense survives leaving the form, and is offered back on the way in.
  *
- * There used to be a banner — "you have an unsaved expense, restore or discard?" — which made you
- * read and decide, every time, about something you almost always want. Now the form simply returns
- * as you left it and says so quietly, with a way out for the time you did not want it.
+ * The form used to return already filled in and say so afterwards. It opens as a new expense now
+ * and offers the draft instead: leaving deliberately is the common case and coming back to your own
+ * half-typed expense is the rare one, so the rare one asks and the common one costs nothing. The
+ * offer is also where discarding lives, now that Cancel is gone.
  *
- * Two things constrain that, and both are here: it must hold an expense rather than the residue of
- * one (typing a title and deleting it leaves the category the extractor guessed; typing an amount
- * and clearing it leaves `""` where a `0` was; dropping someone from the split and adding them back
- * rebuilds `paidFor`), and it must be recent — the accident this protects against is one you notice
- * at once, so past a couple of minutes a form that fills itself in is worse than an empty one.
+ * Two things constrain what is kept, and both are here: it must hold an expense rather than the
+ * residue of one (typing a title and deleting it leaves the category the extractor guessed; typing
+ * an amount and clearing it leaves `""` where a `0` was; dropping someone from the split and adding
+ * them back rebuilds `paidFor`), and it must be recent — the accident this protects against is one
+ * you notice at once, so past a couple of minutes an offer to bring it back is noise.
  */
-
-const RESTORED = /Restored from earlier/i
 
 async function newGroup(page: Page) {
   await page.goto('/groups')
@@ -36,12 +35,12 @@ async function openCreateForm(page: Page, groupId: string) {
   await page.waitForTimeout(700)
 }
 
-/** What the form actually holds, which is a stronger question than what banner it is showing. */
+/** What the form actually holds, and whether a draft is being offered for it. */
 async function formState(page: Page) {
   return {
     title: await page.locator('[name="title"]').inputValue(),
     amount: await page.locator(AMOUNT_INPUT).inputValue(),
-    restored: (await page.getByText(RESTORED).count()) > 0,
+    offered: (await page.getByTestId('draft-offer').count()) > 0,
   }
 }
 
@@ -79,7 +78,9 @@ async function seedDraft(
 }
 
 test.describe('A half-typed expense', () => {
-  test('comes back on its own, with a way to start fresh', async ({ page }) => {
+  test('is offered rather than applied, and restores on request', async ({
+    page,
+  }) => {
     const groupId = await newGroup(page)
     await openCreateForm(page, groupId)
     await page.locator('[name="title"]').fill('Taxi to the airport')
@@ -91,19 +92,37 @@ test.describe('A half-typed expense', () => {
     await page.goto(`/groups/${groupId}/expenses`)
     await openCreateForm(page, groupId)
 
+    // The form is a new expense. The draft is on offer, not in the fields.
+    expect(await formState(page)).toMatchObject({
+      title: '',
+      offered: true,
+    })
+
+    await page.getByTestId('draft-restore').click()
     expect(await formState(page)).toMatchObject({
       title: 'Taxi to the airport',
       amount: '30',
-      restored: true,
+      offered: false,
     })
+  })
 
-    await page.getByTestId('draft-start-fresh').click()
-    await expect(page.locator('[name="title"]')).toHaveValue('')
-    await expect(page.getByText(RESTORED)).toHaveCount(0)
-
-    // And starting fresh means it does not come back on the next visit either.
+  test('is discarded from the same offer, and does not come back', async ({
+    page,
+  }) => {
+    const groupId = await newGroup(page)
     await openCreateForm(page, groupId)
-    expect(await formState(page)).toMatchObject({ title: '', restored: false })
+    await page.locator('[name="title"]').fill('Never sent')
+    await page.locator(AMOUNT_INPUT).fill('14')
+    await page.locator('[name="title"]').blur()
+    await page.waitForTimeout(800)
+
+    await page.goto(`/groups/${groupId}/expenses`)
+    await openCreateForm(page, groupId)
+    await page.getByTestId('draft-discard').click()
+    await expect(page.getByTestId('draft-offer')).toHaveCount(0)
+
+    await openCreateForm(page, groupId)
+    expect(await formState(page)).toMatchObject({ title: '', offered: false })
   })
 
   test('comes back on an amount alone — the figure is the expense', async ({
@@ -116,10 +135,9 @@ test.describe('A half-typed expense', () => {
     await page.waitForTimeout(800)
 
     await openCreateForm(page, groupId)
-    expect(await formState(page)).toMatchObject({
-      amount: '12.75',
-      restored: true,
-    })
+    expect(await formState(page)).toMatchObject({ offered: true })
+    await page.getByTestId('draft-restore').click()
+    expect(await formState(page)).toMatchObject({ amount: '12.75' })
   })
 
   test('is gone once the expense has actually been saved', async ({ page }) => {
@@ -138,13 +156,12 @@ test.describe('A half-typed expense', () => {
     await page.waitForTimeout(800)
 
     await openCreateForm(page, groupId)
-    expect(await formState(page)).toMatchObject({ title: '', restored: false })
+    expect(await formState(page)).toMatchObject({ title: '', offered: false })
   })
 
   // Cancel used to be the one exit that discarded, and this test asserted that. There is no
   // Cancel any more: every way out of the form is now the same way out, and it keeps what was
-  // typed. Discarding moved to the banner on the way back in, which the first test in this file
-  // already covers.
+  // typed. Discarding moved to the offer on the way back in, covered above.
   test('survives leaving the form, however you leave it', async ({ page }) => {
     const groupId = await newGroup(page)
     await openCreateForm(page, groupId)
@@ -158,10 +175,9 @@ test.describe('A half-typed expense', () => {
     await page.waitForTimeout(800)
 
     await openCreateForm(page, groupId)
-    expect(await formState(page)).toMatchObject({
-      title: 'Never mind',
-      restored: true,
-    })
+    expect(await formState(page)).toMatchObject({ title: '', offered: true })
+    await page.getByTestId('draft-restore').click()
+    await expect(page.locator('[name="title"]')).toHaveValue('Never mind')
   })
 
   test('offers no Cancel to discard through', async ({ page }) => {
@@ -176,10 +192,9 @@ test.describe('A half-typed expense', () => {
     await seedDraft(page, groupId, 30_000, 'Recent dinner')
 
     await openCreateForm(page, groupId)
-    expect(await formState(page)).toMatchObject({
-      title: 'Recent dinner',
-      restored: true,
-    })
+    expect(await formState(page)).toMatchObject({ offered: true })
+    await page.getByTestId('draft-restore').click()
+    await expect(page.locator('[name="title"]')).toHaveValue('Recent dinner')
   })
 
   test('does not come back when it is older than two minutes', async ({
@@ -190,7 +205,7 @@ test.describe('A half-typed expense', () => {
     await seedDraft(page, groupId, 3 * 60_000, 'Forgotten dinner')
 
     await openCreateForm(page, groupId)
-    expect(await formState(page)).toMatchObject({ title: '', restored: false })
+    expect(await formState(page)).toMatchObject({ title: '', offered: false })
 
     const left = await page.evaluate(
       (key) => localStorage.getItem(key),
@@ -243,7 +258,7 @@ test.describe('What is not an expense is not kept', () => {
       await openCreateForm(page, groupId)
       expect(await formState(page)).toMatchObject({
         title: '',
-        restored: false,
+        offered: false,
       })
     })
   }

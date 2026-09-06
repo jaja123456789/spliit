@@ -279,6 +279,42 @@ const TitleTextarea = forwardRef<
   )
 })
 
+/**
+ * What counts as the same form, for deciding whether anything has been edited.
+ *
+ * A plain `JSON.stringify` of the values compares two things it should not: the order of the rows
+ * and the type they happen to be carrying. `paidFor` is rebuilt whenever someone is added or
+ * dropped, so taking a person off and putting them back reordered the array and the form counted
+ * as changed forever after; amounts round-trip between numbers and the strings the inputs hold, so
+ * `0` and `"0"` read as an edit. Sort the rows by who they are about and compare their figures as
+ * figures. `conversionRate` is excluded: the exchange-rate effect fills it in on its own, which is
+ * not the user typing anything.
+ */
+const fingerprintValues = (values: unknown) => {
+  const { conversionRate, ...rest } = (values ?? {}) as Record<string, any>
+  const figure = (value: unknown) => Number(value) || 0
+  const byParticipant = (rows: unknown) =>
+    (Array.isArray(rows) ? rows : [])
+      .map((row: any) => ({
+        participant: String(row?.participant ?? ''),
+        amount: figure(row?.amount),
+        shares: figure(row?.shares),
+      }))
+      .sort((a, b) => a.participant.localeCompare(b.participant))
+  return JSON.stringify({
+    ...rest,
+    // The clock is not an edit: only the day someone picked is.
+    expenseDate: new Date(rest.expenseDate ?? NaN).toDateString(),
+    paidBy: byParticipant(rest.paidBy),
+    paidFor: byParticipant(rest.paidFor),
+    items: (Array.isArray(rest.items) ? rest.items : []).map((item: any) => ({
+      name: String(item?.name ?? ''),
+      price: figure(item?.price),
+      participantIds: [...(item?.participantIds ?? [])].sort(),
+    })),
+  })
+}
+
 function formatDate(date?: Date) {
   if (!date || isNaN(date as any)) date = new Date()
   return date.toISOString().substring(0, 10)
@@ -563,7 +599,9 @@ export function ExpenseForm({
   // Restored, not offered. Being asked "you have an unsaved expense — restore or discard?" makes
   // you read and decide, every time, about something you almost always want; the form simply comes
   // back as you left it and says so quietly, with a way out for the time you did not want it.
-  const [restoredDraft, setRestoredDraft] = useState(false)
+  const [pendingDraft, setPendingDraft] = useState<ExpenseFormValues | null>(
+    null,
+  )
   const pristineValuesRef = useRef<ExpenseFormValues | null>(null)
   const lastExtractedTitleRef = useRef<string | null>(null)
 
@@ -790,9 +828,13 @@ export function ExpenseForm({
     }
   }, [isCreate, searchParams, applyReceiptData])
 
-  // Restore before the fingerprint below is taken, which is why this effect is declared first:
-  // the baseline then *is* the restored draft, so merely opening the form does not count as an
-  // edit and does not re-stamp the draft's clock.
+  // The form opens as a new expense and *offers* the draft, rather than arriving already filled
+  // in. Leaving deliberately is the common case and coming back to your own half-typed expense is
+  // the rare one, so the rare one asks and the common one costs nothing.
+  //
+  // The draft is held in state as well as in storage, because typing into the blank form
+  // immediately overwrites what is stored — which is right, that is a new expense — but must not
+  // take away the thing still being offered on screen.
   useEffect(() => {
     if (importingReceipt) return
     if (pristineValuesRef.current === null) {
@@ -800,12 +842,27 @@ export function ExpenseForm({
     }
     const draft = readExpenseDraft(draftScope)
     if (!draft) return
+    setPendingDraft(draft)
+  }, [draftScope, importingReceipt, form])
+
+  const restoreDraft = () => {
+    if (!pendingDraft) return
     // No validation on the way in: a half-typed expense is exactly what this holds, and greeting
     // someone with a wall of red for the parts they had not reached yet helps nobody.
-    form.reset(draft)
-    setRestoredDraft(true)
+    form.reset(pendingDraft)
+    // The baseline moves with it. Without this the restored values read as an edit against the
+    // blank form they replaced, so leaving again immediately — having changed nothing — would
+    // count as a change and re-stamp the draft's two-minute clock.
+    initialValuesRef.current = fingerprintValues(pendingDraft)
     setShowMoreOptions(true)
-  }, [draftScope, importingReceipt, form])
+    setPendingDraft(null)
+  }
+
+  const discardDraft = () => {
+    clearExpenseDraft(draftScope)
+    savedThisMountRef.current = false
+    setPendingDraft(null)
+  }
 
   // Keep the draft alive while its form is on screen — see `touchExpenseDraft`. Only while
   // visible: a backgrounded tab is someone who has left, and their two minutes should be running.
@@ -834,43 +891,11 @@ export function ExpenseForm({
   const initialValuesRef = useRef<string | null>(null)
   const savedThisMountRef = useRef(false)
   useEffect(() => {
-    // A plain `JSON.stringify` of the values compares two things it should not: the order of the
-    // rows and the type they happen to be carrying. `paidFor` is rebuilt whenever someone is
-    // added or dropped, so taking a person off and putting them back reordered the array and the
-    // form counted as changed forever after; amounts round-trip between numbers and the strings
-    // the inputs hold, so `0` and `"0"` read as an edit. Sort the rows by who they are about and
-    // compare their figures as figures.
-    const fingerprint = (values: unknown) => {
-      const { conversionRate, ...rest } = (values ?? {}) as Record<string, any>
-      const figure = (value: unknown) => Number(value) || 0
-      const byParticipant = (rows: unknown) =>
-        (Array.isArray(rows) ? rows : [])
-          .map((row: any) => ({
-            participant: String(row?.participant ?? ''),
-            amount: figure(row?.amount),
-            shares: figure(row?.shares),
-          }))
-          .sort((a, b) => a.participant.localeCompare(b.participant))
-      return JSON.stringify({
-        ...rest,
-        // The clock is not an edit: only the day someone picked is.
-        expenseDate: new Date(rest.expenseDate ?? NaN).toDateString(),
-        paidBy: byParticipant(rest.paidBy),
-        paidFor: byParticipant(rest.paidFor),
-        items: (Array.isArray(rest.items) ? rest.items : []).map(
-          (item: any) => ({
-            name: String(item?.name ?? ''),
-            price: figure(item?.price),
-            participantIds: [...(item?.participantIds ?? [])].sort(),
-          }),
-        ),
-      })
-    }
     if (initialValuesRef.current === null) {
-      initialValuesRef.current = fingerprint(form.getValues())
+      initialValuesRef.current = fingerprintValues(form.getValues())
     }
     const subscription = form.watch((values) => {
-      const unchanged = fingerprint(values) === initialValuesRef.current
+      const unchanged = fingerprintValues(values) === initialValuesRef.current
       // Changed, but changed into nothing: a cleared title leaves behind the category the
       // extractor guessed from it, a cleared amount leaves `""` where a `0` was. Neither is an
       // expense, and offering to restore one is how the banner came to appear nearly every time.
@@ -1152,23 +1177,30 @@ export function ExpenseForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(submit)}>
-        {restoredDraft && (
-          <div className="mb-3 flex items-center justify-between gap-3 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground">
-            <span className="min-w-0 truncate">{t('Draft.restored')}</span>
-            <button
-              type="button"
-              data-testid="draft-start-fresh"
-              className="shrink-0 font-medium text-primary underline-offset-2 hover:underline"
-              onClick={() => {
-                clearExpenseDraft(draftScope)
-                if (pristineValuesRef.current) {
-                  form.reset(pristineValuesRef.current)
-                }
-                setRestoredDraft(false)
-              }}
-            >
-              {t('Draft.startFresh')}
-            </button>
+        {pendingDraft && (
+          <div
+            data-testid="draft-offer"
+            className="mb-3 flex items-center justify-between gap-3 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground"
+          >
+            <span className="min-w-0 truncate">{t('Draft.found')}</span>
+            <span className="flex shrink-0 items-center gap-3">
+              <button
+                type="button"
+                data-testid="draft-restore"
+                className="font-medium text-primary underline-offset-2 hover:underline"
+                onClick={restoreDraft}
+              >
+                {t('Draft.restore')}
+              </button>
+              <button
+                type="button"
+                data-testid="draft-discard"
+                className="underline-offset-2 hover:underline"
+                onClick={discardDraft}
+              >
+                {t('Draft.discard')}
+              </button>
+            </span>
           </div>
         )}
 
