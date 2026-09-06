@@ -426,7 +426,7 @@ export function ItemizationBuilder({
                 data-testid={`item-row-${index}`}
                 data-testid-error={rowError ? 'true' : undefined}
                 className={cn(
-                  'mx-6 space-y-1.5 rounded-lg border px-3 py-2.5 transition-colors',
+                  'mx-6 space-y-2.5 rounded-lg border px-3 py-2.5 transition-colors',
                   isRowSelected && 'border-primary/40 bg-primary/5',
                   isOpen ? 'bg-primary/5' : 'bg-card',
                   // The line the message at the foot of the list is talking about. A left edge
@@ -606,7 +606,10 @@ export function ItemizationBuilder({
                         affordance and only exist while the row is open, so a closed row says it
                         here whatever the width — otherwise a wide screen showed a collapsed card
                         with a name, a price and nothing at all about who was on it. */}
-                    {(!inlineMarks || !isEditing) && (
+                    {/* Only on the line being edited. Closed, a line is its name and its
+                        price and nothing else — the strip is a control, and a card full of
+                        controls you are not using is the thing the two states exist to avoid. */}
+                    {isEditing && !inlineMarks && (
                       <RowPeoplePicker
                         isDesktop={isDesktop}
                         title={

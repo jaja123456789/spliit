@@ -58,21 +58,27 @@ test.describe('Assigning several lines at once', () => {
     const rows = page.locator('[data-testid^="item-row-"]')
     await expect(rows).toHaveCount(3)
 
-    // A row states who shares it two ways depending on the width it has. Wide enough, and every
-    // person is their own toggle in the row; otherwise the row carries a stack and a summary and
-    // opens a picker. Both are asserted here rather than one, because which one renders is a
-    // property of the viewport and not of what this test is about.
-    const marks = page.getByTestId('marks-0')
-    if (await marks.count()) {
-      const on = (row: number) =>
-        page.getByTestId(`marks-${row}`).locator('[aria-pressed="true"]')
-      await expect(on(0)).toHaveCount(3)
-      await expect(on(1)).toHaveCount(1)
-      await expect(on(2)).toHaveCount(1)
-    } else {
-      await expect(page.getByTestId('assign-row-0')).toContainText('everyone')
-      await expect(page.getByTestId('assign-row-1')).toContainText('Alice only')
-      await expect(page.getByTestId('assign-row-2')).toContainText('Alice only')
+    // Only the line being edited says who shares it — a closed line is its name and its price.
+    // So each is opened in turn, and then read whichever way the width draws it: wide enough and
+    // every person is their own toggle in the row, otherwise a stack and a summary.
+    for (const [row, sharers] of [
+      [0, 3],
+      [1, 1],
+      [2, 1],
+    ] as const) {
+      const opener = page.getByTestId(`edit-line-${row}`)
+      if (await opener.count()) await opener.click()
+
+      const marks = page.getByTestId(`marks-${row}`)
+      if (await marks.count()) {
+        await expect(marks.locator('[aria-pressed="true"]')).toHaveCount(
+          sharers,
+        )
+      } else {
+        await expect(page.getByTestId(`assign-row-${row}`)).toContainText(
+          sharers === 3 ? 'everyone' : 'Alice only',
+        )
+      }
     }
   })
 
