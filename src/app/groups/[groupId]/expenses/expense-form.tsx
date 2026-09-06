@@ -1461,6 +1461,7 @@ export function ExpenseForm({
                             // a shadow and a red bin, which is a different form's visual language
                             // sitting inside this one.
                             'flex items-center justify-between gap-2 transition-colors',
+                            isMultiPayer && 'py-1',
                             // The pair's own grid supplies the gutter when there is one payer.
                             isMultiPayer && 'px-6',
                           )}
@@ -1473,7 +1474,7 @@ export function ExpenseForm({
                                 className={cn(
                                   'min-w-0 space-y-0',
                                   isMultiPayer
-                                    ? 'flex flex-none items-center'
+                                    ? 'flex flex-1 items-center'
                                     : 'flex w-full flex-col items-stretch gap-1',
                                 )}
                               >
@@ -1490,7 +1491,7 @@ export function ExpenseForm({
                                     }
                                     field.onChange(value)
                                   }}
-                                  defaultValue={field.value}
+                                  value={field.value}
                                 >
                                   <FormControl>
                                     {/* The payer is pre-selected rather than showing a placeholder, so
@@ -1505,13 +1506,12 @@ export function ExpenseForm({
                                         // assign strip had. It used to stretch to everything right
                                         // of the label, which was a fine invisible target and a
                                         // very odd visible one once the fill arrived.
-                                        'h-11 gap-1 rounded-md px-3 font-medium shadow-none focus:ring-0 sm:h-10 [&>svg]:opacity-40',
-                                        isMultiPayer
-                                          ? 'w-auto justify-start border-0 bg-muted'
-                                          : // Bordered and full width in the pair, so it matches the
-                                            // date box beside it rather than reading as a loose pill
-                                            // in an empty half-row.
-                                            'w-full justify-between border bg-card',
+                                        // Bordered and full width whether there is one payer or
+                                        // five, so a payer reads as the same kind of field as the
+                                        // date beside it. It used to become a grey pill hugging
+                                        // its own text the moment a second payer appeared, which
+                                        // is the visual language this form has otherwise left.
+                                        'h-11 w-full justify-between gap-1 rounded-md border bg-card px-3 font-medium shadow-none focus:ring-0 [&>svg]:opacity-40',
                                       )}
                                     >
                                       <div className="flex items-center gap-2">
@@ -1560,20 +1560,20 @@ export function ExpenseForm({
                               control={form.control}
                               name={`paidBy.${index}.amount`}
                               render={({ field }) => (
-                                <FormItem className="ml-auto shrink-0 space-y-0">
+                                <FormItem className="w-[120px] shrink-0 space-y-0">
                                   {/* The item row's price field, to the class: symbol in its own
                                     column, figure right-aligned and tabular so the decimals line
                                     up down the column, the box tracking its value, and the
                                     calculator inside the field rather than beside it. */}
-                                  <div className="flex w-[116px] items-center gap-1 rounded-md bg-muted pl-2 transition-shadow focus-within:ring-2 focus-within:ring-primary [&_button]:relative [&_button]:h-7 [&_button]:w-7 [&_button]:after:absolute [&_button]:after:inset-x-0 [&_button]:after:-inset-y-2 [&_button]:after:content-[''] sm:[&_button]:after:hidden">
+                                  <div className="flex h-11 items-center gap-1 rounded-md border bg-card pl-2 transition-shadow focus-within:ring-2 focus-within:ring-primary [&_button]:h-8 [&_button]:w-8">
                                     <span className="font-mono text-xs text-subtle-foreground">
                                       {expenseCurrency.symbol || group.currency}
                                     </span>
                                     <FormControl>
                                       <CalculatorInput
                                         placeholder="0.00"
-                                        className="h-11 sm:h-8 min-w-0 flex-1 border-0 bg-transparent shadow-none"
-                                        inputClassName="h-11 sm:h-8 w-full border-0 bg-transparent px-0 text-right font-mono text-base sm:text-sm font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                                        className="h-11 min-w-0 flex-1 border-0 bg-transparent shadow-none has-[[data-slot=input-group-control]:focus-visible]:ring-0"
+                                        inputClassName="h-11 w-full border-0 bg-transparent px-0 text-right font-mono text-base font-semibold tabular-nums shadow-none focus-visible:ring-0"
                                         {...field}
                                         onValueChange={(val) => {
                                           handlePayerAmountChange(index, val)
@@ -1613,7 +1613,7 @@ export function ExpenseForm({
                       type="button"
                       variant="ghost"
                       onClick={handleAddPayer}
-                      className="h-11 sm:h-10 w-full justify-start rounded-none px-6 text-sm font-normal text-muted-foreground hover:text-foreground"
+                      className="mx-6 mt-1 h-11 w-[calc(100%-3rem)] justify-center rounded-md border border-dashed text-sm font-normal text-muted-foreground hover:text-foreground"
                     >
                       <Plus className="mr-2 h-4 w-4" />
                       {t('addPayer')}
@@ -1631,10 +1631,12 @@ export function ExpenseForm({
                     render={({ field }) => (
                       <FormItem
                         className={cn(
-                          'space-y-0',
-                          isMultiPayer
-                            ? 'flex items-center justify-between gap-2 px-6 py-1'
-                            : 'flex w-full flex-col items-stretch gap-1',
+                          // The same labelled box in both modes. It used to become a grey pill on
+                          // a label-left row as soon as a second payer appeared, so adding a payer
+                          // restyled a field that has nothing to do with payers. Only its width
+                          // changes: it shares a row with Paid by, or takes one of its own.
+                          'flex flex-col items-stretch gap-1 space-y-0',
+                          isMultiPayer && 'px-6 pb-1 pt-2',
                         )}
                       >
                         <FormLabel className="text-sm font-normal text-muted-foreground">
@@ -1642,12 +1644,7 @@ export function ExpenseForm({
                         </FormLabel>
                         <FormControl>
                           <Input
-                            className={cn(
-                              'date-base h-11 rounded-md px-3 font-medium shadow-none focus-visible:ring-2 focus-visible:ring-primary sm:h-10',
-                              isMultiPayer
-                                ? 'w-auto border-0 bg-muted text-right'
-                                : 'w-full border bg-card',
-                            )}
+                            className="date-base h-11 w-full rounded-md border bg-card px-3 font-medium shadow-none focus-visible:ring-2 focus-visible:ring-primary"
                             name="expenseDate"
                             type="date"
                             value={formatDate(field.value)}
