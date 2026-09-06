@@ -426,7 +426,7 @@ export function ItemizationBuilder({
                 data-testid={`item-row-${index}`}
                 data-testid-error={rowError ? 'true' : undefined}
                 className={cn(
-                  'mx-6 rounded-lg border px-3 transition-colors',
+                  'mx-6 space-y-1.5 rounded-lg border px-3 py-2.5 transition-colors',
                   isRowSelected && 'border-primary/40 bg-primary/5',
                   isOpen ? 'bg-primary/5' : 'bg-card',
                   // The line the message at the foot of the list is talking about. A left edge
@@ -450,12 +450,7 @@ export function ItemizationBuilder({
                   )}
                   <div className="min-w-0 flex-1">
                     {isEditing ? (
-                      <div
-                        className={cn(
-                          'flex items-center gap-2.5 pt-3',
-                          inlineMarks ? 'pb-3' : 'pb-0.5',
-                        )}
-                      >
+                      <div className={cn('flex items-center gap-2.5')}>
                         {/* Name and price are the receipt line. Borderless: a bordered box around each
                         is the "control array" the concept trades away — four lines of a bill became
                         eight bordered inputs stacked in four bordered cards. */}
@@ -645,7 +640,7 @@ export function ItemizationBuilder({
                               // strip inside the line.
                               isEditing
                                 ? 'border border-input bg-card px-2.5 hover:bg-muted/40'
-                                : 'pb-1 pr-[31px] hover:bg-muted/60',
+                                : 'pr-[31px] hover:bg-muted/60',
                             )}
                           >
                             <ParticipantStack
@@ -678,7 +673,7 @@ export function ItemizationBuilder({
                       name={`items.${index}.participantIds`}
                       render={({ field }) =>
                         isEditing && inlineMarks ? (
-                          <FormItem className="flex items-center gap-2 space-y-0 pb-2">
+                          <FormItem className="flex items-center gap-2 space-y-0">
                             <MarkRow
                               value={field.value || []}
                               onChange={(val) => {
