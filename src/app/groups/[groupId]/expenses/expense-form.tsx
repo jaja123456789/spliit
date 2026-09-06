@@ -119,8 +119,8 @@ import { DeletePopup } from '../../../../components/delete-popup'
 import { extractCategoryFromTitle } from '../../../../components/expense-form-actions'
 import { CategoryIcon } from './category-icon'
 import { CreateFromReceiptButton } from './create-from-receipt-button'
-import { EvenlyChips } from './evenly-chips'
 import { ItemizationBuilder } from './itemization-builder' // Import new component
+import { SplitRows } from './split-rows'
 
 // --- Helpers ---
 
@@ -998,6 +998,14 @@ export function ExpenseForm({
       .with('BY_PERCENTAGE', () => t('SplitMode.byPercentage'))
       .with('BY_AMOUNT', () => t('SplitMode.byAmount'))
       .otherwise(() => t('SplitMode.more'))
+
+  /** What the chosen mode asks of you, for the line under the control. */
+  const splitModeHint = (mode: string) =>
+    match(mode)
+      .with('BY_SHARES', () => t('SplitMode.bySharesHint'))
+      .with('BY_PERCENTAGE', () => t('SplitMode.byPercentageHint'))
+      .with('BY_AMOUNT', () => t('SplitMode.byAmountHint'))
+      .otherwise(() => t('SplitMode.description'))
 
   const selectSplitControl = (
     next: 'EVENLY' | 'ITEMS' | 'OTHER',
@@ -1917,7 +1925,7 @@ export function ExpenseForm({
                         className={cn(
                           'min-h-11 rounded-md px-2 text-sm font-medium transition-colors',
                           splitControl === value
-                            ? 'bg-card text-foreground shadow-sm'
+                            ? 'bg-primary/10 text-primary'
                             : 'text-muted-foreground hover:text-foreground',
                         )}
                       >
@@ -1932,7 +1940,7 @@ export function ExpenseForm({
                       className={cn(
                         'min-h-11 rounded-md px-2 text-sm font-medium transition-colors',
                         splitControl === 'OTHER'
-                          ? 'bg-card text-foreground shadow-sm'
+                          ? 'bg-primary/10 text-primary'
                           : 'text-muted-foreground hover:text-foreground',
                       )}
                     >
@@ -1940,14 +1948,16 @@ export function ExpenseForm({
                         never reads as "something unspecified is going on". */}
                       {splitControl === 'OTHER'
                         ? shortSplitModeLabel(splitMode)
-                        : t('SplitMode.more')}
+                        : t('SplitMode.custom')}
                     </button>
                   </div>
-                  <p className="mt-1.5 text-sm text-muted-foreground">
-                    {splitControl === 'ITEMS'
-                      ? t('itemizeField.description')
-                      : t('SplitMode.description')}
-                  </p>
+                  {splitControl !== 'EVENLY' && (
+                    <p className="mt-1.5 text-sm text-muted-foreground">
+                      {splitControl === 'ITEMS'
+                        ? t('itemizeField.description')
+                        : splitModeHint(splitMode)}
+                    </p>
+                  )}
                   {/* The hint directly above says "enter each line of the receipt", and until now
                     this screen had no way to reach the thing that reads receipts — the scanner's
                     only entry point in the whole app was an icon in the expense list's header. The
@@ -1957,8 +1967,70 @@ export function ExpenseForm({
                     it. It used to live in a second card at the far end of a page one and a half
                     screens long; here it is under the control that decides it, each chip carrying
                     that person's share. */}
+                  {splitControl === 'OTHER' && (
+                    <div className="mt-2">
+                      <FormField
+                        control={form.control}
+                        name="paidFor"
+                        render={() => (
+                          <FormItem className="space-y-0">
+                            <PaidForList
+                              form={form}
+                              group={group}
+                              expenseCurrency={expenseCurrency}
+                              totalAmount={totalAmount}
+                              splitMode={splitMode}
+                              manuallyEditedParticipants={
+                                manuallyEditedParticipants
+                              }
+                              setManuallyEditedParticipants={
+                                setManuallyEditedParticipants
+                              }
+                              recalculateByAmount={recalculateByAmount}
+                            />
+                            <FormMessage className="mt-1" />
+                          </FormItem>
+                        )}
+                      />
+                      <Button
+                        type="button"
+                        variant="link"
+                        size="sm"
+                        className="mt-1 h-auto min-h-11 px-0 text-xs font-normal text-muted-foreground"
+                        onClick={() => {
+                          const currentPaidFor = form.getValues('paidFor')
+                          const allSelected =
+                            currentPaidFor.length === group.participants.length
+                          const newPaidFor = allSelected
+                            ? []
+                            : group.participants.map((p) => {
+                                const existing = currentPaidFor.find(
+                                  (pf) => pf.participant === p.id,
+                                )
+                                return {
+                                  participant: p.id,
+                                  shares: existing?.shares ?? '1',
+                                }
+                              })
+                          form.setValue('paidFor', newPaidFor as any, {
+                            shouldDirty: true,
+                            shouldTouch: true,
+                            shouldValidate: true,
+                          })
+                          if (!allSelected) {
+                            setManuallyEditedParticipants(new Set())
+                          }
+                        }}
+                      >
+                        {form.watch('paidFor').length ===
+                        group.participants.length
+                          ? t('selectNone')
+                          : t('selectAll')}
+                      </Button>
+                    </div>
+                  )}
                   {splitControl === 'EVENLY' && (
-                    <EvenlyChips
+                    <SplitRows
                       form={form}
                       group={group}
                       currency={expenseCurrency}
@@ -2006,86 +2078,7 @@ export function ExpenseForm({
               />
             </CardContent>
           </Card>
-        ) : splitControl === 'EVENLY' ? null : (
-          // The per-person value editor, for shares / percentage / exact amount. Evenly does not
-          // need it — every selected person has the same one share — so on that path the chips
-          // above say who is in and this card does not exist.
-          <Card bleed className="mt-4">
-            <CardHeader>
-              <CardTitle className="flex justify-between">
-                <span>{t(`${sExpense}.paidFor.title`)}</span>
-                <Button
-                  variant="link"
-                  type="button"
-                  className="-my-2 -mx-4"
-                  onClick={() => {
-                    const currentPaidFor = form.getValues('paidFor')
-                    const allSelected =
-                      currentPaidFor.length === group.participants.length
-                    const newPaidFor = allSelected
-                      ? []
-                      : group.participants.map((p) => {
-                          const existing = currentPaidFor.find(
-                            (pf) => pf.participant === p.id,
-                          )
-                          return {
-                            participant: p.id,
-                            shares: existing?.shares ?? '1',
-                          }
-                        })
-                    form.setValue('paidFor', newPaidFor as any, {
-                      shouldDirty: true,
-                      shouldTouch: true,
-                      shouldValidate: true,
-                    })
-                    if (!allSelected) {
-                      setManuallyEditedParticipants(new Set())
-                    }
-                  }}
-                >
-                  {form.watch('paidFor').length ===
-                  group.participants.length ? (
-                    <>{t('selectNone')}</>
-                  ) : (
-                    <>{t('selectAll')}</>
-                  )}
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col gap-2">
-              {/* 
-                We bind the FormField to "paidFor" (the array root).
-              */}
-              <FormField
-                control={form.control}
-                name="paidFor"
-                render={({ fieldState }) => {
-                  return (
-                    <FormItem className="sm:order-4 row-span-2 space-y-0">
-                      <PaidForList
-                        form={form}
-                        group={group}
-                        expenseCurrency={expenseCurrency}
-                        totalAmount={totalAmount}
-                        splitMode={splitMode}
-                        manuallyEditedParticipants={manuallyEditedParticipants}
-                        setManuallyEditedParticipants={
-                          setManuallyEditedParticipants
-                        }
-                        recalculateByAmount={recalculateByAmount}
-                      />
-                      <FormMessage />
-                    </FormItem>
-                  )
-                }}
-              />
-
-              {/* "Advanced splitting options…" and the Select behind it are gone: the mode is
-                  chosen by the segmented control above the fold, and the three uncommon modes
-                  live in its overflow sheet. */}
-            </CardContent>
-          </Card>
-        )}
+        ) : null}
         {runtimeFeatureFlags.enableExpenseDocuments && (
           <Card bleed className="mt-4">
             <CardHeader>
@@ -2302,8 +2295,36 @@ function PaidForList({
     form.trigger('paidBy')
   }
 
+  const toggleParticipant = (id: string, next: boolean) => {
+    const currentPaidFor = form.getValues('paidFor')
+    const options = {
+      shouldDirty: true,
+      shouldTouch: true,
+      shouldValidate: true,
+    }
+    if (next) {
+      form.setValue(
+        'paidFor',
+        [...currentPaidFor, { participant: id, shares: '1' }] as any,
+        options,
+      )
+    } else {
+      form.setValue(
+        'paidFor',
+        currentPaidFor.filter((p: any) => p.participant !== id),
+        options,
+      )
+      const newSet = new Set(manuallyEditedParticipants)
+      newSet.delete(id)
+      setManuallyEditedParticipants(newSet)
+    }
+  }
+
   return (
-    <>
+    <div
+      className="divide-y overflow-hidden rounded-lg border"
+      data-testid="paid-for-rows"
+    >
       {group.participants.map(({ id, name }) => {
         const isSelected = paidForValues.some((p: any) => p.participant === id)
         const currentShare =
@@ -2314,104 +2335,86 @@ function PaidForList({
             key={id}
             data-id={`${id}/${splitMode}/${group.currency}`}
             className={cn(
-              // A ruled row, not a card that tints when selected: the checkbox already says
-              // whether this person is in, and a bordered tinted box per participant was the last
-              // surface on this screen still speaking the old language.
-              'flex flex-wrap items-center gap-y-3 px-1 py-2 transition-colors',
-              !isSelected && 'opacity-60',
+              // The same row as the evenly list, because it is the same list — a person, and what
+              // they owe. What differs is that here the figure is a field.
+              'flex min-h-[52px] items-center gap-3 px-3 py-2 transition-colors',
+              !isSelected && 'bg-muted/40',
             )}
           >
-            <FormItem className="flex-1 flex flex-row items-center space-x-3 space-y-0">
-              <FormControl>
-                <Checkbox
-                  checked={isSelected}
-                  onCheckedChange={(checked) => {
-                    const currentPaidFor = form.getValues('paidFor')
-                    const options = {
-                      shouldDirty: true,
-                      shouldTouch: true,
-                      shouldValidate: true,
-                    }
-                    if (checked) {
-                      form.setValue(
-                        'paidFor',
-                        [
-                          ...currentPaidFor,
-                          { participant: id, shares: '1' },
-                        ] as any,
-                        options,
-                      )
-                    } else {
-                      form.setValue(
-                        'paidFor',
-                        currentPaidFor.filter((p: any) => p.participant !== id),
-                        options,
-                      )
-                      const newSet = new Set(manuallyEditedParticipants)
-                      newSet.delete(id)
-                      setManuallyEditedParticipants(newSet)
-                    }
-                  }}
-                />
-              </FormControl>
-              <FormLabel className="flex flex-1 items-center gap-3 text-sm font-normal">
-                <ProfileAvatar
-                  name={name}
-                  hue={avatarHues.get(name)}
-                  isActiveUser={activeUserId === id}
-                  size={28}
-                />
-                <span className="flex-1">{name}</span>
-                {isSelected &&
-                  !isReimbursement &&
-                  splitMode !== 'BY_AMOUNT' && (
-                    <span className="tabular-nums text-muted-foreground">
-                      {formatCurrency(
-                        expenseCurrency,
-                        getCalculatedShare(id),
-                        locale,
-                      )}
-                    </span>
-                  )}
-              </FormLabel>
-            </FormItem>
+            {/* The mark is the switch. The whole row cannot be, the way it is on the evenly list:
+                most of this row is an input, and a tap that lands in it must land in it. Still a
+                checkbox to anything reading the page — the box itself is gone, not the role or
+                the name it answers to. */}
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={isSelected}
+              aria-label={name}
+              data-testid={`split-row-toggle-${name}`}
+              onClick={() => toggleParticipant(id, !isSelected)}
+              className="shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <ProfileAvatar
+                name={name}
+                hue={avatarHues.get(name)}
+                isActiveUser={activeUserId === id}
+                size={32}
+                className={cn(!isSelected && 'opacity-40 grayscale')}
+              />
+            </button>
 
-            <div className="flex">
-              {splitMode !== 'EVENLY' && isSelected && (
-                <div className="space-y-0">
-                  <div className="flex gap-1 items-center">
-                    {splitMode === 'BY_AMOUNT' && (
-                      <span className={cn('text-sm text-muted-foreground')}>
-                        {expenseCurrency.symbol || group.currency}
-                      </span>
-                    )}
-                    <FormControl>
-                      <CalculatorInput
-                        inputClassName="text-base sm:text-base w-[80px] -my-2"
-                        placeholder="0.00"
-                        decimalPlaces={expenseCurrency.decimal_digits}
-                        value={currentShare}
-                        onValueChange={(val) => handleShareChange(id, val)}
-                        disallowEmpty={false}
-                      />
-                    </FormControl>
-                    {['BY_SHARES', 'BY_PERCENTAGE'].includes(splitMode) && (
-                      <span className={cn('text-sm text-muted-foreground')}>
-                        {match(splitMode)
-                          .with('BY_SHARES', () => <>{t('shares')}</>)
-                          .with('BY_PERCENTAGE', () => <>%</>)
-                          .otherwise(() => (
-                            <></>
-                          ))}
-                      </span>
-                    )}
-                  </div>
-                </div>
+            <span
+              className={cn(
+                'min-w-0 flex-1 truncate font-medium',
+                !isSelected && 'text-muted-foreground',
               )}
-            </div>
+            >
+              {name}
+            </span>
+
+            {isSelected && !isReimbursement && splitMode !== 'BY_AMOUNT' && (
+              <span className="shrink-0 tabular-nums text-muted-foreground">
+                {formatCurrency(
+                  expenseCurrency,
+                  getCalculatedShare(id),
+                  locale,
+                )}
+              </span>
+            )}
+
+            {splitMode !== 'EVENLY' && isSelected && (
+              <div className="flex shrink-0 items-center gap-1">
+                {splitMode === 'BY_AMOUNT' && (
+                  <span className="text-sm text-muted-foreground">
+                    {expenseCurrency.symbol || group.currency}
+                  </span>
+                )}
+                <FormControl>
+                  <CalculatorInput
+                    className="h-9 w-[104px] rounded-md border bg-card shadow-none has-[[data-slot=input-group-control]:focus-visible]:ring-0"
+                    inputClassName="h-9 w-full border-0 bg-transparent px-2 text-right font-mono text-base tabular-nums shadow-none focus-visible:ring-0"
+                    placeholder="0.00"
+                    decimalPlaces={expenseCurrency.decimal_digits}
+                    value={currentShare}
+                    onValueChange={(val) => handleShareChange(id, val)}
+                    disallowEmpty={false}
+                  />
+                </FormControl>
+                {['BY_SHARES', 'BY_PERCENTAGE'].includes(splitMode) && (
+                  <span className="text-sm text-muted-foreground">
+                    {match(splitMode)
+                      .with('BY_SHARES', () => <>{t('shares')}</>)
+                      .with('BY_PERCENTAGE', () => <>%</>)
+                      .otherwise(() => (
+                        <></>
+                      ))}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         )
       })}
-    </>
+    </div>
   )
 }

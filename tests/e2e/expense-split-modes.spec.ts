@@ -55,7 +55,7 @@ test('Create expense - evenly split (most common flow)', async ({ page }) => {
   // Step 7: Verify all 3 participants are included. Evenly shows them as chips under the split
   // control rather than as rows in a separate card — the rows are the per-person value editor, and
   // evenly has no per-person value to edit.
-  const chips = page.getByTestId('evenly-chips').getByRole('switch')
+  const chips = page.getByTestId('split-rows').getByRole('switch')
   await expect(chips).toHaveCount(3)
   for (const chip of await chips.all()) {
     await expect(chip).toHaveAttribute('aria-checked', 'true')
@@ -143,13 +143,8 @@ test('Create expense - by shares split mode', async ({ page }) => {
   await page.getByTestId('split-mode-BY_SHARES').click()
 
   // Step 7: Fill shares - Alice: 1, Bob: 2, Charlie: 3
-  // The split-mode inputs are plain textboxes without stable attributes;
-  // scope to the "Paid for" section and match by the trailing "share(s)" label.
-  const paidForSection = page
-    .locator('h1,h2,h3,h4,h5', { hasText: /^Paid for/i })
-    .first()
-    .locator('..')
-    .locator('..')
+  // Scoped to the rows themselves and matched by the trailing "share(s)" label.
+  const paidForSection = page.getByTestId('paid-for-rows')
 
   const shareInputs = paidForSection
     .locator('div', { hasText: 'share(s)' })
@@ -243,12 +238,8 @@ test('Create expense - by percentage split mode', async ({ page }) => {
   await page.getByTestId('split-mode-BY_PERCENTAGE').click()
 
   // Step 7: Fill percentages - Alice: 25%, Bob: 25%, Charlie: 50%
-  // Scope to the "Paid for" section and match by the trailing "%" label.
-  const paidForSection = page
-    .locator('h1,h2,h3,h4,h5', { hasText: /^Paid for/i })
-    .first()
-    .locator('..')
-    .locator('..')
+  // Scoped to the rows themselves and matched by the trailing "%" label.
+  const paidForSection = page.getByTestId('paid-for-rows')
 
   const percentageInputs = paidForSection
     .locator('div', { hasText: '%' })
@@ -337,12 +328,8 @@ test('Create expense - by amount split mode', async ({ page }) => {
   await page.getByTestId('split-mode-BY_AMOUNT').click()
 
   // Step 7: Fill amounts - Alice: 50, Bob: 100, Charlie: 150 (sum to 300)
-  // In BY_AMOUNT mode the per-participant amount inputs live in the "Paid for" rows.
-  const paidForSection = page
-    .locator('h1,h2,h3,h4,h5', { hasText: /^Paid for/i })
-    .first()
-    .locator('..')
-    .locator('..')
+  // In BY_AMOUNT mode the per-participant amount inputs live in the split rows.
+  const paidForSection = page.getByTestId('paid-for-rows')
 
   const amountSplitInputs = paidForSection
     .locator('div', { hasText: '$' })
@@ -391,14 +378,14 @@ test('evenly chips re-divide when someone is dropped', async ({ page }) => {
   await page.locator('[name="title"]').fill('Dinner')
   await page.locator(AMOUNT_INPUT).fill('87.40')
 
-  const chips = page.getByTestId('evenly-chips')
+  const chips = page.getByTestId('split-rows')
   // Largest remainder, not three equal thirds: 87.40 does not divide by three, and one of them
   // has to carry the odd cent.
   await expect(chips).toContainText('$29.14')
   await expect(chips).toContainText('$29.13')
 
-  await page.getByTestId('evenly-chip-Bob').click()
-  await expect(page.getByTestId('evenly-chip-Bob')).toHaveAttribute(
+  await page.getByTestId('split-row-Bob').click()
+  await expect(page.getByTestId('split-row-Bob')).toHaveAttribute(
     'aria-checked',
     'false',
   )

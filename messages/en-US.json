@@ -304,6 +304,7 @@
     },
     "selectNone": "Select none",
     "selectAll": "Select all",
+    "evenlySummary": "{count, plural, one {# person} other {# people}} · {each} each",
     "shares": "share(s)",
     "advancedOptions": "Advanced splitting options…",
     "SplitModeField": {
@@ -320,6 +321,7 @@
       "evenly": "Evenly",
       "byItem": "By item",
       "more": "More",
+      "custom": "Custom",
       "byShares": "By shares",
       "byPercentage": "By percentage",
       "byAmount": "By exact amount",

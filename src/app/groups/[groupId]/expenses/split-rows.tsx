@@ -20,17 +20,20 @@ type Group = NonNullable<AppRouterOutput['groups']['get']['group']>
 /**
  * Who shares an evenly-split expense, and what it costs each of them.
  *
- * On the evenly path — which is most expenses — this used to be a second card below the form, so
- * the one thing people routinely change was the last thing on a page one and a half screens long,
- * in a different container from the amount that decides it. Here it sits directly under the control
- * that says "evenly", each person carrying their own share, and dropping someone re-divides the
- * rest in place.
+ * These were chips in a two-column grid, which was the right idea at the wrong shape: a name and a
+ * figure are a row, and a grid of them is a set of little boxes the eye has to read in two
+ * directions. One column, one person per line, the figure in the same place every time — the same
+ * list the balances and the reimbursements are already drawn as.
  *
- * Only for evenly. The row list it replaces is also the per-person *value editor* for shares,
- * percentage and exact amount — each of those rows holds an input and its own error — and a chip
- * has nowhere to put one. So the three modes behind "More" keep the rows, unchanged.
+ * Dropping someone leaves their row where it is, greyed. The alternative — removing it — makes the
+ * list jump under the finger and gives the reader nothing to press to undo what they just did.
+ * The share re-divides across whoever is left, so an evenly-split expense can never fail to add up
+ * and there is no total to reconcile at the foot of the list.
+ *
+ * Only for evenly. The rows behind "Custom" are also per-person *value editors* — each holds an
+ * input and its own error — so they live with the rest of that mode in `PaidForList`.
  */
-export function EvenlyChips({
+export function SplitRows({
   form,
   group,
   currency,
@@ -52,7 +55,7 @@ export function EvenlyChips({
     paidFor.some((entry: any) => entry.participant === id)
   const selected = group.participants.filter((p) => isOn(p.id))
 
-  // The same largest-remainder split the expense itself will be stored with, so the chips do not
+  // The same largest-remainder split the expense itself will be stored with, so the rows do not
   // promise three equal thirds the arithmetic cannot deliver: $87.40 three ways is 29.13, 29.13,
   // 29.14 and one of them has to be the odd penny.
   const totalMinorUnits = amountAsMinorUnits(totalAmount, currency)
@@ -64,12 +67,14 @@ export function EvenlyChips({
     const index = selected.findIndex((p) => p.id === id)
     return index < 0 ? null : shares[index]
   }
+  // "each" is only true when the odd penny did not have to go somewhere.
+  const isExact = shares.length > 0 && new Set(shares).size === 1
 
   // Rebuilt in the group's own order every time, rather than filtering someone out and appending
-  // them back on the end. Order is not visible here — the row list on the other split modes reads
-  // from `group.participants` — but it was visible to the draft, which compares the form against
-  // the values it started with: dropping someone and picking them again left the array in a
-  // different order, and the form counted itself edited from then on.
+  // them back on the end. Order is not visible here — the rows read from `group.participants` —
+  // but it was visible to the draft, which compares the form against the values it started with:
+  // dropping someone and picking them again left the array in a different order, and the form
+  // counted itself edited from then on.
   const toggle = (id: string) => {
     const current = form.getValues('paidFor')
     const chosen = new Set(current.map((entry: any) => entry.participant))
@@ -92,12 +97,27 @@ export function EvenlyChips({
   const allSelected = selected.length === group.participants.length
 
   return (
-    <div className="mt-3" data-testid="evenly-chips">
-      {/* A grid, not a wrap. Free-flowing pills sized themselves to their names, so three people
-          came out 131, 139 and 137px wide and wrapped 2 + 1 — a ragged edge under a form whose
-          every other row runs the full width. Two equal columns give the block an edge, and the
-          names line up with each other instead of with nothing. */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+    <div className="mt-2" data-testid="split-rows">
+      {/* The count and the per-person figure, which is the question this list answers. It replaces
+          "Everyone shares it equally unless you say otherwise" — a sentence that said what the
+          control above it already says, and said nothing about this expense. */}
+      {selected.length > 0 && (
+        <p
+          className="mb-2 text-sm text-muted-foreground"
+          data-testid="split-summary"
+        >
+          {t('evenlySummary', {
+            count: selected.length,
+            each: `${isExact ? '' : '≈ '}${formatCurrency(
+              currency,
+              shares[0] ?? 0,
+              locale,
+            )}`,
+          })}
+        </p>
+      )}
+
+      <div className="divide-y overflow-hidden rounded-lg border">
         {group.participants.map((participant) => {
           const on = isOn(participant.id)
           const share = shareOf(participant.id)
@@ -107,34 +127,32 @@ export function EvenlyChips({
               type="button"
               role="switch"
               aria-checked={on}
-              data-testid={`evenly-chip-${participant.name}`}
+              data-testid={`split-row-${participant.name}`}
               onClick={() => toggle(participant.id)}
               className={cn(
-                'flex min-h-11 min-w-0 items-center gap-2 rounded-md py-1.5 pl-1.5 pr-3 text-sm transition-colors',
-                // No outline: a fill says "control" everywhere else on this form now, so it
-                // says it here too, and the difference between in and out is the fill's tone.
-                on
-                  ? 'bg-primary/10 text-foreground'
-                  : 'bg-muted text-muted-foreground',
+                // The whole row is the target. With one control per row and nothing else in it to
+                // press, a smaller hit area inside would only be a way to miss.
+                'flex min-h-[52px] w-full items-center gap-3 px-3 py-2 text-left transition-colors',
+                on ? 'hover:bg-muted/60' : 'bg-muted/40 hover:bg-muted/60',
               )}
             >
               <ProfileAvatar
                 name={participant.name}
                 hue={avatarHues.get(participant.name)}
                 isActiveUser={!!activeUserId && activeUserId === participant.id}
-                size={26}
-                className={cn(!on && 'opacity-50')}
+                size={32}
+                className={cn(!on && 'opacity-40 grayscale')}
               />
               <span
                 className={cn(
-                  'min-w-0 truncate font-medium',
-                  !on && 'line-through',
+                  'min-w-0 flex-1 truncate font-medium',
+                  !on && 'text-muted-foreground',
                 )}
               >
                 {participant.name}
               </span>
               {on && share !== null && (
-                <span className="ml-auto shrink-0 font-mono text-xs tabular-nums text-muted-foreground">
+                <span className="shrink-0 tabular-nums font-medium">
                   {formatCurrency(currency, share, locale)}
                 </span>
               )}
@@ -147,10 +165,10 @@ export function EvenlyChips({
         type="button"
         variant="link"
         size="sm"
-        // Small type, but not a small target: 16px of link under a row of 44px chips was the
-        // same inconsistency this pass exists to remove.
+        // Small type, but not a small target: 16px of link under a list of 52px rows was the same
+        // inconsistency this pass exists to remove.
         className="mt-1 h-auto min-h-11 px-0 text-xs font-normal text-muted-foreground"
-        data-testid="evenly-chips-toggle-all"
+        data-testid="split-rows-toggle-all"
         onClick={() => {
           const options = {
             shouldDirty: true,

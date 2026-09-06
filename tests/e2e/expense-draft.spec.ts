@@ -225,7 +225,7 @@ test.describe('What is not an expense is not kept', () => {
     [
       'someone dropped from the split and added back',
       async (page) => {
-        const chip = page.getByTestId('evenly-chip-Bob')
+        const chip = page.getByTestId('split-row-Bob')
         await chip.click()
         await page.waitForTimeout(400)
         await chip.click()
