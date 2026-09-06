@@ -610,9 +610,15 @@ export function ItemizationBuilder({
                         price and nothing else — the strip is a control, and a card full of
                         controls you are not using is the thing the two states exist to avoid. */}
                     {!isEditing && (
-                      <div
+                      <button
+                        type="button"
                         data-testid={`assign-row-${index}`}
-                        className="flex min-h-8 w-full items-center gap-2 pr-[31px] text-left"
+                        disabled={isSelecting}
+                        onClick={() => setOpenRowId(field.id)}
+                        // Opens the line, exactly as the name and price above it do. It is not the
+                        // assignee control any more — that belongs to the open line — but it is
+                        // still half of what a closed line shows, and a closed line is one target.
+                        className="flex min-h-8 w-full items-center gap-2 pr-[31px] text-left disabled:opacity-100"
                       >
                         <ParticipantStack
                           participantIds={participantIds}
@@ -630,7 +636,7 @@ export function ItemizationBuilder({
                           isMine={isMeInvolved}
                           withLabel
                         />
-                      </div>
+                      </button>
                     )}
 
                     {isEditing && !inlineMarks && (
