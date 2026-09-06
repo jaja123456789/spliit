@@ -30,7 +30,7 @@ test('Create expense - evenly split (most common flow)', async ({ page }) => {
   await page.waitForURL(/\/groups\/[^/]+\/expenses\/create/)
 
   // Wait for the expense form to load by checking for the title input field
-  const expenseTitle = page.locator('input[name="title"]')
+  const expenseTitle = page.locator('[name="title"]')
   await expenseTitle.waitFor({ state: 'visible' })
 
   // Step 3: Fill title: "Team Dinner"
@@ -118,7 +118,7 @@ test('Create expense - by shares split mode', async ({ page }) => {
   await page.waitForURL(/\/groups\/[^/]+\/expenses\/create/)
 
   // Wait for the expense form to load
-  const expenseTitle = page.locator('input[name="title"]')
+  const expenseTitle = page.locator('[name="title"]')
   await expenseTitle.waitFor({ state: 'visible' })
 
   // Step 3: Fill title and amount
@@ -218,7 +218,7 @@ test('Create expense - by percentage split mode', async ({ page }) => {
   await page.waitForURL(/\/groups\/[^/]+\/expenses\/create/)
 
   // Wait for the expense form to load
-  const expenseTitle = page.locator('input[name="title"]')
+  const expenseTitle = page.locator('[name="title"]')
   await expenseTitle.waitFor({ state: 'visible' })
 
   // Step 3: Fill title and amount
@@ -315,7 +315,7 @@ test('Create expense - by amount split mode', async ({ page }) => {
 
   await page.waitForURL(/\/groups\/[^/]+\/expenses\/create/)
 
-  const expenseTitle = page.locator('input[name="title"]')
+  const expenseTitle = page.locator('[name="title"]')
   await expenseTitle.waitFor({ state: 'visible' })
 
   // Step 3: Fill title and total amount
@@ -388,7 +388,7 @@ test('evenly chips re-divide when someone is dropped', async ({ page }) => {
   await navigateToGroup(page, groupId)
   await page.goto(`/groups/${groupId}/expenses/create`)
 
-  await page.locator('input[name="title"]').fill('Dinner')
+  await page.locator('[name="title"]').fill('Dinner')
   await page.locator(AMOUNT_INPUT).fill('87.40')
 
   const chips = page.getByTestId('evenly-chips')

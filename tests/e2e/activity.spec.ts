@@ -105,7 +105,7 @@ test('Log shows update', async ({ page }) => {
   await expect(page).toHaveURL(/\/groups\/[^/]+\/expenses\/[^/]+\/edit/)
 
   // Update the expense title
-  const titleInput = page.locator('input[name="title"]')
+  const titleInput = page.locator('[name="title"]')
   await expect(titleInput).toBeVisible()
   await titleInput.clear()
   await titleInput.fill(updatedTitle)

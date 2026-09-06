@@ -30,7 +30,7 @@ async function newGroup(page: Page) {
 
 async function openCreateForm(page: Page, groupId: string) {
   await page.goto(`/groups/${groupId}/expenses/create`)
-  await page.locator('input[name="title"]').waitFor({ state: 'visible' })
+  await page.locator('[name="title"]').waitFor({ state: 'visible' })
   // The draft is written from a form-watch subscription; give it a tick to settle before
   // navigating away, or the test measures the race rather than the rule.
   await page.waitForTimeout(700)
@@ -39,7 +39,7 @@ async function openCreateForm(page: Page, groupId: string) {
 /** What the form actually holds, which is a stronger question than what banner it is showing. */
 async function formState(page: Page) {
   return {
-    title: await page.locator('input[name="title"]').inputValue(),
+    title: await page.locator('[name="title"]').inputValue(),
     amount: await page.locator(AMOUNT_INPUT).inputValue(),
     restored: (await page.getByText(RESTORED).count()) > 0,
   }
@@ -82,9 +82,9 @@ test.describe('A half-typed expense', () => {
   test('comes back on its own, with a way to start fresh', async ({ page }) => {
     const groupId = await newGroup(page)
     await openCreateForm(page, groupId)
-    await page.locator('input[name="title"]').fill('Taxi to the airport')
+    await page.locator('[name="title"]').fill('Taxi to the airport')
     await page.locator(AMOUNT_INPUT).fill('30')
-    await page.locator('input[name="title"]').blur()
+    await page.locator('[name="title"]').blur()
     await page.waitForTimeout(800)
 
     // Leaving the way an accidental back does: to another page in the app.
@@ -98,7 +98,7 @@ test.describe('A half-typed expense', () => {
     })
 
     await page.getByTestId('draft-start-fresh').click()
-    await expect(page.locator('input[name="title"]')).toHaveValue('')
+    await expect(page.locator('[name="title"]')).toHaveValue('')
     await expect(page.getByText(RESTORED)).toHaveCount(0)
 
     // And starting fresh means it does not come back on the next visit either.
@@ -125,9 +125,9 @@ test.describe('A half-typed expense', () => {
   test('is gone once the expense has actually been saved', async ({ page }) => {
     const groupId = await newGroup(page)
     await openCreateForm(page, groupId)
-    await page.locator('input[name="title"]').fill('Bus fare')
+    await page.locator('[name="title"]').fill('Bus fare')
     await page.locator(AMOUNT_INPUT).fill('3.10')
-    await page.locator('input[name="title"]').blur()
+    await page.locator('[name="title"]').blur()
     await page.waitForTimeout(800)
 
     await page
@@ -148,9 +148,9 @@ test.describe('A half-typed expense', () => {
   test('survives leaving the form, however you leave it', async ({ page }) => {
     const groupId = await newGroup(page)
     await openCreateForm(page, groupId)
-    await page.locator('input[name="title"]').fill('Never mind')
+    await page.locator('[name="title"]').fill('Never mind')
     await page.locator(AMOUNT_INPUT).fill('9')
-    await page.locator('input[name="title"]').blur()
+    await page.locator('[name="title"]').blur()
     await page.waitForTimeout(800)
 
     await page.goBack()
@@ -205,7 +205,7 @@ test.describe('What is not an expense is not kept', () => {
     [
       'a title typed and deleted again',
       async (page) => {
-        const title = page.locator('input[name="title"]')
+        const title = page.locator('[name="title"]')
         await title.fill('Coffee')
         await title.blur()
         await page.waitForTimeout(600)

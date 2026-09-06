@@ -6,8 +6,8 @@ import { AMOUNT_INPUT } from '../helpers/expense'
 /** Types a three-line receipt into a fresh expense and returns nothing — the page is the subject. */
 async function itemisedExpense(page: any, groupId: string) {
   await page.goto(`/groups/${groupId}/expenses/create`)
-  await page.waitForSelector('input[name="title"]')
-  await page.locator('input[name="title"]').fill('Dinner')
+  await page.waitForSelector('[name="title"]')
+  await page.locator('[name="title"]').fill('Dinner')
   await page.locator(AMOUNT_INPUT).fill('74.00')
   await page.getByTestId('split-mode-items').click()
   await page.waitForSelector('input[name="items.0.name"]')
@@ -82,8 +82,8 @@ test.describe('Assigning several lines at once', () => {
       'Bob',
     ])
     await page.goto(`/groups/${groupId}/expenses/create`)
-    await page.waitForSelector('input[name="title"]')
-    await page.locator('input[name="title"]').fill('Taxi')
+    await page.waitForSelector('[name="title"]')
+    await page.locator('[name="title"]').fill('Taxi')
     await page.locator(AMOUNT_INPUT).fill('20.00')
     await page.getByTestId('split-mode-items').click()
     await page.waitForSelector('input[name="items.0.name"]')

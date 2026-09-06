@@ -26,7 +26,7 @@ test.describe('Expense Editing', () => {
 
     // Update title
     const newTitle = 'Updated Expense Title'
-    const titleInput = page.locator('input[name="title"]')
+    const titleInput = page.locator('[name="title"]')
     await titleInput.clear()
     await titleInput.fill(newTitle)
 
@@ -157,11 +157,13 @@ test.describe('Expense Editing', () => {
 
     // Verify original notes
     await expandMoreOptions(page)
-    await expect(page.locator('textarea')).toHaveValue(originalNotes)
+    await expect(page.locator('textarea[name="notes"]')).toHaveValue(
+      originalNotes,
+    )
 
     // Update notes
     const newNotes = 'Updated notes with new information'
-    const notesTextarea = page.locator('textarea')
+    const notesTextarea = page.locator('textarea[name="notes"]')
     await notesTextarea.clear()
     await notesTextarea.fill(newNotes)
 
@@ -174,7 +176,7 @@ test.describe('Expense Editing', () => {
     await page.getByText('Notes Update Test').click()
     await page.waitForURL(/\/groups\/[^/]+\/expenses\/[^/]+\/edit/)
     await expandMoreOptions(page)
-    await expect(page.locator('textarea')).toHaveValue(newNotes)
+    await expect(page.locator('textarea[name="notes"]')).toHaveValue(newNotes)
   })
 
   test('updates all fields simultaneously', async ({ page }) => {
@@ -207,8 +209,8 @@ test.describe('Expense Editing', () => {
     const newDate = '2024-08-10'
     const newNotes = 'Completely new notes'
 
-    await page.locator('input[name="title"]').clear()
-    await page.locator('input[name="title"]').fill(newTitle)
+    await page.locator('[name="title"]').clear()
+    await page.locator('[name="title"]').fill(newTitle)
 
     await page.locator(AMOUNT_INPUT).clear()
     await page.locator(AMOUNT_INPUT).fill(newAmount)
@@ -216,8 +218,8 @@ test.describe('Expense Editing', () => {
     await expandMoreOptions(page)
     await page.locator('input[type="date"]').fill(newDate)
 
-    await page.locator('textarea').clear()
-    await page.locator('textarea').fill(newNotes)
+    await page.locator('textarea[name="notes"]').clear()
+    await page.locator('textarea[name="notes"]').fill(newNotes)
 
     // Change payer
     const payerSelect = page.getByRole('combobox').filter({ hasText: 'Alice' })
@@ -240,12 +242,12 @@ test.describe('Expense Editing', () => {
     await page.getByText(newTitle).click()
     await page.waitForURL(/\/groups\/[^/]+\/expenses\/[^/]+\/edit/)
 
-    await expect(page.locator('input[name="title"]')).toHaveValue(newTitle)
+    await expect(page.locator('[name="title"]')).toHaveValue(newTitle)
     // Amount may lose trailing zeros
     await expect(page.locator(AMOUNT_INPUT)).toHaveValue(/350(\.00)?/)
     await expect(page.locator('input[type="date"]')).toHaveValue(newDate)
     await expandMoreOptions(page)
-    await expect(page.locator('textarea')).toHaveValue(newNotes)
+    await expect(page.locator('textarea[name="notes"]')).toHaveValue(newNotes)
     await expect(
       page.getByRole('combobox').filter({ hasText: 'Charlie' }),
     ).toBeVisible()

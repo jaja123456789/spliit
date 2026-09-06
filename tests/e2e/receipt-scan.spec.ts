@@ -67,7 +67,7 @@ test.describe('Scanning a receipt', () => {
     await page.waitForURL(/fromReceipt=true/)
 
     // The form arrives filled in, itemised, with the merchant as the title.
-    await expect(page.locator('input[name="title"]')).toHaveValue(
+    await expect(page.locator('[name="title"]')).toHaveValue(
       'Cervejaria Ramiro',
     )
     await expect(page.getByTestId('split-mode-items')).toHaveAttribute(
@@ -138,7 +138,7 @@ test.describe('Scanning a receipt', () => {
     // The slower success: the form, rather than a dead end.
     await page.getByRole('button', { name: /add by hand/i }).click()
     await page.waitForURL(/fromReceipt=true/)
-    await expect(page.locator('input[name="title"]')).toBeVisible()
+    await expect(page.locator('[name="title"]')).toBeVisible()
   })
 
   test('is reachable from the empty group and from the itemised split', async ({

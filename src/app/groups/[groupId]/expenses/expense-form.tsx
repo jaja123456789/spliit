@@ -99,7 +99,15 @@ import {
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import type React from 'react'
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
 import {
   UseFormReturn,
   useFieldArray,
@@ -220,6 +228,56 @@ async function persistDefaultSplittingOptions(
     )
   }
 }
+
+/**
+ * The expense's name, at the size a name deserves — and wrapping like one.
+ *
+ * An `<input>` cannot wrap. At the size this field now carries, "Monday evening restaurant" ran
+ * off the right edge of its box, and reopening a saved expense showed you half its own name with
+ * no indication there was more. A textarea that grows to its content is the same field with the
+ * one behaviour the size demands.
+ *
+ * Enter is swallowed rather than inserted: this is a title, not a paragraph, and the newline
+ * would be stored and then rendered as a space everywhere the title is shown.
+ */
+const TitleTextarea = forwardRef<
+  HTMLTextAreaElement,
+  React.ComponentPropsWithoutRef<'textarea'>
+>(function TitleTextarea({ className, value, onChange, ...props }, ref) {
+  const innerRef = useRef<HTMLTextAreaElement | null>(null)
+  const grow = useCallback(() => {
+    const el = innerRef.current
+    if (!el) return
+    // Collapse first: without it the box only ever grows, because `scrollHeight` on an element
+    // already tall enough to hold its content is that taller height.
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [])
+  // Layout rather than effect, so the height is right in the frame the value lands in and a
+  // restored draft does not flash at one line before settling at two.
+  useLayoutEffect(grow, [value, grow])
+
+  return (
+    <textarea
+      {...props}
+      rows={1}
+      value={value}
+      ref={(el) => {
+        innerRef.current = el
+        if (typeof ref === 'function') ref(el)
+        else if (ref) ref.current = el
+      }}
+      onChange={(event) => {
+        onChange?.(event)
+        grow()
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.preventDefault()
+      }}
+      className={cn('resize-none overflow-hidden', className)}
+    />
+  )
+})
 
 function formatDate(date?: Date) {
   if (!date || isNaN(date as any)) date = new Date()
@@ -1179,11 +1237,11 @@ export function ExpenseForm({
                       />
                       <div className="min-w-0 flex-1">
                         <FormControl>
-                          <Input
+                          <TitleTextarea
                             placeholder={t(
                               `${sExpense}.TitleField.placeholder`,
                             )}
-                            className="h-auto border-0 bg-transparent px-1 py-0 text-lg sm:text-lg font-semibold leading-tight shadow-none placeholder:font-normal placeholder:text-subtle-foreground focus-visible:ring-0"
+                            className="block w-full border-0 bg-transparent px-1 py-0 text-2xl font-bold leading-tight shadow-none outline-none placeholder:text-xl placeholder:font-normal placeholder:text-subtle-foreground focus-visible:ring-0"
                             {...field}
                             onBlur={async () => {
                               field.onBlur()
@@ -1214,7 +1272,7 @@ export function ExpenseForm({
                         {selectedCategory && (
                           <p
                             data-testid="category-name"
-                            className="truncate px-1 pt-0.5 text-sm text-muted-foreground"
+                            className="truncate px-1 pt-1 text-xs text-muted-foreground"
                           >
                             {tCategories(
                               `${selectedCategory.grouping}.${selectedCategory.name}`,

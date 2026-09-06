@@ -30,7 +30,7 @@ test.describe('Expense Form Validation', () => {
     await expect(page).toHaveURL(/\/groups\/[^/]+\/expenses\/create/)
 
     // Title field should have error indication
-    const titleInput = page.locator('input[name="title"]')
+    const titleInput = page.locator('[name="title"]')
     await expect(titleInput).toBeVisible()
   })
 
@@ -46,7 +46,7 @@ test.describe('Expense Form Validation', () => {
     await navigateToExpenseCreate(page)
 
     // Fill title and amount, but don't select payer
-    await page.locator('input[name="title"]').fill('Test Expense')
+    await page.locator('[name="title"]').fill('Test Expense')
     await page.locator(AMOUNT_INPUT).fill('75.00')
 
     // Try to submit without selecting payer
@@ -68,7 +68,7 @@ test.describe('Expense Form Validation', () => {
     await navigateToExpenseCreate(page)
 
     // Fill title, zero amount, and payer
-    await page.locator('input[name="title"]').fill('Zero Amount Test')
+    await page.locator('[name="title"]').fill('Zero Amount Test')
     await page.locator(AMOUNT_INPUT).fill('0')
 
     const paidBySelect = page.getByTestId('paid-by-select-0')
@@ -94,7 +94,7 @@ test.describe('Expense Form Validation', () => {
     await navigateToExpenseCreate(page)
 
     // Fill title first
-    await page.locator('input[name="title"]').fill('Income Entry')
+    await page.locator('[name="title"]').fill('Income Entry')
 
     // Select payer BEFORE entering negative amount (form changes label when negative)
     const paidBySelect = page.getByTestId('paid-by-select-0')
@@ -129,7 +129,7 @@ test.describe('Expense Form Validation', () => {
     const expenseAmount = '123.45'
 
     // Fill all required fields
-    await page.locator('input[name="title"]').fill(expenseTitle)
+    await page.locator('[name="title"]').fill(expenseTitle)
     await page.locator(AMOUNT_INPUT).fill(expenseAmount)
 
     const paidBySelect = page.getByTestId('paid-by-select-0')
@@ -162,7 +162,7 @@ test.describe('Expense Form Validation', () => {
 
     // Fill with non-numeric characters
     const amountInput = page.locator(AMOUNT_INPUT)
-    await page.locator('input[name="title"]').fill('Sanitize Test')
+    await page.locator('[name="title"]').fill('Sanitize Test')
 
     // Type amount with extra characters
     await amountInput.fill('50.99')
@@ -199,7 +199,7 @@ test.describe('Expense Form Validation', () => {
     const expenseTitle = 'Date Validation Test'
 
     // Fill required fields
-    await page.locator('input[name="title"]').fill(expenseTitle)
+    await page.locator('[name="title"]').fill(expenseTitle)
     await page.locator(AMOUNT_INPUT).fill('45.00')
 
     const paidBySelect = page.getByTestId('paid-by-select-0')
@@ -237,7 +237,7 @@ test.describe('Expense Form Validation', () => {
     await expect(page).toHaveURL(/\/groups\/[^/]+\/expenses\/create/)
 
     // Form should still be visible (not navigated away)
-    await expect(page.locator('input[name="title"]')).toBeVisible()
+    await expect(page.locator('[name="title"]')).toBeVisible()
     await expect(page.locator(AMOUNT_INPUT)).toBeVisible()
   })
 
@@ -253,7 +253,7 @@ test.describe('Expense Form Validation', () => {
     await navigateToExpenseCreate(page)
 
     // Fill with whitespace-only title
-    await page.locator('input[name="title"]').fill('   ')
+    await page.locator('[name="title"]').fill('   ')
     await page.locator(AMOUNT_INPUT).fill('50.00')
 
     const paidBySelect = page.getByTestId('paid-by-select-0')

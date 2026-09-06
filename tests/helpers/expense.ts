@@ -105,10 +105,12 @@ export async function expandMoreOptions(page: Page): Promise<void> {
   } catch {
     return // no collapsible on this form
   }
-  // The notes field is the probe for "already open". It used to be the date input, which moved out
-  // of this section — leaving the check true on every form, so this would have returned silently
-  // and every caller would have timed out on a field it was supposed to reveal.
-  const probe = page.locator('textarea').first()
+  // The notes field is the probe for "already open", and it is named rather than found by tag.
+  // This was `locator('textarea').first()` and broke the same way the date check before it broke:
+  // the title became a textarea so it could wrap, so the first textarea on the page was always
+  // visible, the probe was always true, and every caller timed out on a field this never revealed.
+  // A probe has to name the thing it is probing for.
+  const probe = page.locator('textarea[name="notes"]')
   if (await probe.isVisible()) return
   await trigger.click()
   await probe.waitFor({ state: 'visible' })
@@ -122,7 +124,7 @@ export async function fillExpenseForm(
   options: CreateExpenseOptions,
 ): Promise<void> {
   // Wait for form to be visible
-  const expenseTitle = page.locator('input[name="title"]')
+  const expenseTitle = page.locator('[name="title"]')
   await expenseTitle.waitFor({ state: 'visible' })
 
   // Fill title
@@ -164,9 +166,9 @@ export async function fillExpenseForm(
 
   // Optional: Add notes
   if (options.notes) {
-    const textareas = page.locator('textarea')
-    if ((await textareas.count()) > 0) {
-      await textareas.first().fill(options.notes)
+    const notes = page.locator('textarea[name="notes"]')
+    if ((await notes.count()) > 0) {
+      await notes.fill(options.notes)
     }
   }
 
@@ -249,7 +251,7 @@ export async function openExpenseForEdit(
     .filter({ hasText: expenseTitle })
   await expenseTitleElement.click()
   await page.waitForURL(/\/groups\/[^/]+\/expenses\/[^/]+\/edit/)
-  await expect(page.locator('input[name="title"]')).toHaveValue(expenseTitle)
+  await expect(page.locator('[name="title"]')).toHaveValue(expenseTitle)
 }
 
 /**
@@ -261,7 +263,7 @@ export async function updateExpense(
 ): Promise<void> {
   // Update title if provided
   if (updates.title) {
-    const titleInput = page.locator('input[name="title"]')
+    const titleInput = page.locator('[name="title"]')
     await titleInput.clear()
     await titleInput.fill(updates.title)
   }
@@ -284,7 +286,7 @@ export async function updateExpense(
 
   // Update notes if provided
   if (updates.notes !== undefined) {
-    const notesTextarea = page.locator('textarea')
+    const notesTextarea = page.locator('textarea[name="notes"]')
     await notesTextarea.clear()
     await notesTextarea.fill(updates.notes)
   }
@@ -309,9 +311,7 @@ export async function verifyExpenseValues(
   },
 ): Promise<void> {
   if (expected.title) {
-    await expect(page.locator('input[name="title"]')).toHaveValue(
-      expected.title,
-    )
+    await expect(page.locator('[name="title"]')).toHaveValue(expected.title)
   }
   if (expected.amount) {
     await expect(page.locator(AMOUNT_INPUT)).toHaveValue(expected.amount)
@@ -321,7 +321,9 @@ export async function verifyExpenseValues(
   }
   if (expected.notes) {
     await expandMoreOptions(page)
-    await expect(page.locator('textarea')).toHaveValue(expected.notes)
+    await expect(page.locator('textarea[name="notes"]')).toHaveValue(
+      expected.notes,
+    )
   }
   if (expected.payer) {
     // The payer combobox shows the participant name when selected

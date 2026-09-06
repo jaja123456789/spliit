@@ -52,7 +52,7 @@ test.describe('Expense Creation', () => {
     const expenseAmount = '85.50'
 
     // Fill expense form
-    await page.locator('input[name="title"]').fill(expenseTitle)
+    await page.locator('[name="title"]').fill(expenseTitle)
     await page.locator(AMOUNT_INPUT).fill(expenseAmount)
 
     // Select payer
@@ -98,7 +98,7 @@ test.describe('Expense Creation', () => {
     const testDate = '2024-06-15'
 
     // Fill expense form
-    await page.locator('input[name="title"]').fill(expenseTitle)
+    await page.locator('[name="title"]').fill(expenseTitle)
     await page.locator(AMOUNT_INPUT).fill(expenseAmount)
 
     // Select payer
@@ -140,7 +140,7 @@ test.describe('Expense Creation', () => {
     const expenseNotes = 'This is a test note for the expense'
 
     // Fill expense form
-    await page.locator('input[name="title"]').fill(expenseTitle)
+    await page.locator('[name="title"]').fill(expenseTitle)
     await page.locator(AMOUNT_INPUT).fill(expenseAmount)
 
     // Select payer
@@ -150,7 +150,7 @@ test.describe('Expense Creation', () => {
 
     // Add notes
     await expandMoreOptions(page)
-    await page.locator('textarea').fill(expenseNotes)
+    await page.locator('textarea[name="notes"]').fill(expenseNotes)
 
     // Submit
     await page.locator('button[type="submit"]').click()
@@ -164,7 +164,7 @@ test.describe('Expense Creation', () => {
     await page.waitForURL(/\/groups\/[^/]+\/expenses\/[^/]+\/edit/)
 
     await expandMoreOptions(page)
-    const notesTextarea = page.locator('textarea')
+    const notesTextarea = page.locator('textarea[name="notes"]')
     await expect(notesTextarea).toHaveValue(expenseNotes)
   })
 
@@ -191,7 +191,7 @@ test.describe('Expense Creation', () => {
     const reimbursementTitle = 'Bob pays Alice'
     const reimbursementAmount = '100.00'
 
-    await page.locator('input[name="title"]').fill(reimbursementTitle)
+    await page.locator('[name="title"]').fill(reimbursementTitle)
     await page.locator(AMOUNT_INPUT).fill(reimbursementAmount)
 
     // Select Bob as payer
@@ -235,11 +235,11 @@ test.describe('Expense Creation', () => {
     await navigateToExpenseCreate(page)
 
     // Fill all fields
-    await page.locator('input[name="title"]').fill(expenseTitle)
+    await page.locator('[name="title"]').fill(expenseTitle)
     await page.locator(AMOUNT_INPUT).fill(expenseAmount)
     await expandMoreOptions(page)
     await page.locator('input[type="date"]').fill(expenseDate)
-    await page.locator('textarea').fill(expenseNotes)
+    await page.locator('textarea[name="notes"]').fill(expenseNotes)
 
     // Select payer
     const paidBySelect = page.getByTestId('paid-by-select-0')
@@ -255,11 +255,13 @@ test.describe('Expense Creation', () => {
     await page.waitForURL(/\/groups\/[^/]+\/expenses\/[^/]+\/edit/)
 
     // Verify all values persisted correctly
-    await expect(page.locator('input[name="title"]')).toHaveValue(expenseTitle)
+    await expect(page.locator('[name="title"]')).toHaveValue(expenseTitle)
     await expect(page.locator(AMOUNT_INPUT)).toHaveValue(expenseAmount)
     await expect(page.locator('input[type="date"]')).toHaveValue(expenseDate)
     await expandMoreOptions(page)
-    await expect(page.locator('textarea')).toHaveValue(expenseNotes)
+    await expect(page.locator('textarea[name="notes"]')).toHaveValue(
+      expenseNotes,
+    )
 
     // Verify payer selection persisted (Bob should be selected)
     // The payer combobox shows the participant name when selected
