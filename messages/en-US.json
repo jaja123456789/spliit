@@ -360,6 +360,7 @@
       "remainderName": "Tax & service",
       "remainderNameFor": "Tax & service · {name}",
       "sameAsAbove": "Same as above",
+      "selectedOfTotal": "{count} of {total} selected",
       "addLine": "Add a line",
       "remainderLabel": "Tax & service, not on any line",
       "remainderProportional": "In proportion",

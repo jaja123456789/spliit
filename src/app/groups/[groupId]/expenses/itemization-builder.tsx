@@ -7,6 +7,7 @@ import { CalculatorInput } from '@/components/ui/calculator-input'
 import {
   Drawer,
   DrawerContent,
+  DrawerDescription,
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
@@ -270,16 +271,23 @@ export function ItemizationBuilder({
     return () => observer.disconnect()
   }, [])
 
-  // A 30px mark and the 4px gap after it, against what the rest of the line cannot give up: the
-  // price field, your share, the bin, the gaps between them, and enough of the name to read a
-  // dish off. `- 48` is the rows' own `px-6`, which the measured container does not pay.
+  // A 30px mark and the 4px gap after it, against the width the marks' own line has.
+  //
+  // This reserved the name field and the price field too, which was right when the marks sat on
+  // the same line as them and wrong from the moment they moved onto a line of their own. It was
+  // asking for about 400px of room that nothing on that line uses, so on a phone the marks never
+  // fitted however few people were in the group — three of them fell back to the picker at 420px
+  // and only came inline at 900.
+  //
+  // What the marks' line actually pays for: the card's own `mx-6` and `px-3`, the bin's column
+  // beside the content, and your share at the right-hand end.
   const MARK_WIDTH = 34
-  const ROW_RESERVE = 120 + 56 + 36 + 30 + 24
-  const NAME_MIN = 132
+  const LINE_CHROME = 48 + 24 + 44
+  const YOUR_SHARE = 76
   const inlineMarks =
     rowsWidth > 0 &&
-    rowsWidth - 48 >=
-      NAME_MIN + ROW_RESERVE + group.participants.length * MARK_WIDTH
+    rowsWidth - LINE_CHROME - YOUR_SHARE >=
+      group.participants.length * MARK_WIDTH
 
   const toggleRow = (rowId: string) =>
     setSelectedRowIds((current) =>
@@ -661,6 +669,8 @@ export function ItemizationBuilder({
                         }
                         previousName={watchedItems[index - 1]?.name ?? ''}
                         rowIndex={index}
+                        currency={currency}
+                        price={itemPrice}
                         trigger={
                           <button
                             type="button"
@@ -1100,7 +1110,10 @@ function RowPeoplePicker({
   previousIds: string[] | null
   previousName: string
   rowIndex: number
+  currency: Currency
+  price: number
 }) {
+  const t = useTranslations('ExpenseForm.Itemization')
   const [open, setOpen] = useState(false)
   useMobilePopoverState(open, setOpen, isDesktop)
   const body = <RowPicker {...picker} />
@@ -1122,6 +1135,11 @@ function RowPeoplePicker({
       <DrawerContent>
         <DrawerHeader className="text-left">
           <DrawerTitle>{title}</DrawerTitle>
+          {/* Radix asks every dialog for one, and warns when it is missing. The list below says
+              the same thing at length; this is for the reader who cannot see it yet. */}
+          <DrawerDescription className="sr-only">
+            {t('splitAmong')}
+          </DrawerDescription>
         </DrawerHeader>
         <div className="px-4 pb-8">{body}</div>
       </DrawerContent>
@@ -1299,6 +1317,8 @@ function RowPicker({
   previousIds,
   previousName,
   rowIndex,
+  currency,
+  price,
 }: {
   value: string[]
   onChange: (val: string[]) => void
@@ -1307,77 +1327,114 @@ function RowPicker({
   previousIds: string[] | null
   previousName: string
   rowIndex: number
+  currency: Currency
+  price: number
 }) {
   const t = useTranslations('ExpenseForm.Itemization')
   const allIds = group.participants.map((p) => p.id)
-  const isEveryone = value.length === allIds.length && allIds.length > 0
   const canCopyPrevious = !!previousIds && previousIds.length > 0
 
-  const preset = (
-    label: string,
-    isOn: boolean,
-    onClick: () => void,
-    testId: string,
-  ) => (
-    <button
-      key={testId}
-      type="button"
-      data-testid={testId}
-      onClick={onClick}
-      className={cn(
-        'rounded-md px-3 py-1.5 text-xs transition-colors',
-        isOn
-          ? 'bg-primary/10 font-medium text-primary'
-          : 'bg-muted text-muted-foreground hover:bg-muted-foreground/15',
-      )}
-    >
-      {label}
-    </button>
-  )
+  const selectedCount = value.length
+  const allSelected = selectedCount === allIds.length && allIds.length > 0
+  const avatarHues = assignAvatarHues(group.participants.map((x) => x.name))
+  const perHead = selectedCount > 0 ? price / selectedCount : 0
+
+  const toggle = (id: string) =>
+    onChange(
+      value.includes(id) ? value.filter((x) => x !== id) : [...value, id],
+    )
 
   return (
-    <div data-testid={`row-picker-${rowIndex}`}>
-      <div className="flex flex-wrap gap-1.5">
-        {preset(
-          t('sharedByEveryone'),
-          isEveryone,
-          () => onChange(allIds),
-          `preset-everyone-${rowIndex}`,
-        )}
-        {preset(
-          t('notShared'),
-          value.length === 0,
-          () => onChange([]),
-          `preset-none-${rowIndex}`,
-        )}
-        {canCopyPrevious &&
-          preset(
-            previousName
-              ? t('sameAsNamed', { name: previousName })
-              : t('sameAsAbove'),
-            false,
-            () => onChange(previousIds),
-            `preset-same-${rowIndex}`,
+    <div data-testid={`row-picker-${rowIndex}`} className="space-y-2">
+      <div className="flex items-center justify-between gap-3 text-sm">
+        <span className="text-muted-foreground">
+          {t('selectedOfTotal', {
+            count: selectedCount,
+            total: allIds.length,
+          })}
+        </span>
+        <span className="flex shrink-0 items-center gap-3">
+          {canCopyPrevious && (
+            <button
+              type="button"
+              data-testid={`preset-same-${rowIndex}`}
+              className="font-medium text-primary underline-offset-2 hover:underline"
+              onClick={() => onChange(previousIds!)}
+            >
+              {previousName
+                ? t('sameAsNamed', { name: previousName })
+                : t('sameAsAbove')}
+            </button>
           )}
+          <button
+            type="button"
+            data-testid={`preset-everyone-${rowIndex}`}
+            className="font-medium text-primary underline-offset-2 hover:underline"
+            onClick={() => onChange(allSelected ? [] : allIds)}
+          >
+            {allSelected ? t('clearAll') : t('selectAll')}
+          </button>
+        </span>
       </div>
 
-      <div className="mt-2 grid grid-cols-6 gap-1.5 lg:grid-cols-8">
-        {group.participants.map((participant) => (
-          <MarkTile
-            key={participant.id}
-            participant={participant}
-            isOn={value.includes(participant.id)}
-            isMe={!!activeUserId && participant.id === activeUserId}
-            size="grid"
-            onClick={() =>
-              onChange(
-                value.includes(participant.id)
-                  ? value.filter((id) => id !== participant.id)
-                  : [...value, participant.id],
-              )
-            }
-          />
-        ))}
+      {/* The same list as everywhere else people are chosen on this form: a row each, the mark,
+          the name, and what it costs them. It was a strip of preset chips over a grid of initialled
+          tiles — a third way of drawing the same question, and the only one left that did not look
+          like the rest of the sheet. "Everyone" and "not shared" are gone as chips because Select
+          everyone and Nobody are the same two answers, said once. */}
+      <div className="divide-y overflow-hidden rounded-lg border">
+        {group.participants.map((participant) => {
+          const on = value.includes(participant.id)
+          return (
+            <button
+              key={participant.id}
+              type="button"
+              role="checkbox"
+              aria-checked={on}
+              data-testid={`pick-${rowIndex}-${participant.name}`}
+              onClick={() => toggle(participant.id)}
+              className={cn(
+                'flex min-h-11 w-full items-center gap-3 px-3 py-1.5 text-left transition-colors',
+                on ? 'bg-primary/5' : 'hover:bg-muted/60',
+              )}
+            >
+              <span
+                aria-hidden="true"
+                className={cn(
+                  'grid h-4 w-4 shrink-0 place-items-center rounded border',
+                  on
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-input',
+                )}
+              >
+                {on && <Check className="h-3 w-3" />}
+              </span>
+              <ProfileAvatar
+                name={participant.name}
+                hue={avatarHues.get(participant.name)}
+                isActiveUser={!!activeUserId && participant.id === activeUserId}
+                size={28}
+                className={cn(!on && 'opacity-40 grayscale')}
+              />
+              <span
+                className={cn(
+                  'min-w-0 flex-1 truncate text-sm font-medium',
+                  !on && 'text-muted-foreground',
+                )}
+              >
+                {participant.name}
+              </span>
+              {on && price > 0 && (
+                <Money
+                  currency={currency}
+                  amount={perHead}
+                  fractions
+                  className="shrink-0 text-sm tabular-nums"
+                />
+              )}
+            </button>
+          )
+        })}
       </div>
     </div>
   )
