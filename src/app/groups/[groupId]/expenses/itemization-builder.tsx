@@ -271,20 +271,23 @@ export function ItemizationBuilder({
     return () => observer.disconnect()
   }, [])
 
-  // A 30px mark and the 4px gap after it, against the width the marks' own line has.
+  // Four people get their marks in the row; more than four open the picker.
   //
-  // This reserved the name field and the price field too, which was right when the marks sat on
-  // the same line as them and wrong from the moment they moved onto a line of their own. It was
-  // asking for about 400px of room that nothing on that line uses, so on a phone the marks never
-  // fitted however few people were in the group — three of them fell back to the picker at 420px
-  // and only came inline at 900.
+  // The question is not whether they fit — eight 30px marks fit on a wide row, and that is what
+  // the width test alone concluded. It is whether they are still worth aiming at. Four is what
+  // can be drawn at 40px with room between them; past that each mark shrinks and the row turns
+  // into a line of targets too close together to hit the one you meant, which is the moment a
+  // list you scroll beats a row you poke at.
   //
-  // What the marks' line actually pays for: the card's own `mx-6` and `px-3`, the bin's column
-  // beside the content, and your share at the right-hand end.
-  const MARK_WIDTH = 34
+  // Width still has a veto, for the narrow screen where even four would crowd: the marks' line
+  // pays for the card's own `mx-6` and `px-3`, the bin's column beside the content, and your
+  // share at the right-hand end.
+  const INLINE_MARK_LIMIT = 4
+  const MARK_WIDTH = 48
   const LINE_CHROME = 48 + 24 + 44
   const YOUR_SHARE = 76
   const inlineMarks =
+    group.participants.length <= INLINE_MARK_LIMIT &&
     rowsWidth > 0 &&
     rowsWidth - LINE_CHROME - YOUR_SHARE >=
       group.participants.length * MARK_WIDTH
@@ -1228,18 +1231,26 @@ function Tick({
   )
 }
 
-/** One person's mark, as a target rather than a picture of them. */
+/**
+ * One person's mark in the row.
+ *
+ * It used to draw its own two letters on a plate that was the accent when on and grey when off —
+ * which meant the one place in the app where people are shown as marks was the one place they did
+ * not wear their own colour. It is the same plate as everywhere else now, with the same rule for
+ * "not on this line" that the split rows and the picker use: dimmed and drained rather than
+ * repainted, so it is still recognisably that person.
+ */
 function MarkTile({
   participant,
+  hue,
   isOn,
   isMe,
-  size,
   onClick,
 }: {
   participant: { id: string; name: string }
+  hue?: number
   isOn: boolean
   isMe: boolean
-  size: 'row' | 'grid'
   onClick: () => void
 }) {
   return (
@@ -1248,18 +1259,15 @@ function MarkTile({
       onClick={onClick}
       aria-pressed={isOn}
       title={participant.name}
-      className={cn(
-        'grid shrink-0 place-items-center font-mono font-semibold uppercase transition-colors',
-        size === 'row'
-          ? 'h-[30px] w-[30px] rounded-lg text-[9px]'
-          : 'h-11 rounded-xl text-[10px]',
-        isOn
-          ? 'bg-primary text-primary-foreground'
-          : 'bg-muted text-subtle-foreground hover:bg-muted-foreground/20',
-        isMe && 'ring-2 ring-inset ring-primary/30',
-      )}
+      className="shrink-0 rounded-lg transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
-      {participant.name.slice(0, 2)}
+      <ProfileAvatar
+        name={participant.name}
+        hue={hue}
+        isActiveUser={isMe}
+        size={40}
+        className={cn(!isOn && 'opacity-40 grayscale')}
+      />
       <span className="sr-only">{participant.name}</span>
     </button>
   )
@@ -1279,15 +1287,17 @@ function MarkRow({
   activeUserId?: string | null
   rowIndex: number
 }) {
+  const avatarHues = assignAvatarHues(group.participants.map((p) => p.name))
+
   return (
-    <span className="flex shrink-0 gap-1" data-testid={`marks-${rowIndex}`}>
+    <span className="flex shrink-0 gap-2" data-testid={`marks-${rowIndex}`}>
       {group.participants.map((participant) => (
         <MarkTile
           key={participant.id}
           participant={participant}
+          hue={avatarHues.get(participant.name)}
           isOn={value.includes(participant.id)}
           isMe={!!activeUserId && participant.id === activeUserId}
-          size="row"
           onClick={() =>
             onChange(
               value.includes(participant.id)
