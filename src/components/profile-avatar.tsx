@@ -75,10 +75,12 @@ export function ProfileAvatar({
         height: size,
         backgroundColor: `hsl(var(--avatar-${plate}))`,
         color: `hsl(var(--avatar-${plate}-foreground))`,
-        // Proportional rather than a fixed --radius step: a 10px corner reads as a rounded square
-        // on a 40px plate and as a blob on a 24px one. Mark type sits outside the type scale for
-        // the same reason — it is a two-letter label, not text in the reading hierarchy.
-        borderRadius: Math.round(size * 0.24),
+        // Round, at every size and on every screen. It used to be a rounded square scaled to the
+        // plate — which meant the one place that needed circles (marks overlapping in a stack,
+        // where a square overlapping a square reads as a mis-rendered box) had to override it,
+        // and the app showed the same people as two different shapes depending on the page.
+        // One shape is worth more than the argument for either of them.
+        borderRadius: '50%',
         // Floored, not purely proportional: a 26px chip mark computed to 8px, smaller than
         // anything else on the screen. Marks sit outside the type scale, but not that far.
         fontSize: Math.max(10, Math.round(size * 0.38)),

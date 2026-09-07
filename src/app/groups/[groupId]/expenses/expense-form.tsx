@@ -549,6 +549,7 @@ export function ExpenseForm({
   )
   const isIncome = totalAmount < 0
   const isMultiPayer = payerFields.length > 1
+  const avatarHues = assignAvatarHues(group.participants.map((p) => p.name))
   // Not a participant id, and it never reaches the form: `onValueChange` intercepts it.
   const MULTI_PAYER_OPTION = '__multiple_payers__'
   const sExpense = isIncome ? 'Income' : 'Expense'
@@ -1585,11 +1586,17 @@ export function ExpenseForm({
                                         'h-11 w-full justify-between gap-1 rounded-md border bg-card px-3 font-medium shadow-none focus:ring-0 [&>svg]:opacity-40',
                                       )}
                                     >
-                                      <div className="flex items-center gap-2">
-                                        {/* Optional: Add a subtle icon for the lead payer */}
+                                      {/* The payer is a person, and every other place this form
+                                        names one shows their plate beside the name. Here it was
+                                        the name alone — the one participant on the screen without
+                                        a face, and the one the concept draws with one. */}
+                                      <div className="flex min-w-0 items-center gap-2">
                                         {isHighest && (
-                                          <Crown className="w-3 h-3 text-primary" />
+                                          <Crown className="h-3 w-3 shrink-0 text-primary" />
                                         )}
+                                        {/* No plate of its own: SelectValue renders the chosen
+                                          item's own children, which now carry one — drawing a
+                                          second here showed "JA JA Jason". */}
                                         <SelectValue />
                                       </div>
                                     </SelectTrigger>
@@ -1604,7 +1611,18 @@ export function ExpenseForm({
                                           index,
                                         )}
                                       >
-                                        {name}
+                                        <span className="flex items-center gap-2">
+                                          <ProfileAvatar
+                                            name={name}
+                                            hue={avatarHues.get(name)}
+                                            isActiveUser={
+                                              !!activeUserId &&
+                                              activeUserId === id
+                                            }
+                                            size={24}
+                                          />
+                                          {name}
+                                        </span>
                                       </SelectItem>
                                     ))}
                                     {!isMultiPayer && (
@@ -2396,7 +2414,7 @@ function PaidForList({
               aria-label={name}
               data-testid={`split-row-toggle-${name}`}
               onClick={() => toggleParticipant(id, !isSelected)}
-              className="shrink-0 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
             >
               <ProfileAvatar
                 name={name}

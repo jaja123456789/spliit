@@ -80,11 +80,9 @@ function ParticipantStack({
       {shown.map((id, index) => (
         <span
           key={id}
-          // Round here and only here. Everywhere else a mark is a rounded square, but a square
-          // overlapped by another square reads as a mis-rendered box; a circle overlapped by a
-          // circle reads as a stack. The concept draws the same distinction — `.mark` is 6px,
-          // `.stack .av` is a full circle — and the 1.5px ring in the sheet's own colour is what
-          // separates them. `!` beats ProfileAvatar's proportional inline `borderRadius`.
+          // The ring in the sheet's own colour is what separates one mark from the one it
+          // overlaps. The shape is no longer this row's business — every plate is round now, so
+          // the `!rounded-full` that used to be needed here is gone with the square.
           className={cn(
             'rounded-full ring-[1.5px] ring-card',
             index > 0 && '-ml-[3px]',
@@ -95,7 +93,6 @@ function ParticipantStack({
             hue={avatarHues.get(nameOfParticipant(id))}
             isActiveUser={!!activeUserId && id === activeUserId}
             size={20}
-            className="!rounded-full"
           />
         </span>
       ))}
@@ -1259,7 +1256,7 @@ function MarkTile({
       onClick={onClick}
       aria-pressed={isOn}
       title={participant.name}
-      className="shrink-0 rounded-lg transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      className="shrink-0 rounded-full transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
     >
       <ProfileAvatar
         name={participant.name}
