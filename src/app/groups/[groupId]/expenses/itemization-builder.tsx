@@ -434,7 +434,8 @@ export function ItemizationBuilder({
                 data-testid={`item-row-${index}`}
                 data-testid-error={rowError ? 'true' : undefined}
                 className={cn(
-                  'mx-6 rounded-lg border px-3 py-2.5 transition-colors',
+                  'mx-6 rounded-lg border px-3 py-2 transition-colors',
+                  isEditing ? 'space-y-2.5' : 'space-y-0',
                   isRowSelected && 'border-primary/40 bg-primary/5',
                   isOpen ? 'bg-primary/5' : 'bg-card',
                   // The line the message at the foot of the list is talking about. A left edge
@@ -574,18 +575,14 @@ export function ItemizationBuilder({
                          receipt is — and only puts boxes round the one you opened. Every row
                          being permanently editable made four lines of a bill into eight input
                          boxes, all shouting equally, none of them the one you were working on. */
-                      <div className="flex items-center gap-2.5">
-                        <button
-                          type="button"
-                          data-testid={`edit-line-${index}`}
-                          disabled={isSelecting}
-                          onClick={() => setOpenRowId(field.id)}
-                          // 32px of type with the hit area grown around it, the same trick the
-                          // bin and the calculator use: two stacked 44px targets made a closed
-                          // line 110px tall for two lines of text, and the card is mostly the
-                          // space between them.
-                          className="relative flex min-w-0 flex-1 items-baseline gap-3 rounded-md py-1.5 text-left after:absolute after:inset-x-0 after:-inset-y-1.5 after:content-[''] disabled:opacity-100"
-                        >
+                      <button
+                        type="button"
+                        data-testid={`edit-line-${index}`}
+                        disabled={isSelecting}
+                        onClick={() => setOpenRowId(field.id)}
+                        className="flex w-full flex-col gap-1 text-left disabled:opacity-100"
+                      >
+                        <span className="flex items-baseline gap-3">
                           <span
                             className={cn(
                               'min-w-0 flex-1 truncate font-medium',
@@ -598,8 +595,30 @@ export function ItemizationBuilder({
                           <span className="shrink-0 font-mono font-semibold tabular-nums">
                             {formatCurrency(currency, itemPrice, locale, true)}
                           </span>
-                        </button>
-                      </div>
+                        </span>
+
+                        <span
+                          data-testid={`assign-row-${index}`}
+                          className="flex w-full items-center gap-2 pr-[31px]"
+                        >
+                          <ParticipantStack
+                            participantIds={participantIds}
+                            group={group}
+                            activeUserId={activeUserId}
+                          />
+                          <span className="min-w-0 truncate text-xs text-muted-foreground">
+                            {summaryText}
+                          </span>
+                          <span className="flex-1" />
+                          <YourShare
+                            currency={currency}
+                            amount={perPersonAmount}
+                            show={itemPrice > 0}
+                            isMine={isMeInvolved}
+                            withLabel
+                          />
+                        </span>
+                      </button>
                     )}
 
                     {/* The second line is the whole target. "Tap a row to change who" — one place to
@@ -617,36 +636,6 @@ export function ItemizationBuilder({
                     {/* Only on the line being edited. Closed, a line is its name and its
                         price and nothing else — the strip is a control, and a card full of
                         controls you are not using is the thing the two states exist to avoid. */}
-                    {!isEditing && (
-                      <button
-                        type="button"
-                        data-testid={`assign-row-${index}`}
-                        disabled={isSelecting}
-                        onClick={() => setOpenRowId(field.id)}
-                        // Opens the line, exactly as the name and price above it do. It is not the
-                        // assignee control any more — that belongs to the open line — but it is
-                        // still half of what a closed line shows, and a closed line is one target.
-                        className="flex min-h-8 w-full items-center gap-2 pr-[31px] text-left disabled:opacity-100"
-                      >
-                        <ParticipantStack
-                          participantIds={participantIds}
-                          group={group}
-                          activeUserId={activeUserId}
-                        />
-                        <span className="min-w-0 truncate text-xs text-muted-foreground">
-                          {summaryText}
-                        </span>
-                        <span className="flex-1" />
-                        <YourShare
-                          currency={currency}
-                          amount={perPersonAmount}
-                          show={itemPrice > 0}
-                          isMine={isMeInvolved}
-                          withLabel
-                        />
-                      </button>
-                    )}
-
                     {isEditing && !inlineMarks && (
                       <RowPeoplePicker
                         isDesktop={isDesktop}
