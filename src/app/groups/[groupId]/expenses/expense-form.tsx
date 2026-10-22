@@ -1,328 +1,55 @@
 'use client'
 
-import { CategorySelector } from '@/components/category-selector'
-import { CurrencySelector } from '@/components/currency-selector'
-import { ExpenseDocumentsInput } from '@/components/expense-documents-input'
-import { ProfileAvatar } from '@/components/profile-avatar'
-import { SubmitButton } from '@/components/submit-button'
 import { Button } from '@/components/ui/button'
-import { CalculatorInput } from '@/components/ui/calculator-input'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible'
-import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerFooter,
-  DrawerHeader,
-  DrawerTitle,
-} from '@/components/ui/drawer'
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label' // <--- Add this line
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
+import { Card, CardContent } from '@/components/ui/card'
+import { Form } from '@/components/ui/form'
 import { Locale } from '@/i18n/request'
 import { readActiveUser } from '@/lib/active-user'
-import { assignAvatarHues } from '@/lib/avatar-hue'
-import {
-  Currency,
-  defaultCurrencyList,
-  getCurrency,
-  normalizeCurrencyCode,
-} from '@/lib/currency'
+import { getCurrency, normalizeCurrencyCode } from '@/lib/currency'
 import {
   clearExpenseDraft,
   createDraftScope,
-  draftHasContent,
   editDraftScope,
-  readExpenseDraft,
-  saveExpenseDraft,
-  touchExpenseDraft,
 } from '@/lib/expense-draft'
 import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { useActiveUser, useCurrencyRate } from '@/lib/hooks'
-import {
-  ExpenseFormValues,
-  SplittingOptions,
-  expenseFormSchema,
-} from '@/lib/schemas'
-import { calculateShare } from '@/lib/totals'
+import { ExpenseFormValues, expenseFormSchema } from '@/lib/schemas'
 import {
   amountAsDecimal,
-  amountAsMinorUnits,
   cn,
   convertAmount,
   convertAmountParts,
   distributeMinorUnits,
-  formatCurrency,
   getCurrencyFromGroup,
   randomId,
-  toDateInputValue,
   todayAsDateOnly,
 } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { RecurrenceRule } from '@prisma/client'
-import {
-  Check,
-  ChevronDown,
-  Crown,
-  Loader2,
-  Plus,
-  Receipt,
-  Save,
-  Trash2,
-} from 'lucide-react'
+import { Receipt } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
-import type React from 'react'
-import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  useState,
-} from 'react'
-import {
-  UseFormReturn,
-  useFieldArray,
-  useForm,
-  useWatch,
-} from 'react-hook-form'
-import { match } from 'ts-pattern'
-import { DeletePopup } from '../../../../components/delete-popup'
-import { extractCategoryFromTitle } from '../../../../components/expense-form-actions'
-import { CategoryIcon } from './category-icon'
+import { useCallback, useEffect, useState } from 'react'
+import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { CreateFromReceiptButton } from './create-from-receipt-button'
-import { ItemizationBuilder } from './itemization-builder' // Import new component
-import { SplitRows } from './split-rows'
-
-// --- Helpers ---
-
-/**
- * The amount an expense was originally entered for, in minor units of the currency it was entered
- * in. `originalAmount` used to be written in major units, so a value that is inconsistent with the
- * stored conversion rate is recomputed from the amount in the group currency instead.
- */
-function getOriginalTotalInMinorUnits(
-  expense: { amount: number; originalAmount: number | null },
-  rate: number,
-  groupCurrency: Currency,
-  expenseCurrency: Currency,
-) {
-  const derived = amountAsMinorUnits(
-    amountAsDecimal(expense.amount, groupCurrency) / rate,
-    expenseCurrency,
-  )
-  const { originalAmount } = expense
-  return originalAmount &&
-    Math.abs(originalAmount - derived) <= Math.abs(derived) / 50
-    ? originalAmount
-    : derived
-}
-
-const enforceCurrencyPattern = (value: string) =>
-  value
-    .replace(/^\s*-/, '_')
-    .replace(/[.,]/, '#')
-    .replace(/[-.,]/g, '')
-    .replace(/_/, '-')
-    .replace(/#/, '.')
-    .replace(/[^-\d.]/g, '')
-
-const getDefaultSplittingOptions = (
-  group: NonNullable<AppRouterOutput['groups']['get']['group']>,
-) => {
-  const defaultValue = {
-    splitMode: 'EVENLY' as const,
-    paidFor: group.participants.map(({ id }) => ({
-      participant: id,
-      shares: '1' as any,
-    })),
-  }
-  if (typeof localStorage === 'undefined') return defaultValue
-  const defaultSplitMode = localStorage.getItem(
-    `${group.id}-defaultSplittingOptions`,
-  )
-  if (defaultSplitMode === null) return defaultValue
-
-  try {
-    const parsedDefaultSplitMode = JSON.parse(
-      defaultSplitMode,
-    ) as SplittingOptions
-
-    if (parsedDefaultSplitMode.paidFor) {
-      for (const parsedPaidFor of parsedDefaultSplitMode.paidFor) {
-        if (
-          !group.participants.some(({ id }) => id === parsedPaidFor.participant)
-        ) {
-          localStorage.removeItem(`${group.id}-defaultSplittingOptions`)
-          return defaultValue
-        }
-      }
-    } else {
-      parsedDefaultSplitMode.paidFor = defaultValue.paidFor
-    }
-
-    return {
-      splitMode: parsedDefaultSplitMode.splitMode,
-      paidFor: parsedDefaultSplitMode.paidFor.map((paidFor) => ({
-        participant: paidFor.participant,
-        shares: (parseFloat(paidFor.shares.toString()) / 100).toString() as any,
-      })),
-    }
-  } catch (e) {
-    return defaultValue
-  }
-}
-
-async function persistDefaultSplittingOptions(
-  groupId: string,
-  expenseFormValues: ExpenseFormValues,
-) {
-  if (localStorage && expenseFormValues.saveDefaultSplittingOptions) {
-    const computePaidFor = (): SplittingOptions['paidFor'] => {
-      if (expenseFormValues.splitMode === 'EVENLY') {
-        return expenseFormValues.paidFor.map(({ participant }) => ({
-          participant,
-          shares: 100,
-        }))
-      } else if (expenseFormValues.splitMode === 'BY_AMOUNT') {
-        return null
-      } else {
-        return expenseFormValues.paidFor
-      }
-    }
-    const splittingOptions = {
-      splitMode: expenseFormValues.splitMode,
-      paidFor: computePaidFor(),
-    } satisfies SplittingOptions
-    localStorage.setItem(
-      `${groupId}-defaultSplittingOptions`,
-      JSON.stringify(splittingOptions),
-    )
-  }
-}
-
-/**
- * The expense's name, at the size a name deserves — and wrapping like one.
- *
- * An `<input>` cannot wrap. At the size this field now carries, "Monday evening restaurant" ran
- * off the right edge of its box, and reopening a saved expense showed you half its own name with
- * no indication there was more. A textarea that grows to its content is the same field with the
- * one behaviour the size demands.
- *
- * Enter is swallowed rather than inserted: this is a title, not a paragraph, and the newline
- * would be stored and then rendered as a space everywhere the title is shown.
- */
-const TitleTextarea = forwardRef<
-  HTMLTextAreaElement,
-  React.ComponentPropsWithoutRef<'textarea'>
->(function TitleTextarea({ className, value, onChange, ...props }, ref) {
-  const innerRef = useRef<HTMLTextAreaElement | null>(null)
-  const grow = useCallback(() => {
-    const el = innerRef.current
-    if (!el) return
-    // Collapse first: without it the box only ever grows, because `scrollHeight` on an element
-    // already tall enough to hold its content is that taller height.
-    el.style.height = 'auto'
-    el.style.height = `${el.scrollHeight}px`
-  }, [])
-  // Layout rather than effect, so the height is right in the frame the value lands in and a
-  // restored draft does not flash at one line before settling at two.
-  useLayoutEffect(grow, [value, grow])
-
-  return (
-    <textarea
-      {...props}
-      rows={1}
-      value={value}
-      ref={(el) => {
-        innerRef.current = el
-        if (typeof ref === 'function') ref(el)
-        else if (ref) ref.current = el
-      }}
-      onChange={(event) => {
-        onChange?.(event)
-        grow()
-      }}
-      onKeyDown={(event) => {
-        if (event.key === 'Enter') event.preventDefault()
-      }}
-      className={cn('resize-none overflow-hidden', className)}
-    />
-  )
-})
-
-/**
- * What counts as the same form, for deciding whether anything has been edited.
- *
- * A plain `JSON.stringify` of the values compares two things it should not: the order of the rows
- * and the type they happen to be carrying. `paidFor` is rebuilt whenever someone is added or
- * dropped, so taking a person off and putting them back reordered the array and the form counted
- * as changed forever after; amounts round-trip between numbers and the strings the inputs hold, so
- * `0` and `"0"` read as an edit. Sort the rows by who they are about and compare their figures as
- * figures. `conversionRate` is excluded: the exchange-rate effect fills it in on its own, which is
- * not the user typing anything.
- */
-const fingerprintValues = (values: unknown) => {
-  const { conversionRate, ...rest } = (values ?? {}) as Record<string, any>
-  const figure = (value: unknown) => Number(value) || 0
-  const byParticipant = (rows: unknown) =>
-    (Array.isArray(rows) ? rows : [])
-      .map((row: any) => ({
-        participant: String(row?.participant ?? ''),
-        amount: figure(row?.amount),
-        shares: figure(row?.shares),
-      }))
-      .sort((a, b) => a.participant.localeCompare(b.participant))
-  return JSON.stringify({
-    ...rest,
-    // The clock is not an edit: only the day someone picked is.
-    expenseDate: new Date(rest.expenseDate ?? NaN).toDateString(),
-    paidBy: byParticipant(rest.paidBy),
-    paidFor: byParticipant(rest.paidFor),
-    items: (Array.isArray(rest.items) ? rest.items : []).map((item: any) => ({
-      name: String(item?.name ?? ''),
-      price: figure(item?.price),
-      participantIds: [...(item?.participantIds ?? [])].sort(),
-    })),
-  })
-}
-
-function formatDate(date?: Date) {
-  if (!date || isNaN(date as any)) date = todayAsDateOnly()
-  return toDateInputValue(date)
-}
-
-// --- Main Component ---
+import { AmountField } from './expense-form-sections/amount-field'
+import { DocumentsSection } from './expense-form-sections/documents-section'
+import { DraftOffer } from './expense-form-sections/draft-offer'
+import {
+  getDefaultSplittingOptions,
+  getOriginalTotalInMinorUnits,
+  persistDefaultSplittingOptions,
+} from './expense-form-sections/helpers'
+import { MoreOptions } from './expense-form-sections/more-options'
+import { PayersAndDate } from './expense-form-sections/payers-and-date'
+import {
+  SplitModeSheet,
+  SplitSection,
+} from './expense-form-sections/split-section'
+import { SubmitBar } from './expense-form-sections/submit-bar'
+import { TitleField } from './expense-form-sections/title-field'
+import { useExpenseDraft } from './expense-form-sections/use-expense-draft'
 
 export function ExpenseForm({
   group,
@@ -341,8 +68,6 @@ export function ExpenseForm({
 }) {
   const t = useTranslations('ExpenseForm')
   const tReceipt = useTranslations('CreateFromReceipt')
-  // The category trigger is an icon; its name has to come from the Categories namespace.
-  const tCategories = useTranslations('Categories')
   const locale = useLocale() as Locale
   const isCreate = expense === undefined
   const searchParams = useSearchParams()
@@ -543,6 +268,10 @@ export function ExpenseForm({
     control: form.control,
     name: 'originalCurrency',
   })
+  const isReimbursement = useWatch({
+    control: form.control,
+    name: 'isReimbursement',
+  })
 
   // Derived state
   const totalAmount = paidByValues.reduce(
@@ -551,11 +280,7 @@ export function ExpenseForm({
   )
   const isIncome = totalAmount < 0
   const isMultiPayer = payerFields.length > 1
-  const avatarHues = assignAvatarHues(group.participants.map((p) => p.name))
-  // Not a participant id, and it never reaches the form: `onValueChange` intercepts it.
-  const MULTI_PAYER_OPTION = '__multiple_payers__'
   const sExpense = isIncome ? 'Income' : 'Expense'
-  const maxAmount = Math.max(...paidByValues.map((p) => Number(p.amount) || 0))
 
   // Every amount in the form — payer amounts, shares, item prices — is in this currency. Only the
   // total is converted to the group currency, on submit.
@@ -583,7 +308,6 @@ export function ExpenseForm({
     !!form.formState.defaultValues?.conversionRate,
   )
   const [rateCurrency, setRateCurrency] = useState(initialCurrencyCode)
-  const [isCategoryLoading, setCategoryLoading] = useState(false)
   // Open by default when editing: an existing expense may already carry a note, a recurrence or a
   // non-group currency, and hiding those behind a collapsed section would look like data loss.
   // Closed on both create and edit. It used to open on edit, which put five secondary fields
@@ -599,14 +323,6 @@ export function ExpenseForm({
   const draftScope = isCreate
     ? createDraftScope(group.id)
     : editDraftScope(expense.id)
-  // Restored, not offered. Being asked "you have an unsaved expense — restore or discard?" makes
-  // you read and decide, every time, about something you almost always want; the form simply comes
-  // back as you left it and says so quietly, with a way out for the time you did not want it.
-  const [pendingDraft, setPendingDraft] = useState<ExpenseFormValues | null>(
-    null,
-  )
-  const pristineValuesRef = useRef<ExpenseFormValues | null>(null)
-  const lastExtractedTitleRef = useRef<string | null>(null)
 
   // Track manual edits for BY_AMOUNT mode
   const [manuallyEditedParticipants, setManuallyEditedParticipants] = useState<
@@ -623,13 +339,6 @@ export function ExpenseForm({
   )
 
   const watchedItems = useWatch({ control: form.control, name: 'items' }) || []
-  // The category's *name*, for the label row above the title field. The icon in the trigger says
-  // which one is selected only to someone who already knows the icon set; on a phone it is a
-  // 20px glyph in a grey square, and there was nothing anywhere on the form that spelled it out.
-  const watchedCategory = useWatch({ control: form.control, name: 'category' })
-  const selectedCategory = categories.find(
-    (category) => category.id === Number(watchedCategory),
-  )
   const groupSplitSum = watchedItems.reduce((sum, item) => {
     if (!item.participantIds || item.participantIds.length === 0) return sum
     return sum + (Number(item.price) || 0)
@@ -639,16 +348,6 @@ export function ExpenseForm({
 
   const totalExcluded = isItemized ? totalAmount - groupSplitSum : 0
   const hasExcludedItems = isItemized && totalExcluded > 0.009
-
-  const getIsParticipantPaying = (
-    participantId: string,
-    currentIndex: number,
-  ) => {
-    return paidByValues.some(
-      (field, index) =>
-        index !== currentIndex && field.participant === participantId,
-    )
-  }
 
   const handleAddPayer = () => {
     const currentPayers = new Set(
@@ -831,105 +530,12 @@ export function ExpenseForm({
     }
   }, [isCreate, searchParams, applyReceiptData])
 
-  // The form opens as a new expense and *offers* the draft, rather than arriving already filled
-  // in. Leaving deliberately is the common case and coming back to your own half-typed expense is
-  // the rare one, so the rare one asks and the common one costs nothing.
-  //
-  // The draft is held in state as well as in storage, because typing into the blank form
-  // immediately overwrites what is stored — which is right, that is a new expense — but must not
-  // take away the thing still being offered on screen.
-  useEffect(() => {
-    if (importingReceipt) return
-    if (pristineValuesRef.current === null) {
-      pristineValuesRef.current = form.getValues()
-    }
-    const draft = readExpenseDraft(draftScope)
-    if (!draft) return
-    setPendingDraft(draft)
-  }, [draftScope, importingReceipt, form])
-
-  const restoreDraft = () => {
-    if (!pendingDraft) return
-    // No validation on the way in: a half-typed expense is exactly what this holds, and greeting
-    // someone with a wall of red for the parts they had not reached yet helps nobody.
-    form.reset(pendingDraft)
-    // The baseline moves with it. Without this the restored values read as an edit against the
-    // blank form they replaced, so leaving again immediately — having changed nothing — would
-    // count as a change and re-stamp the draft's two-minute clock.
-    initialValuesRef.current = fingerprintValues(pendingDraft)
-    setShowMoreOptions(true)
-    setPendingDraft(null)
-  }
-
-  const discardDraft = () => {
-    clearExpenseDraft(draftScope)
-    savedThisMountRef.current = false
-    setPendingDraft(null)
-  }
-
-  // Keep the draft alive while its form is on screen — see `touchExpenseDraft`. Only while
-  // visible: a backgrounded tab is someone who has left, and their two minutes should be running.
-  useEffect(() => {
-    if (importingReceipt) return
-    const touch = () => {
-      if (document.visibilityState === 'visible') touchExpenseDraft(draftScope)
-    }
-    const timer = window.setInterval(touch, 30_000)
-    document.addEventListener('visibilitychange', touch)
-    return () => {
-      window.clearInterval(timer)
-      document.removeEventListener('visibilitychange', touch)
-    }
-  }, [draftScope, importingReceipt])
-
-  // Deciding when a draft is worth keeping is fiddlier than it looks. `formState.isDirty` is
-  // useless — the amount round-trips through a string, so the form reports itself dirty on mount
-  // with no input at all. The watch callback's `type === 'change'` is too strict in the other
-  // direction: the amount and the BY_AMOUNT shares are written with `setValue`, not through a
-  // registered change event, so filtering on it silently dropped every amount the user typed.
-  //
-  // Comparing against the values the form started with covers every input path. `conversionRate`
-  // is excluded because the exchange-rate effect fills it in on its own, which is not the user
-  // typing anything.
-  const initialValuesRef = useRef<string | null>(null)
-  const savedThisMountRef = useRef(false)
-  useEffect(() => {
-    if (initialValuesRef.current === null) {
-      initialValuesRef.current = fingerprintValues(form.getValues())
-    }
-    const subscription = form.watch((values) => {
-      const unchanged = fingerprintValues(values) === initialValuesRef.current
-      // Changed, but changed into nothing: a cleared title leaves behind the category the
-      // extractor guessed from it, a cleared amount leaves `""` where a `0` was. Neither is an
-      // expense, and offering to restore one is how the banner came to appear nearly every time.
-      const empty = !draftHasContent(values as ExpenseFormValues)
-      if (unchanged || empty) {
-        // Only discard a draft this mount actually wrote. Clearing unconditionally would delete
-        // the draft being offered for restore, since a freshly opened form starts out equal to
-        // its own defaults.
-        if (savedThisMountRef.current) {
-          clearExpenseDraft(draftScope)
-          savedThisMountRef.current = false
-        }
-        return
-      }
-      savedThisMountRef.current = true
-      saveExpenseDraft(draftScope, values as ExpenseFormValues)
-    })
-    return () => subscription.unsubscribe()
-  }, [form, draftScope])
-
-  // Catches the cases a draft cannot: closing the tab, reloading, typing a new URL. In-app
-  // navigation does not fire this, which is precisely why the draft exists.
-  useEffect(() => {
-    const onBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (!readExpenseDraft(draftScope)) return
-      event.preventDefault()
-      event.returnValue = ''
-    }
-    window.addEventListener('beforeunload', onBeforeUnload)
-    return () => window.removeEventListener('beforeunload', onBeforeUnload)
-  }, [draftScope])
+  const { pendingDraft, restoreDraft, discardDraft } = useExpenseDraft({
+    form,
+    draftScope,
+    importingReceipt,
+    onRestored: () => setShowMoreOptions(true),
+  })
 
   useEffect(() => {
     if (totalAmount < 0) form.setValue('isReimbursement', false)
@@ -1013,27 +619,6 @@ export function ExpenseForm({
     : 'OTHER'
 
   const [splitSheetOpen, setSplitSheetOpen] = useState(false)
-
-  /**
-   * Short names for the overflow modes. The `SplitModeField.*` strings say "Unevenly – By shares",
-   * a prefix that existed to group them inside a Select; in a sheet headed "How to split" it is
-   * noise, and it does not fit on a chip. Those strings are left alone — they are translated in 22
-   * other locales and asserted on by the e2e suite.
-   */
-  const shortSplitModeLabel = (mode: string) =>
-    match(mode)
-      .with('BY_SHARES', () => t('SplitMode.byShares'))
-      .with('BY_PERCENTAGE', () => t('SplitMode.byPercentage'))
-      .with('BY_AMOUNT', () => t('SplitMode.byAmount'))
-      .otherwise(() => t('SplitMode.more'))
-
-  /** What the chosen mode asks of you, for the line under the control. */
-  const splitModeHint = (mode: string) =>
-    match(mode)
-      .with('BY_SHARES', () => t('SplitMode.bySharesHint'))
-      .with('BY_PERCENTAGE', () => t('SplitMode.byPercentageHint'))
-      .with('BY_AMOUNT', () => t('SplitMode.byAmountHint'))
-      .otherwise(() => t('SplitMode.description'))
 
   const selectSplitControl = (
     next: 'EVENLY' | 'ITEMS' | 'OTHER',
@@ -1160,51 +745,11 @@ export function ExpenseForm({
     clearExpenseDraft(draftScope)
   }
 
-  // --- Rendering Helpers ---
-
-  let conversionRateMessage = ''
-  if (exchangeRate.isLoading) {
-    conversionRateMessage = t('conversionRateState.loading')
-  } else if (exchangeRate.error) {
-    conversionRateMessage = t('conversionRateState.error')
-  } else if (exchangeRate.data) {
-    conversionRateMessage = `${t(
-      'conversionRateState.success',
-    )} ${originalCurrencyVal}\xa01\xa0=\xa0${group.currencyCode}\xa0${
-      exchangeRate.data
-    }`
-  } else {
-    conversionRateMessage = t('conversionRateState.currencyNotFound')
-  }
-
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(submit)}>
         {pendingDraft && (
-          <div
-            data-testid="draft-offer"
-            className="mb-3 flex items-center justify-between gap-3 rounded-md bg-muted px-3 py-2 text-sm text-muted-foreground"
-          >
-            <span className="min-w-0 truncate">{t('Draft.found')}</span>
-            <span className="flex shrink-0 items-center gap-3">
-              <button
-                type="button"
-                data-testid="draft-restore"
-                className="font-medium text-primary underline-offset-2 hover:underline"
-                onClick={restoreDraft}
-              >
-                {t('Draft.restore')}
-              </button>
-              <button
-                type="button"
-                data-testid="draft-discard"
-                className="underline-offset-2 hover:underline"
-                onClick={discardDraft}
-              >
-                {t('Draft.discard')}
-              </button>
-            </span>
-          </div>
+          <DraftOffer onRestore={restoreDraft} onDiscard={discardDraft} />
         )}
 
         <Card bleed>
@@ -1249,250 +794,29 @@ export function ExpenseForm({
                 row apiece further down before, the category behind More options — two taps and a
                 scroll from the words that determine it. */}
             <div className="flex min-w-0 flex-col gap-4">
-              <FormField
-                control={form.control}
-                name="title"
-                render={({ field }) => (
-                  <FormItem className="space-y-0">
-                    <FormLabel className="mb-1 block text-sm font-normal text-muted-foreground">
-                      {t(`${sExpense}.TitleField.label`)}
-                    </FormLabel>
-                    {/* The category's name used to sit at the right of the label row, which put it
-                        a full row away from the glyph it names and left the two ends of that line
-                        unrelated. It reads as a caption under the title now — the same relation
-                        the conversion has to the amount one box down. */}
-                    <div className="flex items-center gap-3 rounded-xl border border-input bg-card px-3 py-3 transition-shadow focus-within:ring-2 focus-within:ring-primary">
-                      <FormField
-                        control={form.control}
-                        name="category"
-                        render={({ field: categoryField }) => (
-                          <CategorySelector
-                            categories={categories}
-                            defaultValue={categoryField.value}
-                            onValueChange={categoryField.onChange}
-                            isLoading={isCategoryLoading}
-                            renderTrigger={(category) => (
-                              <button
-                                type="button"
-                                data-testid="category-trigger"
-                                title={tCategories(
-                                  `${category.grouping}.${category.name}`,
-                                )}
-                                aria-label={`${t(
-                                  'categoryField.label',
-                                )}: ${tCategories(
-                                  `${category.grouping}.${category.name}`,
-                                )}`}
-                                // A glyph in a square is a picture; the chevron is what makes
-                                // it a control. Tinted with the accent, as the concept draws it:
-                                // it is the one control inside these two boxes, and a grey plate
-                                // on a white box had nothing to separate it from the box.
-                                className="flex h-12 w-14 shrink-0 items-center justify-center gap-0.5 rounded-lg bg-primary/10 px-1 text-primary transition-colors hover:bg-primary/20"
-                              >
-                                {isCategoryLoading ? (
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                ) : (
-                                  <CategoryIcon
-                                    category={category}
-                                    className="h-4 w-4"
-                                  />
-                                )}
-                                <ChevronDown className="h-4 w-4 opacity-40" />
-                              </button>
-                            )}
-                          />
-                        )}
-                      />
-                      <div className="min-w-0 flex-1">
-                        <FormControl>
-                          <TitleTextarea
-                            placeholder={t(
-                              `${sExpense}.TitleField.placeholder`,
-                            )}
-                            className="block w-full border-0 bg-transparent px-1 py-0 text-2xl font-bold leading-tight shadow-none outline-none placeholder:text-xl placeholder:font-normal placeholder:text-subtle-foreground focus-visible:ring-0"
-                            {...field}
-                            onBlur={async () => {
-                              field.onBlur()
-                              // Guessing the category costs a round trip to a model, so it
-                              // should happen when there is a new title to guess from and not
-                              // merely whenever the field loses focus: clicking into the amount
-                              // and back used to re-ask about a title nobody had touched.
-                              const title = field.value?.trim() ?? ''
-                              if (
-                                !runtimeFeatureFlags.enableCategoryExtract ||
-                                !title ||
-                                title === lastExtractedTitleRef.current
-                              ) {
-                                return
-                              }
-                              lastExtractedTitleRef.current = title
-                              setCategoryLoading(true)
-                              try {
-                                const { categoryId } =
-                                  await extractCategoryFromTitle(title)
-                                form.setValue('category', categoryId)
-                              } finally {
-                                setCategoryLoading(false)
-                              }
-                            }}
-                          />
-                        </FormControl>
-                        {selectedCategory && (
-                          <p
-                            data-testid="category-name"
-                            className="truncate px-1 pt-1 text-xs text-muted-foreground"
-                          >
-                            {tCategories(
-                              `${selectedCategory.grouping}.${selectedCategory.name}`,
-                            )}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    <FormMessage className="mt-1" />
-                  </FormItem>
-                )}
+              <TitleField
+                form={form}
+                categories={categories}
+                sExpense={sExpense}
+                enableCategoryExtract={
+                  runtimeFeatureFlags.enableCategoryExtract
+                }
               />
 
-              <FormField
-                control={form.control}
-                name="paidBy.0.amount"
-                render={({ field }) => (
-                  <FormItem className="space-y-0">
-                    <FormLabel className="mb-1 block text-sm font-normal text-muted-foreground">
-                      {t(`${sExpense}.amountLabel`)}
-                    </FormLabel>
-                    {/* One box around the three things that describe the figure: what currency it
-                        is in, the figure, and what it comes to in the group's currency. They were
-                        a label row and a control row, which put the conversion at the far right of
-                        a line whose left half was the word "Amount". It qualifies the number, so
-                        it belongs under the number.
-                        Bordered rather than filled: this box holds a control and a reading, and
-                        the sunken fill the rest of the form uses to mean "type here" would be
-                        claiming that about the conversion line too. */}
-                    <div className="rounded-xl border border-input bg-card px-3 py-3 transition-shadow focus-within:ring-2 focus-within:ring-primary">
-                      <div className="flex items-center gap-3">
-                        {/* An expense can be entered in another currency than the group's, and that
-                          lived as a Select buried in More options. Inert for a group with a custom
-                          symbol: there is no exchange rate to convert from, which is why the old
-                          Select was disabled there too. */}
-                        {conversionAvailable ? (
-                          <FormField
-                            control={form.control}
-                            name="originalCurrency"
-                            render={({ field: currencyField }) => (
-                              <CurrencySelector
-                                currencies={defaultCurrencyList(locale, '')}
-                                defaultValue={currencyField.value ?? ''}
-                                isLoading={false}
-                                onValueChange={currencyField.onChange}
-                                renderTrigger={() => (
-                                  <button
-                                    type="button"
-                                    data-testid="currency-trigger"
-                                    title={t('changeCurrency')}
-                                    /* Symbol and code rather than the symbol alone: "$" is a dozen
-                                     currencies, and the code is the half that says which. */
-                                    className="flex h-12 shrink-0 items-center gap-1 rounded-lg border border-input bg-background px-2.5 font-mono text-sm font-medium text-foreground transition-colors hover:bg-muted"
-                                  >
-                                    <span>
-                                      {expenseCurrency.symbol || group.currency}
-                                    </span>
-                                    <span className="text-muted-foreground">
-                                      {expenseCurrency.code}
-                                    </span>
-                                    <ChevronDown className="h-4 w-4 opacity-40" />
-                                  </button>
-                                )}
-                              />
-                            )}
-                          />
-                        ) : (
-                          // No chevron here on purpose: with no exchange rate to convert from there
-                          // is nothing to pick, and this is a label, not a control.
-                          <span className="grid h-12 shrink-0 place-items-center rounded-lg border border-input bg-background px-3 font-mono text-sm font-medium text-muted-foreground">
-                            {expenseCurrency.symbol || group.currency}
-                          </span>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          {isMultiPayer ? (
-                            // Only several payers make the total a derived figure: it is their sum,
-                            // so there is nothing to type into it. An itemised bill is not such a
-                            // case — the total is what was paid, the lines are how it was shared,
-                            // and the difference between them is the tax the strip below offers to
-                            // split. This used to be derived for itemised expenses too, which left
-                            // the one number the reader typed invisible and uneditable on every
-                            // itemised expense they reopened.
-                            <span
-                              data-testid="derived-total"
-                              className="flex h-12 items-center justify-center px-1 text-4xl font-bold tabular-nums"
-                            >
-                              {formatCurrency(
-                                expenseCurrency,
-                                effectiveTotal,
-                                locale,
-                                true,
-                              ).replace(/^[^\d-]+/, '')}
-                            </span>
-                          ) : (
-                            <FormControl>
-                              <CalculatorInput
-                                placeholder="0.00"
-                                // The box around this field already answers focus with a ring. InputGroup draws its
-                                // own on top, so a tap on the amount lit two rings, one inside the other.
-                                className="h-12 w-full border-0 bg-transparent shadow-none has-[[data-slot=input-group-control]:focus-visible]:ring-0"
-                                inputClassName="h-12 w-full border-0 bg-transparent px-1 text-center text-4xl sm:text-4xl font-bold tabular-nums shadow-none focus-visible:ring-0"
-                                {...field}
-                                onValueChange={(val) =>
-                                  handlePayerAmountChange(0, val)
-                                }
-                              />
-                            </FormControl>
-                          )}
-                        </div>
-                      </div>
-                      {conversionRequired && (
-                        <p
-                          data-testid="converted-total"
-                          className="mt-1 text-center text-sm tabular-nums text-muted-foreground"
-                        >
-                          ≈{' '}
-                          {formatCurrency(
-                            groupCurrency,
-                            effectiveRate ? effectiveTotal * effectiveRate : 0,
-                            locale,
-                            true,
-                          )}
-                        </p>
-                      )}
-                      {isMultiPayer && (
-                        <p className="mt-1 text-center text-xs text-muted-foreground">
-                          {t('derivedFromPayers', {
-                            count: payerFields.length,
-                          })}
-                        </p>
-                      )}
-                    </div>
-                    <FormMessage className="mt-1" />
-                    {/* "The lines do not add up to the total" is an argument about this figure,
-                        and it used to be made at the foot of the itemisation block — past every
-                        row and past the strip offering to fix it. The strip still colours itself;
-                        the sentence belongs next to the number it disputes. */}
-                    {splitControl === 'ITEMS' && (
-                      <FormField
-                        control={form.control}
-                        name="items"
-                        // Only what is wrong with the lines as a set. A row's own complaint —
-                        // a missing name — belongs to that row, which shows it and takes a
-                        // destructive border; surfaced here it appeared under the amount and
-                        // pointed at the one field that was not the problem.
-                        render={() => (
-                          <FormMessage className="mt-1" ownErrorOnly />
-                        )}
-                      />
-                    )}
-                  </FormItem>
-                )}
+              <AmountField
+                form={form}
+                sExpense={sExpense}
+                group={group}
+                conversionAvailable={conversionAvailable}
+                expenseCurrency={expenseCurrency}
+                groupCurrency={groupCurrency}
+                isMultiPayer={isMultiPayer}
+                payerCount={payerFields.length}
+                effectiveTotal={effectiveTotal}
+                effectiveRate={effectiveRate}
+                conversionRequired={conversionRequired}
+                splitControl={splitControl}
+                onAmountChange={(val) => handlePayerAmountChange(0, val)}
               />
             </div>
 
@@ -1501,640 +825,59 @@ export function ExpenseForm({
                 close each of these are gone. What separates one row from the next is the space
                 between them, and what says a control is a control is its fill. */}
             <div className="-mx-6">
-              <div
-                className={cn(
-                  !isMultiPayer &&
-                    'grid grid-cols-2 items-start gap-3 px-6 py-2',
-                )}
-              >
-                <div>
-                  {isMultiPayer && (
-                    <FormLabel className="block px-6 pb-1 pt-2 text-sm font-normal text-muted-foreground">
-                      {t(`${sExpense}.paidByField.label`)}
-                    </FormLabel>
-                  )}
+              <PayersAndDate
+                form={form}
+                sExpense={sExpense}
+                group={group}
+                isMultiPayer={isMultiPayer}
+                payerFields={payerFields}
+                paidByValues={paidByValues}
+                activeUserId={activeUserId}
+                expenseCurrency={expenseCurrency}
+                onAddPayer={handleAddPayer}
+                onRemovePayer={removePayer}
+                onPayerAmountChange={handlePayerAmountChange}
+              />
 
-                  <div className="flex flex-col">
-                    {payerFields.map((field, index) => {
-                      // Determine if this specific row is the highest payer
-                      const currentAmount =
-                        Number(paidByValues[index]?.amount) || 0
-                      const isHighest =
-                        isMultiPayer &&
-                        currentAmount > 0 &&
-                        currentAmount === maxAmount
-
-                      return (
-                        <div
-                          key={field.id}
-                          className={cn(
-                            // One shape for one payer or five: a ruled row at the same height as
-                            // every other row in this section. With several payers the name moves
-                            // to the left and an amount joins it on the right — nothing else
-                            // changes. It used to become a bordered card with a tinted background,
-                            // a shadow and a red bin, which is a different form's visual language
-                            // sitting inside this one.
-                            'flex items-center justify-between gap-2 transition-colors',
-                            isMultiPayer && 'py-1',
-                            // The pair's own grid supplies the gutter when there is one payer.
-                            isMultiPayer && 'px-6',
-                          )}
-                        >
-                          <FormField
-                            control={form.control}
-                            name={`paidBy.${index}.participant`}
-                            render={({ field }) => (
-                              <FormItem
-                                className={cn(
-                                  'min-w-0 space-y-0',
-                                  isMultiPayer
-                                    ? 'flex flex-1 items-center'
-                                    : 'flex w-full flex-col items-stretch gap-1',
-                                )}
-                              >
-                                {!isMultiPayer && (
-                                  <FormLabel className="text-sm font-normal text-muted-foreground">
-                                    {t(`${sExpense}.paidByField.label`)}
-                                  </FormLabel>
-                                )}
-                                <Select
-                                  onValueChange={(value) => {
-                                    if (value === MULTI_PAYER_OPTION) {
-                                      handleAddPayer()
-                                      return
-                                    }
-                                    field.onChange(value)
-                                  }}
-                                  value={field.value}
-                                >
-                                  <FormControl>
-                                    {/* The payer is pre-selected rather than showing a placeholder, so
-                                    there is no stable text to find this control by. */}
-                                    <SelectTrigger
-                                      data-testid={`paid-by-select-${index}`}
-                                      className={cn(
-                                        // A pill that hugs its value, not a full-width field: this
-                                        // is a statement of fact you occasionally change. The fill
-                                        // is what says it can be changed and the chevron says how —
-                                        // a control that looks like static text is the fault the
-                                        // assign strip had. It used to stretch to everything right
-                                        // of the label, which was a fine invisible target and a
-                                        // very odd visible one once the fill arrived.
-                                        // Bordered and full width whether there is one payer or
-                                        // five, so a payer reads as the same kind of field as the
-                                        // date beside it. It used to become a grey pill hugging
-                                        // its own text the moment a second payer appeared, which
-                                        // is the visual language this form has otherwise left.
-                                        'h-11 w-full justify-between gap-1 rounded-md border bg-card px-3 font-medium shadow-none focus:ring-0 [&>svg]:opacity-40',
-                                      )}
-                                    >
-                                      {/* The payer is a person, and every other place this form
-                                        names one shows their plate beside the name. Here it was
-                                        the name alone — the one participant on the screen without
-                                        a face, and the one the concept draws with one. */}
-                                      <div className="flex min-w-0 items-center gap-2">
-                                        {isHighest && (
-                                          <Crown className="h-3 w-3 shrink-0 text-primary" />
-                                        )}
-                                        {/* No plate of its own: SelectValue renders the chosen
-                                          item's own children, which now carry one — drawing a
-                                          second here showed "JA JA Jason". */}
-                                        <SelectValue />
-                                      </div>
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {group.participants.map(({ id, name }) => (
-                                      <SelectItem
-                                        key={id}
-                                        value={id}
-                                        disabled={getIsParticipantPaying(
-                                          id,
-                                          index,
-                                        )}
-                                      >
-                                        <span className="flex items-center gap-2">
-                                          <ProfileAvatar
-                                            name={name}
-                                            hue={avatarHues.get(name)}
-                                            isActiveUser={
-                                              !!activeUserId &&
-                                              activeUserId === id
-                                            }
-                                            size={24}
-                                          />
-                                          {name}
-                                        </span>
-                                      </SelectItem>
-                                    ))}
-                                    {!isMultiPayer && (
-                                      <SelectItem
-                                        value={MULTI_PAYER_OPTION}
-                                        data-testid="multiple-payers-option"
-                                        className="border-t"
-                                      >
-                                        {t('multiplePayers')}
-                                      </SelectItem>
-                                    )}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-
-                          {/* Only shown once there is more than one payer: with a single payer the
-                          hero above is this field, and rendering both meant typing into one and
-                          watching the other update. */}
-                          {isMultiPayer && (
-                            <FormField
-                              control={form.control}
-                              name={`paidBy.${index}.amount`}
-                              render={({ field }) => (
-                                <FormItem className="w-[120px] shrink-0 space-y-0">
-                                  {/* The item row's price field, to the class: symbol in its own
-                                    column, figure right-aligned and tabular so the decimals line
-                                    up down the column, the box tracking its value, and the
-                                    calculator inside the field rather than beside it. */}
-                                  <div className="flex h-11 items-center gap-1 rounded-md border border-input bg-card pl-2 transition-shadow focus-within:ring-2 focus-within:ring-primary [&_button]:h-8 [&_button]:w-8">
-                                    <span className="font-mono text-xs text-subtle-foreground">
-                                      {expenseCurrency.symbol || group.currency}
-                                    </span>
-                                    <FormControl>
-                                      <CalculatorInput
-                                        placeholder="0.00"
-                                        className="h-11 min-w-0 flex-1 border-0 bg-transparent shadow-none has-[[data-slot=input-group-control]:focus-visible]:ring-0"
-                                        inputClassName="h-11 w-full border-0 bg-transparent px-0 text-right font-mono text-base font-semibold tabular-nums shadow-none focus-visible:ring-0"
-                                        {...field}
-                                        onValueChange={(val) => {
-                                          handlePayerAmountChange(index, val)
-                                        }}
-                                      />
-                                    </FormControl>
-                                  </div>
-                                  <FormMessage className="mt-1 text-right text-xs" />
-                                </FormItem>
-                              )}
-                            />
-                          )}
-
-                          {payerFields.length > 1 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removePayer(index)}
-                              title={t('removePayer')}
-                              className="relative h-8 w-8 shrink-0 text-subtle-foreground after:absolute after:-inset-x-1 after:-inset-y-1.5 after:content-[''] hover:bg-destructive/10 hover:text-destructive sm:after:hidden"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-
-                  {/* The action that adds a payer belongs to the payers, so it sits directly under
-                  them — the date used to be wedged between the two, which put a control and the
-                  thing it acts on either side of an unrelated field. Same shape as the item list,
-                  where "Add a line" follows the lines. */}
-                  {isMultiPayer && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={handleAddPayer}
-                      className="mx-6 mt-1 h-11 w-[calc(100%-3rem)] justify-center rounded-md border border-dashed text-sm font-normal text-muted-foreground hover:text-foreground"
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      {t('addPayer')}
-                    </Button>
-                  )}
-                </div>
-
-                {/* Out of More options: a date is not an advanced setting, and burying it meant
-                  every backdated expense cost two extra taps. It pairs with Paid by while there
-                  is one payer, and takes a row of its own once there are several. */}
-                <div className="min-w-0">
-                  <FormField
-                    control={form.control}
-                    name="expenseDate"
-                    render={({ field }) => (
-                      <FormItem
-                        className={cn(
-                          // The same labelled box in both modes. It used to become a grey pill on
-                          // a label-left row as soon as a second payer appeared, so adding a payer
-                          // restyled a field that has nothing to do with payers. Only its width
-                          // changes: it shares a row with Paid by, or takes one of its own.
-                          'flex flex-col items-stretch gap-1 space-y-0',
-                          isMultiPayer && 'px-6 pb-1 pt-2',
-                        )}
-                      >
-                        <FormLabel className="text-sm font-normal text-muted-foreground">
-                          {t(`${sExpense}.DateField.label`)}
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            className="date-base h-11 w-full rounded-md border bg-card px-3 font-medium shadow-none focus-visible:ring-2 focus-visible:ring-primary"
-                            name="expenseDate"
-                            type="date"
-                            value={formatDate(field.value)}
-                            onChange={(e) =>
-                              field.onChange(new Date(e.target.value))
-                            }
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-              </div>
-
-              {/* Optional, and it closes the run of facts about the expense: what it was, how
-                much, who paid, when. Everything past this point is about how the money divides,
-                which is a second question and deserves the bottom of the form to itself — the
-                collapsible used to sit under the split, so opening it pushed Save off a screen
-                the reader had already scrolled to the end of. */}
-              <Collapsible
+              <MoreOptions
+                form={form}
                 open={showMoreOptions}
                 onOpenChange={setShowMoreOptions}
-              >
-                <CollapsibleTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="h-11 w-full justify-between rounded-none px-6 text-sm font-normal text-muted-foreground hover:text-foreground sm:h-10"
-                  >
-                    {t('moreOptions')}
-                    <ChevronDown
-                      className={cn(
-                        'h-4 w-4 opacity-40 transition-transform',
-                        showMoreOptions && 'rotate-180',
-                      )}
-                    />
-                  </Button>
-                </CollapsibleTrigger>
-                {/* `data-[state=closed]:pt-0` because `grid` quietly defeats the `hidden` attribute
-                  Radix sets when this closes — a class beats a UA attribute selector — so the
-                  collapsed section kept rendering as a grid and reserving its 16px of top padding
-                  under a rule with nothing beneath it. */}
-                <CollapsibleContent className="flex flex-col gap-1 pt-1">
-                  {/* The category control is the icon beside the title now. Two controls writing
-                    one field is the mistake 09841a4 fixed for the split mode. */}
+                sExpense={sExpense}
+                group={group}
+                groupCurrency={groupCurrency}
+                expenseCurrency={expenseCurrency}
+                originalCurrency={originalCurrencyVal}
+                conversionRequired={conversionRequired}
+                effectiveRate={effectiveRate}
+                effectiveTotal={effectiveTotal}
+                exchangeRate={exchangeRate}
+                usingCustomConversionRate={usingCustomConversionRate}
+                onUsingCustomConversionRateChange={setUsingCustomConversionRate}
+                isIncome={isIncome}
+                isMultiPayer={isMultiPayer}
+              />
 
-                  {/* The currency control is the symbol beside the amount now. Two controls
-                    writing one field is the mistake 09841a4 fixed for the split mode; it does
-                    not become a different mistake one section further down. */}
-                  <div
-                    className={cn(
-                      'space-y-2 px-6 py-2',
-                      !conversionRequired && 'hidden sm:block sm:invisible',
-                    )}
-                  >
-                    <FormItem>
-                      <FormLabel className="text-sm font-normal text-muted-foreground">
-                        {t('convertedTotalField.label', {
-                          currency: group.currencyCode ?? group.currency,
-                        })}
-                      </FormLabel>
-                      <div className="flex items-baseline gap-2 h-10">
-                        <span className="text-base font-medium">
-                          {formatCurrency(
-                            groupCurrency,
-                            effectiveRate ? effectiveTotal * effectiveRate : 0,
-                            locale,
-                            true,
-                          )}
-                        </span>
-                      </div>
-                      <FormDescription>
-                        {isNaN(form.getValues('expenseDate').getTime()) ? (
-                          t('conversionRateState.noDate')
-                        ) : form.getValues('expenseDate') &&
-                          !usingCustomConversionRate ? (
-                          <>
-                            {conversionRateMessage}
-                            {!exchangeRate.isLoading && (
-                              <Button
-                                className="h-auto py-0"
-                                variant="link"
-                                type="button"
-                                onClick={() => exchangeRate.refresh()}
-                              >
-                                {t('conversionRateState.refresh')}
-                              </Button>
-                            )}
-                          </>
-                        ) : (
-                          t('conversionRateState.customRate')
-                        )}
-                      </FormDescription>
-                    </FormItem>
-                    <Collapsible
-                      open={usingCustomConversionRate}
-                      onOpenChange={setUsingCustomConversionRate}
-                    >
-                      <CollapsibleTrigger asChild>
-                        <Button variant="link" type="button" className="-mx-4">
-                          {usingCustomConversionRate
-                            ? t('conversionRateField.useApi')
-                            : t('conversionRateField.useCustom')}
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <FormField
-                          control={form.control}
-                          name="conversionRate"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel className="text-sm font-normal text-muted-foreground">
-                                {t('conversionRateField.label')}
-                              </FormLabel>
-                              <div className="flex items-baseline gap-2">
-                                <span>
-                                  {expenseCurrency.symbol} 1 = {group.currency}
-                                </span>
-                                <FormControl>
-                                  <Input
-                                    className="text-base sm:text-base max-w-"
-                                    type="text"
-                                    inputMode="decimal"
-                                    placeholder="0.00"
-                                    {...field}
-                                    value={field.value ?? ''}
-                                    onChange={(e) =>
-                                      field.onChange(
-                                        enforceCurrencyPattern(e.target.value),
-                                      )
-                                    }
-                                  />
-                                </FormControl>
-                              </div>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </div>
-
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem className="space-y-1 px-6 py-2">
-                        <FormLabel className="text-sm font-normal text-muted-foreground">
-                          {t('notesField.label')}
-                        </FormLabel>
-                        {/* A line field like every other place you type on this form. It was a
-                          rounded bordered box filled with `--background`, which is the *ground*
-                          colour sitting on a `--card` sheet — a faintly grey panel on white, and
-                          the only field here that had one. */}
-                        <div className="rounded-md bg-muted transition-shadow focus-within:ring-2 focus-within:ring-primary">
-                          <FormControl>
-                            <Textarea
-                              className="min-h-[60px] resize-none rounded-[8px] border-0 bg-transparent px-2.5 py-2 text-base sm:text-base shadow-none focus-visible:ring-0"
-                              {...field}
-                            />
-                          </FormControl>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="recurrenceRule"
-                    render={({ field }) => (
-                      <FormItem className="flex items-center justify-between gap-2 space-y-0 px-6 py-1">
-                        {/* One choice, one value: the same row as Paid by and the date rather than
-                          a full-width combobox under a heading. */}
-                        <FormLabel className="text-sm font-normal text-muted-foreground">
-                          {t(`${sExpense}.recurrenceRule.label`)}
-                        </FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
-                          <SelectTrigger className="h-11 w-auto justify-end gap-1 rounded-md border-0 bg-muted px-3 font-medium shadow-none focus:ring-0 sm:h-10 [&>svg]:opacity-40">
-                            <SelectValue placeholder="NONE" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="NONE">
-                              {t(`${sExpense}.recurrenceRule.none`)}
-                            </SelectItem>
-                            <SelectItem value="DAILY">
-                              {t(`${sExpense}.recurrenceRule.daily`)}
-                            </SelectItem>
-                            <SelectItem value="WEEKLY">
-                              {t(`${sExpense}.recurrenceRule.weekly`)}
-                            </SelectItem>
-                            <SelectItem value="MONTHLY">
-                              {t(`${sExpense}.recurrenceRule.monthly`)}
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  {!isIncome && !isMultiPayer && (
-                    <FormField
-                      control={form.control}
-                      name="isReimbursement"
-                      render={({ field }) => (
-                        // The label already carried the click — what it did not carry was the
-                        // 176px of dead row between the end of the words and a 16px box pinned to
-                        // the right edge. Stretching the label across that gap makes the whole row
-                        // the target, which is what a row like this looks like it is.
-                        <FormItem className="flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 px-6 sm:min-h-10">
-                          <FormLabel className="flex-1 cursor-pointer py-3 text-sm font-normal text-muted-foreground">
-                            {t('isReimbursementField.label')}
-                          </FormLabel>
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                            />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  )}
-
-                  {/* Deliberately out here rather than in the split sheet: this applies to any
-                    split, and the sheet is only reachable from the third position — so putting it
-                    there would make it impossible to remember an even split. */}
-                  <FormField
-                    control={form.control}
-                    name="saveDefaultSplittingOptions"
-                    render={({ field }) => (
-                      <FormItem className="flex min-h-11 flex-row items-center justify-between gap-2 space-y-0 px-6 sm:min-h-10">
-                        <FormLabel className="flex-1 cursor-pointer py-3 text-sm font-normal text-muted-foreground">
-                          {t('SplitModeField.saveAsDefault')}
-                        </FormLabel>
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                        </FormControl>
-                      </FormItem>
-                    )}
-                  />
-                </CollapsibleContent>
-              </Collapsible>
-
-              {!form.watch('isReimbursement') && (
-                <div className="px-6 py-3" data-testid="split-control">
-                  <Label className="text-sm font-normal text-muted-foreground">
-                    {t('SplitMode.title')}
-                  </Label>
-                  <div className="mt-1.5 grid grid-cols-3 gap-1 rounded-md bg-muted p-1">
-                    {(
-                      [
-                        ['EVENLY', 'evenly', t('SplitMode.evenly')],
-                        ['ITEMS', 'items', t('SplitMode.byItem')],
-                      ] as const
-                    ).map(([value, testId, label]) => (
-                      <button
-                        key={value}
-                        type="button"
-                        data-testid={`split-mode-${testId}`}
-                        aria-pressed={splitControl === value}
-                        onClick={() => selectSplitControl(value)}
-                        className={cn(
-                          'min-h-11 rounded-md px-2 text-sm font-medium transition-colors',
-                          splitControl === value
-                            ? 'bg-primary/10 text-primary'
-                            : 'text-muted-foreground hover:text-foreground',
-                        )}
-                      >
-                        {label}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      data-testid="split-mode-more"
-                      aria-pressed={splitControl === 'OTHER'}
-                      onClick={() => setSplitSheetOpen(true)}
-                      className={cn(
-                        'min-h-11 rounded-md px-2 text-sm font-medium transition-colors',
-                        splitControl === 'OTHER'
-                          ? 'bg-primary/10 text-primary'
-                          : 'text-muted-foreground hover:text-foreground',
-                      )}
-                    >
-                      {/* Carries the chosen mode's name once one is active, so the third position
-                        never reads as "something unspecified is going on". */}
-                      {splitControl === 'OTHER'
-                        ? shortSplitModeLabel(splitMode)
-                        : t('SplitMode.custom')}
-                    </button>
-                  </div>
-                  {splitControl !== 'EVENLY' && (
-                    <p className="mt-1.5 text-sm text-muted-foreground">
-                      {splitControl === 'ITEMS'
-                        ? t('itemizeField.description')
-                        : splitModeHint(splitMode)}
-                    </p>
-                  )}
-                  {/* The hint directly above says "enter each line of the receipt", and until now
-                    this screen had no way to reach the thing that reads receipts — the scanner's
-                    only entry point in the whole app was an icon in the expense list's header. The
-                    itemised path is the one that most wants OCR, so it is the one that gets the
-                    offer, and it fills the lines in place rather than navigating anywhere. */}
-                  {/* Evenly is most expenses, and who is in is the thing people actually change on
-                    it. It used to live in a second card at the far end of a page one and a half
-                    screens long; here it is under the control that decides it, each chip carrying
-                    that person's share. */}
-                  {splitControl === 'OTHER' && (
-                    <div className="mt-2">
-                      <FormField
-                        control={form.control}
-                        name="paidFor"
-                        render={() => (
-                          <FormItem className="space-y-0">
-                            <PaidForList
-                              form={form}
-                              group={group}
-                              expenseCurrency={expenseCurrency}
-                              totalAmount={totalAmount}
-                              splitMode={splitMode}
-                              manuallyEditedParticipants={
-                                manuallyEditedParticipants
-                              }
-                              setManuallyEditedParticipants={
-                                setManuallyEditedParticipants
-                              }
-                              recalculateByAmount={recalculateByAmount}
-                            />
-                            <FormMessage className="mt-1" />
-                          </FormItem>
-                        )}
-                      />
-                      <Button
-                        type="button"
-                        variant="link"
-                        size="sm"
-                        className="mt-1 h-auto min-h-11 px-0 text-xs font-normal text-muted-foreground"
-                        onClick={() => {
-                          const currentPaidFor = form.getValues('paidFor')
-                          const allSelected =
-                            currentPaidFor.length === group.participants.length
-                          const newPaidFor = allSelected
-                            ? []
-                            : group.participants.map((p) => {
-                                const existing = currentPaidFor.find(
-                                  (pf) => pf.participant === p.id,
-                                )
-                                return {
-                                  participant: p.id,
-                                  shares: existing?.shares ?? '1',
-                                }
-                              })
-                          form.setValue('paidFor', newPaidFor as any, {
-                            shouldDirty: true,
-                            shouldTouch: true,
-                            shouldValidate: true,
-                          })
-                          if (!allSelected) {
-                            setManuallyEditedParticipants(new Set())
-                          }
-                        }}
-                      >
-                        {form.watch('paidFor').length ===
-                        group.participants.length
-                          ? t('selectNone')
-                          : t('selectAll')}
-                      </Button>
-                    </div>
-                  )}
-                  {splitControl === 'EVENLY' && (
-                    <SplitRows
-                      form={form}
-                      group={group}
-                      currency={expenseCurrency}
-                      totalAmount={effectiveTotal}
-                      activeUserId={activeUserId}
-                    />
-                  )}
-                  {isItemized && (
-                    <div className="mt-3">
-                      <ItemizationBuilder
-                        group={group}
-                        currency={expenseCurrency}
-                        totalAmount={totalAmount}
-                        fields={itemFields}
-                        append={itemAppend}
-                        remove={itemRemove}
-                        activeUserId={activeUserId}
-                      />
-                    </div>
-                  )}
-                </div>
+              {!isReimbursement && (
+                <SplitSection
+                  form={form}
+                  group={group}
+                  splitControl={splitControl}
+                  splitMode={splitMode}
+                  onSelect={selectSplitControl}
+                  onOpenSheet={() => setSplitSheetOpen(true)}
+                  expenseCurrency={expenseCurrency}
+                  totalAmount={totalAmount}
+                  effectiveTotal={effectiveTotal}
+                  manuallyEditedParticipants={manuallyEditedParticipants}
+                  setManuallyEditedParticipants={setManuallyEditedParticipants}
+                  recalculateByAmount={recalculateByAmount}
+                  activeUserId={activeUserId}
+                  isItemized={isItemized}
+                  itemFields={itemFields}
+                  itemAppend={itemAppend}
+                  itemRemove={itemRemove}
+                />
               )}
             </div>
           </CardContent>
@@ -2144,95 +887,18 @@ export function ExpenseForm({
             directly above it already shows. */}
 
         {runtimeFeatureFlags.enableExpenseDocuments && (
-          <Card bleed className="mt-4">
-            <CardHeader>
-              <CardTitle className="flex justify-between">
-                <span>{t('attachDocuments')}</span>
-              </CardTitle>
-              <CardDescription>
-                {t(`${sExpense}.attachDescription`)}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FormField
-                control={form.control}
-                name="documents"
-                render={({ field }) => (
-                  <ExpenseDocumentsInput
-                    documents={field.value}
-                    updateDocuments={field.onChange}
-                  />
-                )}
-              />
-            </CardContent>
-          </Card>
+          <DocumentsSection form={form} sExpense={sExpense} />
         )}
 
         {/* The overflow half of the split control. A sheet rather than a menu: these are three
             mutually exclusive answers to one question, and the question deserves a title. */}
-        <Drawer open={splitSheetOpen} onOpenChange={setSplitSheetOpen}>
-          <DrawerContent data-testid="split-mode-sheet">
-            <DrawerHeader className="text-left">
-              <DrawerTitle>{t('SplitMode.title')}</DrawerTitle>
-              <DrawerDescription>{t('SplitMode.sheetHint')}</DrawerDescription>
-            </DrawerHeader>
-            {/* Rows big enough to hit, each saying what the mode actually does, and a way out that
-                is not "guess that the backdrop is tappable". The first version was three bare
-                12px-tall lines with no description and no dismiss. */}
-            <div className="flex flex-col gap-2 px-4">
-              {(['BY_SHARES', 'BY_PERCENTAGE', 'BY_AMOUNT'] as const).map(
-                (mode) => {
-                  const active = splitControl === 'OTHER' && splitMode === mode
-                  const hint = match(mode)
-                    .with('BY_SHARES', () => t('SplitMode.bySharesHint'))
-                    .with('BY_PERCENTAGE', () =>
-                      t('SplitMode.byPercentageHint'),
-                    )
-                    .otherwise(() => t('SplitMode.byAmountHint'))
-                  return (
-                    <button
-                      key={mode}
-                      type="button"
-                      data-testid={`split-mode-${mode}`}
-                      onClick={() => {
-                        selectSplitControl('OTHER', mode)
-                        setSplitSheetOpen(false)
-                      }}
-                      className={cn(
-                        'flex min-h-16 items-center justify-between gap-3 rounded-md px-4 py-3 text-left transition-colors',
-                        active
-                          ? 'bg-primary/10'
-                          : 'bg-muted hover:bg-muted-foreground/15',
-                      )}
-                    >
-                      <span className="min-w-0">
-                        <span className="block text-base font-medium">
-                          {shortSplitModeLabel(mode)}
-                        </span>
-                        <span className="block text-xs text-muted-foreground">
-                          {hint}
-                        </span>
-                      </span>
-                      {active && (
-                        <Check className="h-5 w-5 shrink-0 text-primary" />
-                      )}
-                    </button>
-                  )
-                },
-              )}
-            </div>
-            <DrawerFooter>
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full"
-                onClick={() => setSplitSheetOpen(false)}
-              >
-                {t('SplitMode.close')}
-              </Button>
-            </DrawerFooter>
-          </DrawerContent>
-        </Drawer>
+        <SplitModeSheet
+          open={splitSheetOpen}
+          onOpenChange={setSplitSheetOpen}
+          splitControl={splitControl}
+          splitMode={splitMode}
+          onSelect={selectSplitControl}
+        />
 
         {/* Global Error Fallback */}
         {form.formState.errors.root && (
@@ -2241,244 +907,13 @@ export function ExpenseForm({
           </div>
         )}
 
-        {/* Sticky on a phone: the form is still a couple of screens tall once the split is open,
-            and hunting for Save at the bottom was the last thing left of the old scroll. */}
-        <div className="sticky bottom-0 z-30 -mx-4 mt-4 flex gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:static sm:mx-0 sm:border-0 sm:bg-transparent sm:px-0 sm:backdrop-blur-none">
-          <SubmitButton
-            className="h-11 flex-1 sm:h-10 sm:flex-none"
-            loadingContent={t(isCreate ? 'creating' : 'saving')}
-          >
-            <Save className="w-4 h-4 mr-2" />
-            {t(isCreate ? 'create' : 'save')}
-          </SubmitButton>
-          {!isCreate && onDelete && (
-            <DeletePopup
-              onDelete={() => onDelete(activeUserId ?? undefined)}
-            ></DeletePopup>
-          )}
-          {/* Cancel is gone. It duplicated the exit the chevron and the device's own back
-              button already are, and it was the only one of the three that threw the draft away —
-              so the same gesture meant "keep this" or "lose it" depending on which of two
-              adjacent controls you reached for. Leaving now always keeps; discarding is offered
-              on the way back in, on the banner that says a draft was found. */}
-        </div>
+        <SubmitBar
+          isCreate={isCreate}
+          onDelete={
+            onDelete ? () => onDelete(activeUserId ?? undefined) : undefined
+          }
+        />
       </form>
     </Form>
-  )
-}
-
-function PaidForList({
-  form,
-  group,
-  expenseCurrency,
-  totalAmount,
-  splitMode,
-  manuallyEditedParticipants,
-  setManuallyEditedParticipants,
-  recalculateByAmount,
-}: {
-  form: UseFormReturn<ExpenseFormValues>
-  group: NonNullable<AppRouterOutput['groups']['get']['group']>
-  expenseCurrency: Currency
-  totalAmount: number
-  splitMode: string
-  manuallyEditedParticipants: Set<string>
-  setManuallyEditedParticipants: (s: Set<string>) => void
-  recalculateByAmount: (total: number, paidFor: any, edited: Set<string>) => any
-}) {
-  const t = useTranslations('ExpenseForm')
-  const locale = useLocale() as Locale
-  // Read here rather than threading a prop down: the mark is the only thing that needs it, and the
-  // hook is a localStorage read the parent already does.
-  const activeUserId = useActiveUser(group.id)
-  const paidForValues = useWatch({ control: form.control, name: 'paidFor' })
-  const paidByValues = useWatch({ control: form.control, name: 'paidBy' })
-  const isReimbursement = useWatch({
-    control: form.control,
-    name: 'isReimbursement',
-  })
-  const expenseDate = useWatch({ control: form.control, name: 'expenseDate' })
-  const avatarHues = assignAvatarHues(group.participants.map((p) => p.name))
-
-  const getCalculatedShare = (participantId: string) => {
-    return calculateShare(participantId, {
-      amount: amountAsMinorUnits(totalAmount, expenseCurrency),
-      expenseDate: expenseDate ?? new Date(),
-      paidFor: paidForValues.map((pf: any) => ({
-        participant: { id: pf.participant, name: '', groupId: '' },
-        expenseId: '',
-        participantId: '',
-        shares: (() => {
-          const rawShares = pf.shares
-          const numShares = Number(rawShares)
-          if (isNaN(numShares)) return 0
-          if (splitMode === 'BY_PERCENTAGE') return numShares * 100
-          if (splitMode === 'BY_AMOUNT')
-            return amountAsMinorUnits(numShares, expenseCurrency)
-          return numShares
-        })(),
-      })),
-      splitMode: splitMode as any,
-      isReimbursement: isReimbursement,
-      paidBy: paidByValues.map((pb: any) => ({
-        participantId: pb.participant,
-        participant: { id: pb.participant, name: '' },
-        amount: 0,
-      })),
-    })
-  }
-
-  const handleShareChange = (participantId: string, newValue: string) => {
-    // 1. Mark as edited
-    const newEditedSet = new Set(manuallyEditedParticipants).add(participantId)
-    setManuallyEditedParticipants(newEditedSet)
-
-    // 2. Temporarily update the specific row to the new value
-    let currentPaidFor = form.getValues('paidFor').map((p: any) =>
-      p.participant === participantId
-        ? { ...p, shares: newValue } // Keep as string for the input
-        : p,
-    )
-
-    // 3. If in BY_AMOUNT mode, trigger the redistribution logic synchronously
-    //    so the user sees the numbers balance out as they type.
-    if (splitMode === 'BY_AMOUNT') {
-      currentPaidFor = recalculateByAmount(
-        totalAmount,
-        currentPaidFor,
-        newEditedSet,
-      )
-    }
-
-    // 4. Update form
-    form.setValue('paidFor', currentPaidFor, {
-      shouldValidate: true,
-      shouldDirty: true,
-    })
-
-    form.trigger('paidBy')
-  }
-
-  const toggleParticipant = (id: string, next: boolean) => {
-    const currentPaidFor = form.getValues('paidFor')
-    const options = {
-      shouldDirty: true,
-      shouldTouch: true,
-      shouldValidate: true,
-    }
-    if (next) {
-      form.setValue(
-        'paidFor',
-        [...currentPaidFor, { participant: id, shares: '1' }] as any,
-        options,
-      )
-    } else {
-      form.setValue(
-        'paidFor',
-        currentPaidFor.filter((p: any) => p.participant !== id),
-        options,
-      )
-      const newSet = new Set(manuallyEditedParticipants)
-      newSet.delete(id)
-      setManuallyEditedParticipants(newSet)
-    }
-  }
-
-  return (
-    <div
-      className="divide-y overflow-hidden rounded-lg border"
-      data-testid="paid-for-rows"
-    >
-      {group.participants.map(({ id, name }) => {
-        const isSelected = paidForValues.some((p: any) => p.participant === id)
-        const currentShare =
-          paidForValues.find((p: any) => p.participant === id)?.shares || ''
-
-        return (
-          <div
-            key={id}
-            data-id={`${id}/${splitMode}/${group.currency}`}
-            className={cn(
-              // The same row as the evenly list, because it is the same list — a person, and what
-              // they owe. What differs is that here the figure is a field.
-              'flex min-h-[52px] items-center gap-3 px-3 py-2 transition-colors',
-              !isSelected && 'bg-muted/40',
-            )}
-          >
-            {/* The mark is the switch. The whole row cannot be, the way it is on the evenly list:
-                most of this row is an input, and a tap that lands in it must land in it. Still a
-                checkbox to anything reading the page — the box itself is gone, not the role or
-                the name it answers to. */}
-            <button
-              type="button"
-              role="checkbox"
-              aria-checked={isSelected}
-              aria-label={name}
-              data-testid={`split-row-toggle-${name}`}
-              onClick={() => toggleParticipant(id, !isSelected)}
-              className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              <ProfileAvatar
-                name={name}
-                hue={avatarHues.get(name)}
-                isActiveUser={activeUserId === id}
-                size={32}
-                className={cn(!isSelected && 'opacity-40 grayscale')}
-              />
-            </button>
-
-            <span
-              className={cn(
-                'min-w-0 flex-1 truncate font-medium',
-                !isSelected && 'text-muted-foreground',
-              )}
-            >
-              {name}
-            </span>
-
-            {isSelected && !isReimbursement && splitMode !== 'BY_AMOUNT' && (
-              <span className="shrink-0 tabular-nums text-muted-foreground">
-                {formatCurrency(
-                  expenseCurrency,
-                  getCalculatedShare(id),
-                  locale,
-                )}
-              </span>
-            )}
-
-            {splitMode !== 'EVENLY' && isSelected && (
-              <div className="flex shrink-0 items-center gap-1">
-                {splitMode === 'BY_AMOUNT' && (
-                  <span className="text-sm text-muted-foreground">
-                    {expenseCurrency.symbol || group.currency}
-                  </span>
-                )}
-                <FormControl>
-                  <CalculatorInput
-                    className="h-9 w-[104px] rounded-md border border-input bg-card shadow-none has-[[data-slot=input-group-control]:focus-visible]:ring-0"
-                    inputClassName="h-9 w-full border-0 bg-transparent px-2 text-right font-mono text-base tabular-nums shadow-none focus-visible:ring-0"
-                    placeholder="0.00"
-                    decimalPlaces={expenseCurrency.decimal_digits}
-                    value={currentShare}
-                    onValueChange={(val) => handleShareChange(id, val)}
-                    disallowEmpty={false}
-                  />
-                </FormControl>
-                {['BY_SHARES', 'BY_PERCENTAGE'].includes(splitMode) && (
-                  <span className="text-sm text-muted-foreground">
-                    {match(splitMode)
-                      .with('BY_SHARES', () => <>{t('shares')}</>)
-                      .with('BY_PERCENTAGE', () => <>%</>)
-                      .otherwise(() => (
-                        <></>
-                      ))}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-        )
-      })}
-    </div>
   )
 }
