@@ -152,7 +152,12 @@ export function RecentGroupListCard({
                 }}
                 className="flex-1 overflow-hidden text-ellipsis flex items-center gap-2"
               >
-                <span className="truncate">{group.name}</span>
+                {/* The server's name once it has answered: this device's copy is whatever the
+                    group was called when it was last opened here, so a rename by anyone else
+                    did not show until then. */}
+                <span className="truncate">
+                  {groupDetail?.name ?? group.name}
+                </span>
               </Link>
               <span className="flex-shrink-0 flex items-center">
                 {/* Sync toggle button - only show when logged in */}

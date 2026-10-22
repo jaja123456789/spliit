@@ -41,6 +41,7 @@ export function PaymentList({ groupId, participants, currency }: Props) {
 
   const nameOf = (id: string | null) =>
     participants.find((p) => p.id === id)?.name ?? ''
+  const thisYear = new Date().getFullYear()
 
   // A row titled after the payment rather than after a person falls through to the name's own
   // preference, which is the right answer: it is not one of the group's people.
@@ -80,6 +81,14 @@ export function PaymentList({ groupId, participants, currency }: Props) {
           const fromName = nameOf(payment.from)
           const toName = nameOf(payment.to)
           const readsAsDirection = payment.isSimple && fromName && toName
+          // A payment from another year read only "Dec 1" — which, in October, reads as coming up.
+          const date = format.dateTime(payment.expenseDate, {
+            day: 'numeric',
+            month: 'short',
+            ...(payment.expenseDate.getUTCFullYear() !== thisYear && {
+              year: 'numeric',
+            }),
+          })
 
           return (
             <Link
@@ -98,7 +107,11 @@ export function PaymentList({ groupId, participants, currency }: Props) {
                 <div className="text-sm font-medium truncate">
                   {readsAsDirection ? (
                     <>
-                      {fromName}
+                      {/* Either end can be you. Only the receiving end used to say so, so a
+                          payment you made appeared under your own name, as if someone else's. */}
+                      {activeUserId === payment.from
+                        ? tBalances('you')
+                        : fromName}
                       <span className="text-subtle-foreground"> → </span>
                       {activeUserId === payment.to ? tBalances('you') : toName}
                     </>
@@ -107,15 +120,7 @@ export function PaymentList({ groupId, participants, currency }: Props) {
                   )}
                 </div>
                 <div className="text-xs text-muted-foreground truncate">
-                  {payment.notes
-                    ? `${payment.notes} · ${format.dateTime(
-                        payment.expenseDate,
-                        { day: 'numeric', month: 'short' },
-                      )}`
-                    : format.dateTime(payment.expenseDate, {
-                        day: 'numeric',
-                        month: 'short',
-                      })}
+                  {payment.notes ? `${payment.notes} · ${date}` : date}
                 </div>
               </div>
               {/* Uncoloured: a payment is not a credit or a debt, it is the thing that cancels

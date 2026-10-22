@@ -24,18 +24,17 @@ function getAcceptLanguageLocale(requestHeaders: Headers, locales: Locales) {
 }
 
 export async function getUserLocale() {
-  let locale
-
-  // Prio 1: use existing cookie
-  locale = (await cookies()).get(COOKIE_NAME)?.value
+  // Prio 1: use existing cookie — if it still names a locale this build has. The value picks a
+  // messages file to import, so a stale one (a locale since removed) or a mangled one made every
+  // page a 500 until the cookie was cleared.
+  const cookieLocale = (await cookies()).get(COOKIE_NAME)?.value
+  if (cookieLocale && (locales as string[]).includes(cookieLocale)) {
+    return cookieLocale as Locale
+  }
 
   // Prio 2: use `accept-language` header
   // Prio 3: use default locale
-  if (!locale) {
-    locale = getAcceptLanguageLocale(await headers(), locales)
-  }
-
-  return locale
+  return getAcceptLanguageLocale(await headers(), locales)
 }
 
 export async function setUserLocale(locale: Locale) {
