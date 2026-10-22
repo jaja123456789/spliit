@@ -78,11 +78,6 @@ export async function createExpense(
     })) || []
 
   const expenseId = randomId()
-  await logActivity(groupId, ActivityType.CREATE_EXPENSE, {
-    participantId,
-    expenseId,
-    data: expenseFormValues.title,
-  })
 
   const isCreateRecurrence =
     expenseFormValues.recurrenceRule !== RecurrenceRule.NONE
@@ -92,73 +87,81 @@ export async function createExpense(
     groupId,
   )
 
-  const expense = await prisma.expense.create({
-    data: {
-      id: expenseId,
+  const expense = await prisma.$transaction(async (tx) => {
+    await logActivity(
       groupId,
-      expenseDate: expenseFormValues.expenseDate,
-      categoryId: expenseFormValues.category,
-      amount: amountAsMinorUnits(
-        Number(expenseFormValues.amount),
-        groupCurrency,
-      ),
-      // Stored in minor units of the currency the expense was entered in.
-      originalAmount: expenseFormValues.originalAmount
-        ? amountAsMinorUnits(
-            Number(expenseFormValues.originalAmount),
-            getCurrency(expenseFormValues.originalCurrency),
-          )
-        : null,
-      originalCurrency: expenseFormValues.originalCurrency,
-      conversionRate: expenseFormValues.conversionRate,
-      title: expenseFormValues.title,
-      splitMode: expenseFormValues.splitMode,
-      recurrenceRule: expenseFormValues.recurrenceRule,
-      recurringExpenseLink: {
-        ...(isCreateRecurrence
-          ? {
-              create: recurringExpenseLinkPayload,
-            }
-          : {}),
-      },
-      paidBy: {
-        createMany: {
-          data: expenseFormValues.paidBy.map((pb) => ({
-            participantId: pb.participant,
-            amount: amountAsMinorUnits(Number(pb.amount), groupCurrency),
-          })),
+      ActivityType.CREATE_EXPENSE,
+      { participantId, expenseId, data: expenseFormValues.title },
+      tx,
+    )
+    return tx.expense.create({
+      data: {
+        id: expenseId,
+        groupId,
+        expenseDate: expenseFormValues.expenseDate,
+        categoryId: expenseFormValues.category,
+        amount: amountAsMinorUnits(
+          Number(expenseFormValues.amount),
+          groupCurrency,
+        ),
+        // Stored in minor units of the currency the expense was entered in.
+        originalAmount: expenseFormValues.originalAmount
+          ? amountAsMinorUnits(
+              Number(expenseFormValues.originalAmount),
+              getCurrency(expenseFormValues.originalCurrency),
+            )
+          : null,
+        originalCurrency: expenseFormValues.originalCurrency,
+        conversionRate: expenseFormValues.conversionRate,
+        title: expenseFormValues.title,
+        splitMode: expenseFormValues.splitMode,
+        recurrenceRule: expenseFormValues.recurrenceRule,
+        recurringExpenseLink: {
+          ...(isCreateRecurrence
+            ? {
+                create: recurringExpenseLinkPayload,
+              }
+            : {}),
         },
-      },
-      paidFor: {
-        createMany: {
-          data: expenseFormValues.paidFor.map((pf) => ({
-            participantId: pf.participant,
-            // Shares are stored as integers (cents if splitMode is BY_AMOUNT)
-            shares:
-              expenseFormValues.splitMode === 'BY_AMOUNT'
-                ? amountAsMinorUnits(Number(pf.shares), groupCurrency)
-                : Math.round(Number(pf.shares) * 100),
-          })),
+        paidBy: {
+          createMany: {
+            data: expenseFormValues.paidBy.map((pb) => ({
+              participantId: pb.participant,
+              amount: amountAsMinorUnits(Number(pb.amount), groupCurrency),
+            })),
+          },
         },
-      },
-      isReimbursement: expenseFormValues.isReimbursement,
-      items: {
-        createMany: {
-          data: itemData,
+        paidFor: {
+          createMany: {
+            data: expenseFormValues.paidFor.map((pf) => ({
+              participantId: pf.participant,
+              // Shares are stored as integers (cents if splitMode is BY_AMOUNT)
+              shares:
+                expenseFormValues.splitMode === 'BY_AMOUNT'
+                  ? amountAsMinorUnits(Number(pf.shares), groupCurrency)
+                  : Math.round(Number(pf.shares) * 100),
+            })),
+          },
         },
-      },
-      documents: {
-        createMany: {
-          data: expenseFormValues.documents.map((doc) => ({
-            id: randomId(),
-            url: doc.url,
-            width: doc.width,
-            height: doc.height,
-          })),
+        isReimbursement: expenseFormValues.isReimbursement,
+        items: {
+          createMany: {
+            data: itemData,
+          },
         },
+        documents: {
+          createMany: {
+            data: expenseFormValues.documents.map((doc) => ({
+              id: randomId(),
+              url: doc.url,
+              width: doc.width,
+              height: doc.height,
+            })),
+          },
+        },
+        notes: expenseFormValues.notes,
       },
-      notes: expenseFormValues.notes,
-    },
+    })
   })
 
   const amountInMinorUnits = amountAsMinorUnits(
@@ -170,15 +173,13 @@ export async function createExpense(
     groupCurrency,
   )
 
+  // Excludes whoever is the acting participant on a synced device (see `push.ts`).
   sendPushNotificationToGroup(
     groupId,
     `New expense in ${group.name}`,
     `${expenseFormValues.title} - ${formattedAmount} ${groupCurrency.code}`,
     `/groups/${groupId}/expenses/${expense.id}/edit`,
-    participantId, // Assuming participantId can be mapped to userId, or just pass undefined if not available easily.
-    // Ideally, pass the userId if available from context, but api.ts createExpense usually takes participantId.
-    // To strictly exclude the sender, we'd need to know which User ID corresponds to the participantId.
-    // For now, it's safer to leave undefined or implement a lookup.
+    participantId,
   ).catch(console.error)
 
   return expense
@@ -190,14 +191,15 @@ export async function deleteExpense(
   participantId?: string,
 ) {
   const existingExpense = await getExpense(groupId, expenseId)
-  await logActivity(groupId, ActivityType.DELETE_EXPENSE, {
-    participantId,
-    expenseId,
-    data: existingExpense?.title,
-  })
-  await prisma.expense.delete({
-    where: { id: expenseId },
-    include: { paidFor: true, paidBy: true },
+  if (!existingExpense) throw new Error(`Invalid expense ID: ${expenseId}`)
+  await prisma.$transaction(async (tx) => {
+    await logActivity(
+      groupId,
+      ActivityType.DELETE_EXPENSE,
+      { participantId, expenseId, data: existingExpense.title },
+      tx,
+    )
+    await tx.expense.delete({ where: { id: expenseId, groupId } })
   })
 }
 
@@ -295,12 +297,6 @@ export async function updateExpense(
     },
   )
 
-  await logActivity(groupId, ActivityType.UPDATE_EXPENSE, {
-    participantId,
-    expenseId,
-    data: encodeActivityData(expenseFormValues.title, changes),
-  })
-
   const isDeleteRecurrenceExpenseLink =
     existingExpense.recurrenceRule !== RecurrenceRule.NONE &&
     expenseFormValues.recurrenceRule === RecurrenceRule.NONE &&
@@ -335,117 +331,129 @@ export async function updateExpense(
       expenseId, // needed for createMany
     })) || []
 
-  return prisma.expense.update({
-    where: { id: expenseId },
-    data: {
-      expenseDate: expenseFormValues.expenseDate,
-      amount: amountAsMinorUnits(
-        Number(expenseFormValues.amount),
-        groupCurrency,
-      ),
-      // Stored in minor units of the currency the expense was entered in.
-      originalAmount: expenseFormValues.originalAmount
-        ? amountAsMinorUnits(
-            Number(expenseFormValues.originalAmount),
-            getCurrency(expenseFormValues.originalCurrency),
-          )
-        : null,
-      originalCurrency: expenseFormValues.originalCurrency,
-      conversionRate: expenseFormValues.conversionRate,
-      title: expenseFormValues.title,
-      categoryId: expenseFormValues.category,
-      splitMode: expenseFormValues.splitMode,
-      recurrenceRule: expenseFormValues.recurrenceRule,
-      paidBy: {
-        deleteMany: { expenseId },
-        createMany: {
-          data: expenseFormValues.paidBy.map((pb) => ({
-            participantId: pb.participant,
-            amount: amountAsMinorUnits(Number(pb.amount), groupCurrency),
-          })),
-        },
+  return prisma.$transaction(async (tx) => {
+    await logActivity(
+      groupId,
+      ActivityType.UPDATE_EXPENSE,
+      {
+        participantId,
+        expenseId,
+        data: encodeActivityData(expenseFormValues.title, changes),
       },
-      paidFor: {
-        create: expenseFormValues.paidFor
-          .filter(
-            (p) =>
-              !existingExpense.paidFor.some(
-                (pp) => pp.participantId === p.participant,
-              ),
-          )
-          .map((paidFor) => ({
-            participantId: paidFor.participant,
-            shares:
-              expenseFormValues.splitMode === 'BY_AMOUNT'
-                ? amountAsMinorUnits(Number(paidFor.shares), groupCurrency)
-                : Math.round(Number(paidFor.shares) * 100),
-          })),
-        update: expenseFormValues.paidFor.map((paidFor) => ({
-          where: {
-            expenseId_participantId: {
-              expenseId,
-              participantId: paidFor.participant,
-            },
-          },
-          data: {
-            shares:
-              expenseFormValues.splitMode === 'BY_AMOUNT'
-                ? amountAsMinorUnits(Number(paidFor.shares), groupCurrency)
-                : Math.round(Number(paidFor.shares) * 100),
-          },
-        })),
-        deleteMany: existingExpense.paidFor.filter(
-          (paidFor) =>
-            !expenseFormValues.paidFor.some(
-              (pf) => pf.participant === paidFor.participantId,
-            ),
+      tx,
+    )
+    return tx.expense.update({
+      where: { id: expenseId, groupId },
+      data: {
+        expenseDate: expenseFormValues.expenseDate,
+        amount: amountAsMinorUnits(
+          Number(expenseFormValues.amount),
+          groupCurrency,
         ),
-      },
-      recurringExpenseLink: {
-        ...(isCreateRecurrenceExpenseLink
-          ? {
-              create: newRecurringExpenseLink,
-            }
-          : {}),
-        ...(isUpdateRecurrenceExpenseLink
-          ? {
-              update: {
-                nextExpenseDate: updatedRecurrenceExpenseLinkNextExpenseDate,
-              },
-            }
-          : {}),
-        delete: isDeleteRecurrenceExpenseLink,
-      },
-      isReimbursement: expenseFormValues.isReimbursement,
-      items: {
-        deleteMany: {}, // Clear old items
-        createMany: {
-          data: itemData.map(({ id, name, price, participantIds }) => ({
-            id,
-            name,
-            price,
-            participantIds,
-          })),
+        // Stored in minor units of the currency the expense was entered in.
+        originalAmount: expenseFormValues.originalAmount
+          ? amountAsMinorUnits(
+              Number(expenseFormValues.originalAmount),
+              getCurrency(expenseFormValues.originalCurrency),
+            )
+          : null,
+        originalCurrency: expenseFormValues.originalCurrency,
+        conversionRate: expenseFormValues.conversionRate,
+        title: expenseFormValues.title,
+        categoryId: expenseFormValues.category,
+        splitMode: expenseFormValues.splitMode,
+        recurrenceRule: expenseFormValues.recurrenceRule,
+        paidBy: {
+          deleteMany: { expenseId },
+          createMany: {
+            data: expenseFormValues.paidBy.map((pb) => ({
+              participantId: pb.participant,
+              amount: amountAsMinorUnits(Number(pb.amount), groupCurrency),
+            })),
+          },
         },
-      },
-      documents: {
-        connectOrCreate: expenseFormValues.documents.map((doc) => ({
-          create: doc,
-          where: { id: doc.id },
-        })),
-        deleteMany: existingExpense.documents
-          .filter(
-            (existingDoc) =>
-              !expenseFormValues.documents.some(
-                (doc) => doc.id === existingDoc.id,
-              ),
-          )
-          .map((doc) => ({
-            id: doc.id,
+        paidFor: {
+          create: expenseFormValues.paidFor
+            .filter(
+              (p) =>
+                !existingExpense.paidFor.some(
+                  (pp) => pp.participantId === p.participant,
+                ),
+            )
+            .map((paidFor) => ({
+              participantId: paidFor.participant,
+              shares:
+                expenseFormValues.splitMode === 'BY_AMOUNT'
+                  ? amountAsMinorUnits(Number(paidFor.shares), groupCurrency)
+                  : Math.round(Number(paidFor.shares) * 100),
+            })),
+          update: expenseFormValues.paidFor.map((paidFor) => ({
+            where: {
+              expenseId_participantId: {
+                expenseId,
+                participantId: paidFor.participant,
+              },
+            },
+            data: {
+              shares:
+                expenseFormValues.splitMode === 'BY_AMOUNT'
+                  ? amountAsMinorUnits(Number(paidFor.shares), groupCurrency)
+                  : Math.round(Number(paidFor.shares) * 100),
+            },
           })),
+          deleteMany: existingExpense.paidFor.filter(
+            (paidFor) =>
+              !expenseFormValues.paidFor.some(
+                (pf) => pf.participant === paidFor.participantId,
+              ),
+          ),
+        },
+        recurringExpenseLink: {
+          ...(isCreateRecurrenceExpenseLink
+            ? {
+                create: newRecurringExpenseLink,
+              }
+            : {}),
+          ...(isUpdateRecurrenceExpenseLink
+            ? {
+                update: {
+                  nextExpenseDate: updatedRecurrenceExpenseLinkNextExpenseDate,
+                },
+              }
+            : {}),
+          delete: isDeleteRecurrenceExpenseLink,
+        },
+        isReimbursement: expenseFormValues.isReimbursement,
+        items: {
+          deleteMany: {}, // Clear old items
+          createMany: {
+            data: itemData.map(({ id, name, price, participantIds }) => ({
+              id,
+              name,
+              price,
+              participantIds,
+            })),
+          },
+        },
+        documents: {
+          connectOrCreate: expenseFormValues.documents.map((doc) => ({
+            create: doc,
+            where: { id: doc.id },
+          })),
+          deleteMany: existingExpense.documents
+            .filter(
+              (existingDoc) =>
+                !expenseFormValues.documents.some(
+                  (doc) => doc.id === existingDoc.id,
+                ),
+            )
+            .map((doc) => ({
+              id: doc.id,
+            })),
+        },
+        notes: expenseFormValues.notes,
       },
-      notes: expenseFormValues.notes,
-    },
+    })
   })
 }
 
@@ -456,58 +464,59 @@ export async function updateGroup(
 ) {
   const existingGroup = await getGroup(groupId)
   if (!existingGroup) throw new Error('Invalid group ID')
-  await logActivity(groupId, ActivityType.UPDATE_GROUP, { participantId })
 
   const participantIdsToKeep = groupFormValues.participants
     .map((p) => p.id)
     .filter((id): id is string => !!id)
 
-  return prisma.group.update({
-    where: { id: groupId },
-    data: {
-      name: groupFormValues.name,
-      information: groupFormValues.information,
-      currency: groupFormValues.currency,
-      currencyCode: groupFormValues.currencyCode,
-      simplifyDebts: groupFormValues.simplifyDebts,
-      participants: {
-        // FIX: Pass a filter object { id: { notIn: [...] } }
-        // instead of the array of filtered objects.
-        deleteMany: {
-          id: {
-            notIn: participantIdsToKeep,
+  return prisma.$transaction(async (tx) => {
+    await logActivity(groupId, ActivityType.UPDATE_GROUP, { participantId }, tx)
+    return tx.group.update({
+      where: { id: groupId },
+      data: {
+        name: groupFormValues.name,
+        information: groupFormValues.information,
+        currency: groupFormValues.currency,
+        currencyCode: groupFormValues.currencyCode,
+        simplifyDebts: groupFormValues.simplifyDebts,
+        participants: {
+          // Everyone no longer listed. A filter, not a list of rows: `deleteMany` takes a `where`.
+          deleteMany: {
+            id: {
+              notIn: participantIdsToKeep,
+            },
           },
-        },
-        // Update existing participants.
-        // Truthiness, not `!== undefined`: the group form appends a new participant with `id: ''`,
-        // which passed this filter and failed the whole save with "No 'Participant' record was
-        // found for a nested update", while also failing the `id === undefined` test below — so
-        // adding a participant in group settings neither updated nor created anything. This
-        // matches `participantIdsToKeep` above, which already treats an empty id as absent.
-        update: groupFormValues.participants
-          .filter((p) => !!p.id)
-          .map((p) => ({
-            where: { id: p.id },
-            data: {
+          // Update existing participants.
+          // Truthiness, not `!== undefined`: the group form appends a new participant with `id: ''`,
+          // which passed this filter and failed the whole save with "No 'Participant' record was
+          // found for a nested update", while also failing the `id === undefined` test below — so
+          // adding a participant in group settings neither updated nor created anything. This
+          // matches `participantIdsToKeep` above, which already treats an empty id as absent.
+          update: groupFormValues.participants
+            .filter((p) => !!p.id)
+            .map((p) => ({
+              where: { id: p.id },
+              data: {
+                name: p.name,
+                // Use Prisma.DbNull to explicitly clear the JSON field if it's empty
+                paymentProfile: p.paymentProfile
+                  ? (p.paymentProfile as any)
+                  : Prisma.DbNull,
+              },
+            })),
+          // Create new participants
+          create: groupFormValues.participants
+            .filter((p) => !p.id)
+            .map((p) => ({
+              id: randomId(),
               name: p.name,
-              // Use Prisma.DbNull to explicitly clear the JSON field if it's empty
               paymentProfile: p.paymentProfile
                 ? (p.paymentProfile as any)
-                : Prisma.DbNull,
-            },
-          })),
-        // Create new participants
-        create: groupFormValues.participants
-          .filter((p) => !p.id)
-          .map((p) => ({
-            id: randomId(),
-            name: p.name,
-            paymentProfile: p.paymentProfile
-              ? (p.paymentProfile as any)
-              : undefined,
-          })),
+                : undefined,
+            })),
+        },
       },
-    },
+    })
   })
 }
 
@@ -658,9 +667,13 @@ export async function getGroupExpenseCount(groupId: string) {
   return prisma.expense.count({ where: { groupId } })
 }
 
+/**
+ * An expense of this group. The group is part of the lookup, not decoration: every caller holds a
+ * group link and an expense id, and an id alone used to reach an expense of any group.
+ */
 export async function getExpense(groupId: string, expenseId: string) {
   return prisma.expense.findUnique({
-    where: { id: expenseId },
+    where: { id: expenseId, groupId },
     include: {
       paidBy: true,
       paidFor: true,
@@ -792,12 +805,17 @@ export async function createPayments(
   })
 }
 
+/**
+ * Pass the transaction the change itself is written in. Logged on its own, a change that then
+ * failed still left "created by…" in the feed for an expense that never existed.
+ */
 export async function logActivity(
   groupId: string,
   activityType: ActivityType,
   extra?: { participantId?: string; expenseId?: string; data?: string },
+  db: Prisma.TransactionClient = prisma,
 ) {
-  return prisma.activity.create({
+  return db.activity.create({
     data: {
       id: randomId(),
       groupId,
