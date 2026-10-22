@@ -124,14 +124,7 @@ const ExpenseListForSearch = ({
   searchBar: ReactNode
   enableReceiptExtract: boolean
 }) => {
-  const utils = trpc.useUtils()
   const { group } = useCurrentGroup()
-
-  useEffect(() => {
-    // Until we use tRPC more widely and can invalidate the cache on expense
-    // update, it's easier and safer to invalidate the cache on page load.
-    utils.groups.expenses.invalidate()
-  }, [utils])
 
   const t = useTranslations('Expenses')
   const tEmpty = useTranslations('Expenses.EmptyGroup')

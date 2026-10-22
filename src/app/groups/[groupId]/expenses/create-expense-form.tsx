@@ -38,7 +38,9 @@ export function CreateExpenseForm({
           expenseFormValues,
           participantId,
         })
-        utils.groups.expenses.invalidate()
+        // Everything about the group, not just the list: the totals above it, Stats, Balances and
+        // Activity are their own queries and were left showing the group without this expense.
+        utils.groups.invalidate()
         router.push(`/groups/${group.id}`)
       }}
       runtimeFeatureFlags={runtimeFeatureFlags}

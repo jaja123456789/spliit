@@ -47,7 +47,8 @@ export function EditExpenseForm({
           expenseFormValues,
           participantId,
         })
-        utils.groups.expenses.invalidate()
+        // The whole group: totals, Stats, Balances and Activity all moved with this expense.
+        utils.groups.invalidate()
         router.push(`/groups/${group.id}`)
       }}
       onDelete={async (participantId) => {
@@ -56,7 +57,7 @@ export function EditExpenseForm({
           groupId,
           participantId,
         })
-        utils.groups.expenses.invalidate()
+        utils.groups.invalidate()
         router.push(`/groups/${group.id}`)
       }}
       runtimeFeatureFlags={runtimeFeatureFlags}

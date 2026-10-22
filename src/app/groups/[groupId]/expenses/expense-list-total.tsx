@@ -37,6 +37,7 @@ export function ExpenseListTotal({ actions }: { actions?: ReactNode }) {
   return (
     <SheetHeader
       label={t('group')}
+      figureTestId="expenses-group-total"
       actions={actions}
       figure={
         ready ? (

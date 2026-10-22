@@ -12,12 +12,10 @@ import { useActiveUser } from '@/lib/hooks'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { useTranslations } from 'next-intl'
-import { useEffect } from 'react'
 import { match } from 'ts-pattern'
 import { useCurrentGroup } from '../current-group-context'
 
 export default function BalancesAndReimbursements() {
-  const utils = trpc.useUtils()
   const { groupId, group } = useCurrentGroup()
   const activeUserId = useActiveUser(groupId)
   const { data: balancesData, isLoading: balancesAreLoading } =
@@ -27,15 +25,6 @@ export default function BalancesAndReimbursements() {
   const t = useTranslations('Balances')
   // "You are owed" / "You owe" already exist, worded for exactly this, on the Stats tab.
   const tStats = useTranslations('Stats.Totals')
-
-  useEffect(() => {
-    // Until we use tRPC more widely and can invalidate the cache on expense
-    // update, it's easier and safer to invalidate the cache on page load.
-    utils.groups.balances.invalidate()
-    // Payments are edited and deleted through the expense screens, which know nothing about this
-    // list, so it is stale on every return trip unless the page asks again.
-    utils.groups.payments.invalidate()
-  }, [utils])
 
   const isLoading = balancesAreLoading || !balancesData || !group
   const currency = group ? getCurrencyFromGroup(group) : null

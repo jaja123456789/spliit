@@ -151,11 +151,9 @@ export function PaymentForm({ group }: { group: Group }) {
         items: [],
       } as any,
     })
-    utils.groups.expenses.invalidate()
-    utils.groups.balances.invalidate()
-    // The Payments list is its own query, so recording one has to say so — otherwise the sheet
-    // saves, the balances move, and the list of payments still says there are none.
-    utils.groups.payments.invalidate()
+    // Every query about the group, the Payments list included — it is its own query, and without
+    // this the sheet saved, the balances moved, and the list still said there were none.
+    utils.groups.invalidate()
     router.push(`/groups/${group.id}/balances`)
   }
 
