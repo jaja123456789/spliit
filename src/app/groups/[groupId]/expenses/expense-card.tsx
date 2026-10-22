@@ -12,7 +12,7 @@ import { useActiveUser } from '@/lib/hooks'
 import { cn, formatDateOnly } from '@/lib/utils'
 import { ChevronRight } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Fragment } from 'react'
 
 type Expense = Awaited<ReturnType<typeof getGroupExpenses>>[number]
@@ -74,7 +74,6 @@ export function ExpenseCard({
   groupId,
   participantCount,
 }: Props) {
-  const router = useRouter()
   const locale = useLocale()
   const activeUserId = useActiveUser(groupId)
 
@@ -100,17 +99,20 @@ export function ExpenseCard({
       : null
 
   return (
-    <div
-      key={expense.id}
+    // A link, not a `div` with a click handler. The row is the only way into an expense — and so
+    // into editing or deleting it — and a `div` is not focusable: tabbing through the list went
+    // from the search box straight to the footer, past every row. A link also answers to
+    // middle-click and "open in new tab". Not prefetched: a list of a thousand rows would otherwise
+    // fetch a route for every one that scrolls past.
+    <Link
+      href={`/groups/${groupId}/expenses/${expense.id}/edit`}
+      prefetch={false}
       data-testid={`expense-item-${expense.id}`}
       className={cn(
-        'group relative flex items-start gap-3 px-4 sm:px-6 py-3.5 text-sm cursor-pointer transition-colors hover:bg-accent/50',
-        'border-b last:border-b-0',
+        'group relative flex items-start gap-3 px-4 sm:px-6 py-3.5 text-sm transition-colors hover:bg-accent/50',
+        'border-b last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
         expense.isReimbursement && 'italic bg-muted/20',
       )}
-      onClick={() => {
-        router.push(`/groups/${groupId}/expenses/${expense.id}/edit`)
-      }}
     >
       <div className="flex-1 min-w-0">
         <div className="flex justify-between items-baseline gap-3">
@@ -174,6 +176,6 @@ export function ExpenseCard({
       </div>
 
       <ChevronRight className="w-4 h-4 self-center shrink-0 text-subtle-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 hidden sm:block" />
-    </div>
+    </Link>
   )
 }

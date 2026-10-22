@@ -1,6 +1,5 @@
 'use client'
 import { Money } from '@/components/money'
-import { Button } from '@/components/ui/button'
 import { ActivityChange, decodeActivityData } from '@/lib/activity-changes'
 import { Currency } from '@/lib/currency'
 import { DateTimeStyle, cn, formatDate } from '@/lib/utils'
@@ -9,7 +8,6 @@ import { ActivityType, Participant } from '@prisma/client'
 import { ChevronRight } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 
 export type Activity =
   AppRouterOutput['groups']['activities']['list']['activities'][number]
@@ -53,7 +51,6 @@ export function ActivityItem({
   dateStyle,
   currency,
 }: Props) {
-  const router = useRouter()
   const locale = useLocale()
   const t = useTranslations('Activity.Changes')
 
@@ -69,19 +66,14 @@ export function ActivityItem({
       value
     )
 
-  return (
-    <div
-      className={cn(
-        'flex justify-between sm:rounded-lg px-2 sm:pr-1 sm:pl-2 py-2 text-sm hover:bg-accent gap-1 items-stretch',
-        expenseExists && 'cursor-pointer',
-      )}
-      onClick={() => {
-        if (expenseExists) {
-          router.push(`/groups/${groupId}/expenses/${activity.expenseId}/edit`)
-        }
-      }}
-      data-testid={`activity-item-${activity.id}`}
-    >
+  const rowClassName = cn(
+    'flex justify-between sm:rounded-lg px-2 sm:pr-1 sm:pl-2 py-2 text-sm hover:bg-accent gap-1 items-stretch',
+    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
+  )
+  const testId = `activity-item-${activity.id}`
+
+  const content = (
+    <>
       <div className="flex flex-col justify-between items-start">
         {dateStyle !== undefined && (
           <div className="mt-1 text-xs/5 text-muted-foreground">
@@ -111,17 +103,28 @@ export function ActivityItem({
         )}
       </div>
       {expenseExists && (
-        <Button
-          size="icon"
-          variant="link"
-          className="self-center hidden sm:flex w-5 h-5"
-          asChild
-        >
-          <Link href={`/groups/${groupId}/expenses/${activity.expenseId}/edit`}>
-            <ChevronRight className="w-4 h-4" />
-          </Link>
-        </Button>
+        <ChevronRight
+          aria-hidden
+          className="self-center hidden sm:block w-4 h-4 text-primary"
+        />
       )}
+    </>
+  )
+
+  // A link when there is an expense to open, so a keyboard can reach it too. It was a `div` with a
+  // click handler, and its one focusable part — the chevron — is hidden on phones.
+  return expenseExists ? (
+    <Link
+      href={`/groups/${groupId}/expenses/${activity.expenseId}/edit`}
+      prefetch={false}
+      className={rowClassName}
+      data-testid={testId}
+    >
+      {content}
+    </Link>
+  ) : (
+    <div className={rowClassName} data-testid={testId}>
+      {content}
     </div>
   )
 }
