@@ -40,8 +40,12 @@ export function useGroupBalances(groupIds: string[]) {
   return {
     /** Balance for one group, or undefined when you have not said who you are there. */
     balanceFor: (groupId: string) => byGroup.get(groupId),
-    /** Sum over the groups that *do* have a balance — never over all of them. */
-    total: [...byGroup.values()].reduce((sum, amount) => sum + amount, 0),
+    /**
+     * The groups that *do* have a balance, in minor units of each group's own currency. There is
+     * no total here on purpose: summing across groups is only meaningful per currency, and the
+     * currencies live with the group details — see `totalsByCurrency`.
+     */
+    balances: byGroup,
     coveredCount: byGroup.size,
     isPartial: byGroup.size < groupIds.length,
   }

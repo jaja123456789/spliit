@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { useGroups } from '@/contexts'
 import { getGroups } from '@/lib/api'
 import { readPendingShareImage } from '@/lib/share-target'
+import { totalsByCurrency } from '@/lib/totals-by-currency'
 import { cn, formatCurrency, getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { AppRouterOutput } from '@/trpc/routers/_app'
@@ -113,7 +114,7 @@ function RecentGroupList_({
     groupIds: groups.map((group) => group.id),
   })
   // Above the early returns below: hooks cannot be called conditionally.
-  const { balanceFor, total, coveredCount, isPartial } = useGroupBalances(
+  const { balanceFor, balances, coveredCount, isPartial } = useGroupBalances(
     groups.map((group) => group.id),
   )
 
@@ -188,41 +189,54 @@ function RecentGroupList_({
     archivedGroups,
   })
 
+  // One figure per currency. These used to be summed into a single number and labelled with the
+  // first group's currency, so euros and dollars came out as a total in neither.
+  const owed = totalsByCurrency(
+    data.groups.flatMap((detail) => {
+      const amount = balances.get(detail.id)
+      return amount === undefined
+        ? []
+        : [{ currency: getCurrencyFromGroup(detail), amount }]
+    }),
+  ).filter(({ amount }) => Math.abs(amount) >= 1)
+
   return (
     <GroupsPage
       isRefetching={isRefetching}
       hasPendingReceipt={hasPendingReceipt}
     >
       {coveredCount > 0 && (
-        <div className="mb-4 rounded-lg border bg-card p-3">
+        <div
+          className="mb-4 rounded-lg border bg-card p-3"
+          data-testid="overall-balance"
+        >
           <div className="text-xs text-muted-foreground">
             {isPartial ? t('Overall.partial') : t('Overall.all')}
           </div>
-          <div
-            className={cn(
-              'text-lg font-semibold tabular-nums',
-              Math.abs(total) < 1
-                ? 'text-muted-foreground'
-                : total > 0
-                ? 'text-credit'
-                : 'text-debt',
-            )}
-          >
-            {/* The one figure in the app not in the figure face. The amount is interpolated into a
-                translated sentence ("You are owed {amount}") so that translators control the word
-                order, and next-intl only accepts a string there — `t.rich` renders a ReactNode
-                value at runtime but its own types forbid it, and all 23 locales carry `{amount}`,
-                so switching the message to tag syntax would break the 22 that are translated. */}
-            {Math.abs(total) < 1
-              ? t('Overall.settled')
-              : t(total > 0 ? 'Overall.owedToYou' : 'Overall.youOwe', {
-                  amount: formatCurrency(
-                    getCurrencyFromGroup(data.groups[0]),
-                    Math.abs(total),
-                    locale,
-                  ),
+          {/* The one figure in the app not in the figure face. The amount is interpolated into a
+              translated sentence ("You are owed {amount}") so that translators control the word
+              order, and next-intl only accepts a string there — `t.rich` renders a ReactNode
+              value at runtime but its own types forbid it, and all 23 locales carry `{amount}`,
+              so switching the message to tag syntax would break the 22 that are translated. */}
+          {owed.length === 0 ? (
+            <div className="text-lg font-semibold tabular-nums text-muted-foreground">
+              {t('Overall.settled')}
+            </div>
+          ) : (
+            owed.map(({ currency, amount }) => (
+              <div
+                key={currency.code || currency.symbol}
+                className={cn(
+                  'text-lg font-semibold tabular-nums',
+                  amount > 0 ? 'text-credit' : 'text-debt',
+                )}
+              >
+                {t(amount > 0 ? 'Overall.owedToYou' : 'Overall.youOwe', {
+                  amount: formatCurrency(currency, Math.abs(amount), locale),
                 })}
-          </div>
+              </div>
+            ))
+          )}
         </div>
       )}
 

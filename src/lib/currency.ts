@@ -74,6 +74,18 @@ function customCurrency(name: string): Currency {
   }
 }
 
+/**
+ * The one currency written with this symbol, or `undefined` when no currency or more than one is:
+ * "€" is the euro, "$" is any of seven.
+ */
+export function currencyCodeForSymbol(symbol: string): string | undefined {
+  const matches = Object.entries(currencies).filter(
+    ([, currency]) =>
+      currency.symbol === symbol || currency.symbol_native === symbol,
+  )
+  return matches.length === 1 ? matches[0][0] : undefined
+}
+
 export function defaultCurrencyList(
   locale: Locale = 'en-US',
   customChoice: string | null = null,
