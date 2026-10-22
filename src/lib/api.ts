@@ -1,6 +1,7 @@
 import {
   describeExpenseChanges,
   encodeActivityData,
+  encodeRecurringActivityData,
 } from '@/lib/activity-changes'
 import { getBalances } from '@/lib/balances'
 import { prisma } from '@/lib/prisma'
@@ -806,140 +807,156 @@ export async function logActivity(
   })
 }
 
-// ... existing createRecurringExpenses and createPayloadForNewRecurringExpenseLink (omitted for brevity, no changes needed if they use standard Create input)
-// Wait, createRecurringExpenses uses prisma.expense.create with paidBy.
-// I need to update createRecurringExpenses to use paidBy: { createMany: ... } as well.
-
 /**
  * Materialises the recurring expenses that have come due. This runs on every read of a group's
  * expenses, so pass the group being read: `RecurringExpenseLink` is indexed on
  * `[groupId, nextExpenseCreatedAt, nextExpenseDate]` and without a group the leading column is
  * unconstrained, which turns the lookup into a scan of every recurring expense in the database.
+ *
+ * With nothing due — the usual case — that indexed lookup is all this costs.
  */
 export async function createRecurringExpenses(groupId?: string) {
-  const localDate = new Date()
-  const utcDateFromLocal = new Date(
-    Date.UTC(
-      localDate.getUTCFullYear(),
-      localDate.getUTCMonth(),
-      localDate.getUTCDate(),
-      localDate.getUTCHours(),
-      localDate.getUTCMinutes(),
-    ),
-  )
-  const recurringExpenseLinksWithExpensesToCreate =
-    await prisma.recurringExpenseLink.findMany({
-      where: {
-        groupId,
-        nextExpenseCreatedAt: null,
-        nextExpenseDate: {
-          lte: utcDateFromLocal,
-        },
+  const now = new Date()
+  const dueLinks = await prisma.recurringExpenseLink.findMany({
+    where: {
+      groupId,
+      nextExpenseCreatedAt: null,
+      nextExpenseDate: { lte: now },
+    },
+    include: {
+      currentFrameExpense: {
+        include: { paidBy: true, paidFor: true, documents: true },
       },
-      include: {
-        currentFrameExpense: {
-          include: {
-            paidBy: true, // This now returns ExpensePaidBy[]
-            paidFor: true,
-            category: true,
-            documents: true,
-          },
-        },
-      },
-    })
-  for (const recurringExpenseLink of recurringExpenseLinksWithExpensesToCreate) {
-    let newExpenseDate = recurringExpenseLink.nextExpenseDate
-    let currentExpenseRecord = recurringExpenseLink.currentFrameExpense
-    let currentReccuringExpenseLinkId = recurringExpenseLink.id
-    while (newExpenseDate < utcDateFromLocal) {
-      const newExpenseId = randomId()
-      const newRecurringExpenseLinkId = randomId()
-      const newRecurringExpenseNextExpenseDate = calculateNextDate(
-        currentExpenseRecord.recurrenceRule as RecurrenceRule,
-        newExpenseDate,
-      )
-      const {
-        category,
-        paidBy, // ExpensePaidBy[]
-        paidFor,
-        documents,
-        ...destructeredCurrentExpenseRecord
-      } = currentExpenseRecord
-
-      const newExpense = await prisma
-        .$transaction(async (transaction) => {
-          const newExpense = await transaction.expense.create({
-            data: {
-              ...destructeredCurrentExpenseRecord,
-              categoryId: currentExpenseRecord.categoryId,
-              // paidById removed
-              paidBy: {
-                createMany: {
-                  data: paidBy.map((pb) => ({
-                    participantId: pb.participantId,
-                    amount: pb.amount,
-                  })),
-                },
-              },
-              paidFor: {
-                createMany: {
-                  data: currentExpenseRecord.paidFor.map((paidFor) => ({
-                    participantId: paidFor.participantId,
-                    shares: paidFor.shares,
-                  })),
-                },
-              },
-              documents: {
-                connect: currentExpenseRecord.documents.map(
-                  (documentRecord) => ({
-                    id: documentRecord.id,
-                  }),
-                ),
-              },
-              id: newExpenseId,
-              expenseDate: newExpenseDate,
-              recurringExpenseLink: {
-                create: {
-                  groupId: currentExpenseRecord.groupId,
-                  id: newRecurringExpenseLinkId,
-                  nextExpenseDate: newRecurringExpenseNextExpenseDate,
-                },
-              },
-            },
-            include: {
-              paidFor: true,
-              documents: true,
-              category: true,
-              paidBy: true,
-            },
-          })
-          await transaction.recurringExpenseLink.update({
-            where: {
-              id: currentReccuringExpenseLinkId,
-              nextExpenseCreatedAt: null,
-            },
-            data: {
-              nextExpenseCreatedAt: newExpense.createdAt,
-            },
-          })
-          return newExpense
-        })
-        .catch((e) => {
-          console.error(
-            'Failed to created recurringExpense for expenseId: %s',
-            currentExpenseRecord.id,
-            e,
-          )
-          return null
-        })
-      if (newExpense === null) break
-      currentExpenseRecord = newExpense
-      currentReccuringExpenseLinkId = newRecurringExpenseLinkId
-      newExpenseDate = newRecurringExpenseNextExpenseDate
-    }
+    },
+  })
+  for (const link of dueLinks) {
+    await catchUpRecurringExpense(link, now).catch((error) =>
+      console.error(
+        'Failed to create recurring expenses for expenseId: %s',
+        link.currentFrameExpenseId,
+        error,
+      ),
+    )
   }
 }
 
+/**
+ * Every occurrence of one recurring expense that has come due, written as one batch.
+ *
+ * This used to create them one transaction at a time, each a nested create waiting on the last,
+ * inside whichever page read happened to find them: a daily expense a year overdue held the first
+ * read of its group for 2.1 s while 365 round trips went by. Now it is a handful of bulk inserts,
+ * however many occurrences there are.
+ *
+ * The chain keeps its shape — each occurrence gets its own link, the last one open — so editing or
+ * stopping the newest occurrence works as it always has. And the catch-up says so in Activity,
+ * once, where 365 expenses used to appear with no line at all.
+ */
+async function catchUpRecurringExpense(
+  link: Prisma.RecurringExpenseLinkGetPayload<{
+    include: {
+      currentFrameExpense: {
+        include: { paidBy: true; paidFor: true; documents: true }
+      }
+    }
+  }>,
+  now: Date,
+) {
+  const {
+    paidBy,
+    paidFor,
+    documents,
+    id: _templateId,
+    createdAt: _templateCreatedAt,
+    ...template
+  } = link.currentFrameExpense
+  const rule = template.recurrenceRule as RecurrenceRule
+
+  const occurrences: {
+    expenseId: string
+    linkId: string
+    expenseDate: Date
+    nextExpenseDate: Date
+  }[] = []
+  for (
+    let expenseDate = link.nextExpenseDate;
+    expenseDate < now;
+    expenseDate = calculateNextDate(rule, expenseDate)
+  ) {
+    occurrences.push({
+      expenseId: randomId(),
+      linkId: randomId(),
+      expenseDate,
+      nextExpenseDate: calculateNextDate(rule, expenseDate),
+    })
+  }
+  const newest = occurrences.at(-1)
+  if (!newest) return
+
+  await prisma.$transaction(async (tx) => {
+    // Claim the link first. A concurrent read that found the same due link blocks here until this
+    // commits, then sees it taken and writes nothing — so no occurrence is ever created twice.
+    const claimed = await tx.recurringExpenseLink.updateMany({
+      where: { id: link.id, nextExpenseCreatedAt: null },
+      data: { nextExpenseCreatedAt: now },
+    })
+    if (claimed.count === 0) return
+
+    await tx.expense.createMany({
+      data: occurrences.map(({ expenseId, expenseDate }) => ({
+        ...template,
+        id: expenseId,
+        expenseDate,
+        createdAt: now,
+      })),
+    })
+    await tx.expensePaidBy.createMany({
+      data: occurrences.flatMap(({ expenseId }) =>
+        paidBy.map((payer) => ({
+          expenseId,
+          participantId: payer.participantId,
+          amount: payer.amount,
+        })),
+      ),
+    })
+    await tx.expensePaidFor.createMany({
+      data: occurrences.flatMap(({ expenseId }) =>
+        paidFor.map((share) => ({
+          expenseId,
+          participantId: share.participantId,
+          shares: share.shares,
+        })),
+      ),
+    })
+    await tx.recurringExpenseLink.createMany({
+      data: occurrences.map(({ expenseId, linkId, nextExpenseDate }) => ({
+        id: linkId,
+        groupId: template.groupId,
+        currentFrameExpenseId: expenseId,
+        nextExpenseDate,
+        // Only the newest occurrence is still waiting for its successor.
+        nextExpenseCreatedAt: expenseId === newest.expenseId ? null : now,
+      })),
+    })
+    // A document belongs to one expense, so it follows the chain to its newest occurrence — where
+    // the one-step-at-a-time version also left it, after moving it once per step.
+    if (documents.length > 0) {
+      await tx.expenseDocument.updateMany({
+        where: { id: { in: documents.map((document) => document.id) } },
+        data: { expenseId: newest.expenseId },
+      })
+    }
+    await tx.activity.create({
+      data: {
+        id: randomId(),
+        groupId: template.groupId,
+        activityType: ActivityType.CREATE_EXPENSE,
+        expenseId: newest.expenseId,
+        data: encodeRecurringActivityData(template.title, occurrences.length),
+      },
+    })
+  })
+}
 export function createPayloadForNewRecurringExpenseLink(
   recurrenceRule: RecurrenceRule,
   priorDateToNextRecurrence: Date,

@@ -18,7 +18,12 @@ export type ActivityChange = {
   to: string
 }
 
-type ActivityData = { title: string; changes: ActivityChange[] }
+type ActivityData = {
+  title: string
+  changes: ActivityChange[]
+  /** Set when a recurring expense caught up: how many occurrences were added at once. */
+  occurrences?: number
+}
 
 export function encodeActivityData(
   title: string,
@@ -28,9 +33,26 @@ export function encodeActivityData(
   return JSON.stringify({ title, changes } satisfies ActivityData)
 }
 
+/**
+ * One activity line for a recurring expense that caught up, however many occurrences that was.
+ * Those used to be added with no line at all — 365 expenses could appear in a group overnight and
+ * the feed said nothing — and a line apiece would bury everything else in the feed.
+ */
+export function encodeRecurringActivityData(
+  title: string,
+  occurrences: number,
+): string {
+  return JSON.stringify({
+    title,
+    changes: [],
+    occurrences,
+  } satisfies ActivityData)
+}
+
 export function decodeActivityData(data: string | null | undefined): {
   title: string
   changes: ActivityChange[]
+  occurrences?: number
 } {
   if (!data) return { title: '', changes: [] }
   if (!data.startsWith('{')) return { title: data, changes: [] }
@@ -39,7 +61,13 @@ export function decodeActivityData(data: string | null | undefined): {
     if (typeof parsed?.title !== 'string' || !Array.isArray(parsed.changes)) {
       return { title: data, changes: [] }
     }
-    return { title: parsed.title, changes: parsed.changes }
+    return {
+      title: parsed.title,
+      changes: parsed.changes,
+      ...(typeof parsed.occurrences === 'number'
+        ? { occurrences: parsed.occurrences }
+        : {}),
+    }
   } catch {
     // A title that merely happens to start with "{" is not a crash.
     return { title: data, changes: [] }

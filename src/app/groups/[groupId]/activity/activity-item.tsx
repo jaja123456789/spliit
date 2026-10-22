@@ -23,18 +23,25 @@ type Props = {
 function useSummary(activity: Activity, participantName?: string) {
   const t = useTranslations('Activity')
   const participant = participantName ?? t('someone')
-  const expense = decodeActivityData(activity.data).title
+  const { title: expense, occurrences } = decodeActivityData(activity.data)
 
   const tr = (key: string) =>
     t.rich(key, {
       expense,
       participant,
+      count: occurrences ?? 1,
       em: (chunks) => <em>&ldquo;{chunks}&rdquo;</em>,
       strong: (chunks) => <strong>{chunks}</strong>,
     })
 
   if (activity.activityType == ActivityType.UPDATE_GROUP) {
     return <>{tr('settingsModified')}</>
+  } else if (
+    activity.activityType == ActivityType.CREATE_EXPENSE &&
+    occurrences !== undefined
+  ) {
+    // Nobody created these: the schedule did. "Created by Someone" was the closest the feed had.
+    return <>{tr('recurringCreated')}</>
   } else if (activity.activityType == ActivityType.CREATE_EXPENSE) {
     return <>{tr('expenseCreated')}</>
   } else if (activity.activityType == ActivityType.UPDATE_EXPENSE) {

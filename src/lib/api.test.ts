@@ -1,180 +1,15 @@
 import { ActivityType, PrismaClient, RecurrenceRule } from '@prisma/client'
-import { createPayloadForNewRecurringExpenseLink } from './api'
+import { decodeActivityData } from './activity-changes'
+import {
+  createPayloadForNewRecurringExpenseLink,
+  createRecurringExpenses,
+} from './api'
 
 jest.mock('nanoid', () => ({
   nanoid: () => Math.random().toString(36).substring(2, 15),
 }))
 
 const prisma = new PrismaClient()
-
-async function createRecurringExpenses() {
-  const localDate = new Date()
-  const utcDateFromLocal = new Date(
-    Date.UTC(
-      localDate.getUTCFullYear(),
-      localDate.getUTCMonth(),
-      localDate.getUTCDate(),
-      localDate.getUTCHours(),
-      localDate.getUTCMinutes(),
-    ),
-  )
-
-  const recurringExpenseLinksWithExpensesToCreate =
-    await prisma.recurringExpenseLink.findMany({
-      where: {
-        nextExpenseCreatedAt: null,
-        nextExpenseDate: {
-          lte: utcDateFromLocal,
-        },
-      },
-      include: {
-        currentFrameExpense: {
-          include: {
-            paidBy: true,
-            paidFor: true,
-            category: true,
-            documents: true,
-          },
-        },
-      },
-    })
-
-  for (const recurringExpenseLink of recurringExpenseLinksWithExpensesToCreate) {
-    let newExpenseDate = recurringExpenseLink.nextExpenseDate
-
-    let currentExpenseRecord = recurringExpenseLink.currentFrameExpense
-    let currentReccuringExpenseLinkId = recurringExpenseLink.id
-
-    while (newExpenseDate < utcDateFromLocal) {
-      const newExpenseId = Math.random().toString(36).substring(2, 15)
-      const newRecurringExpenseLinkId = Math.random()
-        .toString(36)
-        .substring(2, 15)
-
-      const calculateNextDate = (
-        recurrenceRule: RecurrenceRule,
-        priorDateToNextRecurrence: Date,
-      ) => {
-        const nextDate = new Date(priorDateToNextRecurrence)
-        switch (recurrenceRule) {
-          case RecurrenceRule.DAILY:
-            nextDate.setUTCDate(nextDate.getUTCDate() + 1)
-            break
-          case RecurrenceRule.WEEKLY:
-            nextDate.setUTCDate(nextDate.getUTCDate() + 7)
-            break
-          case RecurrenceRule.MONTHLY: {
-            const nextYear = nextDate.getUTCFullYear()
-            const nextMonth = nextDate.getUTCMonth() + 1
-            let nextDay = nextDate.getUTCDate()
-
-            const isDateInNextMonth = (
-              utcYear: number,
-              utcMonth: number,
-              utcDate: number,
-            ) => {
-              const testDate = new Date(Date.UTC(utcYear, utcMonth, utcDate))
-              return testDate.getUTCDate() === utcDate
-            }
-
-            while (!isDateInNextMonth(nextYear, nextMonth, nextDay)) {
-              nextDay -= 1
-            }
-            nextDate.setUTCMonth(nextMonth, nextDay)
-            break
-          }
-        }
-        return nextDate
-      }
-
-      const newRecurringExpenseNextExpenseDate = calculateNextDate(
-        currentExpenseRecord.recurrenceRule as RecurrenceRule,
-        newExpenseDate,
-      )
-
-      const {
-        category,
-        paidBy,
-        paidFor,
-        documents,
-        ...destructeredCurrentExpenseRecord
-      } = currentExpenseRecord
-
-      const newExpense = await prisma
-        .$transaction(async (transaction) => {
-          const newExpense = await transaction.expense.create({
-            data: {
-              ...destructeredCurrentExpenseRecord,
-              categoryId: currentExpenseRecord.categoryId,
-              paidBy: {
-                createMany: {
-                  data: currentExpenseRecord.paidBy.map((payer) => ({
-                    participantId: payer.participantId,
-                    amount: payer.amount,
-                  })),
-                },
-              },
-              paidFor: {
-                createMany: {
-                  data: currentExpenseRecord.paidFor.map((paidFor) => ({
-                    participantId: paidFor.participantId,
-                    shares: paidFor.shares,
-                  })),
-                },
-              },
-              documents: {
-                connect: currentExpenseRecord.documents.map(
-                  (documentRecord) => ({
-                    id: documentRecord.id,
-                  }),
-                ),
-              },
-              id: newExpenseId,
-              expenseDate: newExpenseDate,
-              recurringExpenseLink: {
-                create: {
-                  groupId: currentExpenseRecord.groupId,
-                  id: newRecurringExpenseLinkId,
-                  nextExpenseDate: newRecurringExpenseNextExpenseDate,
-                },
-              },
-            },
-            include: {
-              paidFor: true,
-              documents: true,
-              category: true,
-              paidBy: true,
-            },
-          })
-
-          await transaction.recurringExpenseLink.update({
-            where: {
-              id: currentReccuringExpenseLinkId,
-              nextExpenseCreatedAt: null,
-            },
-            data: {
-              nextExpenseCreatedAt: newExpense.createdAt,
-            },
-          })
-
-          return newExpense
-        })
-        .catch(() => {
-          console.error(
-            'Failed to created recurringExpense for expenseId: %s',
-            currentExpenseRecord.id,
-          )
-          return null
-        })
-
-      if (newExpense === null) break
-
-      currentExpenseRecord = newExpense
-      currentReccuringExpenseLinkId = newRecurringExpenseLinkId
-      newExpenseDate = newRecurringExpenseNextExpenseDate
-    }
-  }
-}
 
 describe('Activity Logging', () => {
   let groupId: string
@@ -740,7 +575,7 @@ describe('createRecurringExpenses', () => {
       })
       expect(initialExpenseCount).toBe(1)
 
-      await createRecurringExpenses()
+      await createRecurringExpenses(groupId)
 
       const newExpenseCount = await prisma.expense.count({
         where: { groupId },
@@ -752,7 +587,7 @@ describe('createRecurringExpenses', () => {
           groupId,
           id: { not: expenseId },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { expenseDate: 'asc' },
       })
 
       expect(newExpense).toBeDefined()
@@ -798,14 +633,14 @@ describe('createRecurringExpenses', () => {
         },
       })
 
-      await createRecurringExpenses()
+      await createRecurringExpenses(groupId)
 
       const newExpense = await prisma.expense.findFirst({
         where: {
           groupId,
           id: { not: expenseId },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { expenseDate: 'asc' },
       })
 
       expect(newExpense).toBeDefined()
@@ -851,7 +686,7 @@ describe('createRecurringExpenses', () => {
         },
       })
 
-      await createRecurringExpenses()
+      await createRecurringExpenses(groupId)
 
       const newExpenseCount = await prisma.expense.count({
         where: { groupId },
@@ -863,7 +698,7 @@ describe('createRecurringExpenses', () => {
           groupId,
           id: { not: expenseId },
         },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { expenseDate: 'asc' },
       })
 
       expect(newExpense).toBeDefined()
@@ -912,7 +747,7 @@ describe('createRecurringExpenses', () => {
       const initialCount = await prisma.expense.count({ where: { groupId } })
       expect(initialCount).toBe(1)
 
-      await createRecurringExpenses()
+      await createRecurringExpenses(groupId)
 
       const finalCount = await prisma.expense.count({ where: { groupId } })
       expect(finalCount).toBeGreaterThan(1)
@@ -955,7 +790,7 @@ describe('createRecurringExpenses', () => {
         },
       })
 
-      await createRecurringExpenses()
+      await createRecurringExpenses(groupId)
 
       const newExpense = await prisma.expense.findFirst({
         where: {
@@ -963,7 +798,7 @@ describe('createRecurringExpenses', () => {
           id: { not: expenseId },
         },
         include: { paidFor: true, paidBy: true },
-        orderBy: { createdAt: 'desc' },
+        orderBy: { expenseDate: 'asc' },
       })
 
       expect(newExpense).toBeDefined()
@@ -1040,7 +875,7 @@ describe('createRecurringExpenses', () => {
       })
 
       // Attempt to create recurring expenses (should fail and rollback)
-      await createRecurringExpenses()
+      await createRecurringExpenses(groupId)
 
       // Verify no new expense was created (transaction rolled back)
       const expenseCountAfter = await prisma.expense.count({
@@ -1061,6 +896,137 @@ describe('createRecurringExpenses', () => {
       })
       expect(expenses).toHaveLength(1)
       expect(expenses[0].id).toBe(expenseId)
+    })
+  })
+
+  describe('Catching up', () => {
+    /** A daily expense whose first day was `daysAgo` days ago, with nothing materialised since. */
+    const dailyFrom = async (daysAgo: number) => {
+      const now = new Date()
+      const start = new Date(
+        Date.UTC(
+          now.getUTCFullYear(),
+          now.getUTCMonth(),
+          now.getUTCDate() - daysAgo,
+        ),
+      )
+      await prisma.expense.create({
+        data: {
+          id: randomId(),
+          groupId,
+          expenseDate: start,
+          title: 'Daily coffee',
+          amount: 300,
+          paidBy: {
+            createMany: {
+              data: [{ participantId: participantIds[0], amount: 300 }],
+            },
+          },
+          splitMode: 'EVENLY',
+          recurrenceRule: RecurrenceRule.DAILY,
+          recurringExpenseLink: {
+            create: {
+              id: randomId(),
+              groupId,
+              nextExpenseDate: new Date(start.getTime() + 86_400_000),
+            },
+          },
+          paidFor: {
+            createMany: {
+              data: participantIds.map((pid) => ({
+                participantId: pid,
+                shares: 100,
+              })),
+            },
+          },
+        },
+      })
+    }
+
+    const days = async () =>
+      (
+        await prisma.expense.findMany({
+          where: { groupId },
+          orderBy: { expenseDate: 'asc' },
+        })
+      ).map((expense) => expense.expenseDate.toISOString().slice(0, 10))
+
+    it('creates every due occurrence, each day once', async () => {
+      await dailyFrom(30)
+      await createRecurringExpenses(groupId)
+      const created = await days()
+      // The original plus the 30 days after it, today included.
+      expect(created).toHaveLength(31)
+      expect(new Set(created).size).toBe(31)
+    })
+
+    it('copies who paid and who shares onto every occurrence', async () => {
+      await dailyFrom(3)
+      await createRecurringExpenses(groupId)
+      const expenses = await prisma.expense.findMany({
+        where: { groupId },
+        include: { paidBy: true, paidFor: true },
+      })
+      expect(expenses).toHaveLength(4)
+      for (const expense of expenses) {
+        expect(expense.paidBy).toEqual([
+          expect.objectContaining({
+            participantId: participantIds[0],
+            amount: 300,
+          }),
+        ])
+        expect(
+          expense.paidFor.map((share) => share.participantId).sort(),
+        ).toEqual([...participantIds].sort())
+      }
+    })
+
+    it('leaves one link open, on the newest occurrence', async () => {
+      await dailyFrom(10)
+      await createRecurringExpenses(groupId)
+      const open = await prisma.recurringExpenseLink.findMany({
+        where: { groupId, nextExpenseCreatedAt: null },
+        include: { currentFrameExpense: true },
+      })
+      expect(open).toHaveLength(1)
+      const newest = (await days()).at(-1)
+      expect(
+        open[0].currentFrameExpense.expenseDate.toISOString().slice(0, 10),
+      ).toBe(newest)
+    })
+
+    it('says so once in Activity, with the count', async () => {
+      await dailyFrom(30)
+      await createRecurringExpenses(groupId)
+      const activities = await prisma.activity.findMany({ where: { groupId } })
+      expect(activities).toHaveLength(1)
+      expect(activities[0].activityType).toBe(ActivityType.CREATE_EXPENSE)
+      expect(decodeActivityData(activities[0].data)).toEqual({
+        title: 'Daily coffee',
+        changes: [],
+        occurrences: 30,
+      })
+    })
+
+    it('adds nothing on the next read', async () => {
+      await dailyFrom(5)
+      await createRecurringExpenses(groupId)
+      await createRecurringExpenses(groupId)
+      expect(await days()).toHaveLength(6)
+      expect(await prisma.activity.count({ where: { groupId } })).toBe(1)
+    })
+
+    it('creates each occurrence once when two reads arrive together', async () => {
+      await dailyFrom(20)
+      await Promise.all([
+        createRecurringExpenses(groupId),
+        createRecurringExpenses(groupId),
+        createRecurringExpenses(groupId),
+      ])
+      const created = await days()
+      expect(created).toHaveLength(21)
+      expect(new Set(created).size).toBe(21)
+      expect(await prisma.activity.count({ where: { groupId } })).toBe(1)
     })
   })
 })
