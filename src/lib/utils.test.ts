@@ -14,6 +14,8 @@ import {
   formatDateOnly,
   formatFileSize,
   normalizeString,
+  toDateInputValue,
+  todayAsDateOnly,
 } from './utils'
 
 const usd: Currency = {
@@ -289,6 +291,44 @@ describe('formatDateOnly', () => {
 
     expect(formattedEnd).toContain('31')
     expect(formattedNext).toContain('1')
+  })
+})
+
+describe('todayAsDateOnly / toDateInputValue', () => {
+  // Node re-reads TZ whenever it changes, so each case can stand in a different place. The bug
+  // only exists away from UTC, so a CI machine on UTC would never have caught it without this.
+  const originalTz = process.env.TZ
+  afterEach(() => {
+    process.env.TZ = originalTz
+  })
+
+  const cases: [string, [number, number, number, number, number], string][] = [
+    // 00:36 on the 23rd is still the 22nd in UTC: the old default said yesterday.
+    ['Europe/Malta', [2026, 9, 23, 0, 36], '2026-10-23'],
+    // 09:36 in Sydney is 22:36 UTC the evening before.
+    ['Australia/Sydney', [2026, 9, 23, 9, 36], '2026-10-23'],
+    // 19:00 on the 22nd is 02:00 UTC on the 23rd: the old default said tomorrow.
+    ['America/Los_Angeles', [2026, 9, 22, 19, 0], '2026-10-22'],
+    ['UTC', [2026, 9, 22, 23, 59], '2026-10-22'],
+  ]
+
+  it.each(cases)('keeps the local calendar day in %s', (tz, parts, day) => {
+    process.env.TZ = tz
+    const now = new Date(...parts)
+    expect(toDateInputValue(todayAsDateOnly(now))).toBe(day)
+  })
+
+  it('is midnight UTC, the shape DATE columns come back in', () => {
+    process.env.TZ = 'Europe/Malta'
+    expect(todayAsDateOnly(new Date(2026, 0, 1, 0, 5)).toISOString()).toBe(
+      '2026-01-01T00:00:00.000Z',
+    )
+  })
+
+  it('round-trips with what a date input hands back', () => {
+    process.env.TZ = 'America/Los_Angeles'
+    // <input type="date"> yields "YYYY-MM-DD", which Date parses as midnight UTC.
+    expect(toDateInputValue(new Date('2026-02-28'))).toBe('2026-02-28')
   })
 })
 

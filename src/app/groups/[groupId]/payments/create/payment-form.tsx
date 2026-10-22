@@ -21,6 +21,8 @@ import {
   amountAsDecimal,
   formatCurrency,
   getCurrencyFromGroup,
+  toDateInputValue,
+  todayAsDateOnly,
 } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { AppRouterOutput } from '@/trpc/routers/_app'
@@ -32,11 +34,7 @@ import { ReactNode, useEffect, useState } from 'react'
 
 type Group = NonNullable<AppRouterOutput['groups']['get']['group']>
 
-function todayAsInputValue() {
-  const now = new Date()
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
-  return local.toISOString().slice(0, 10)
-}
+const todayAsInputValue = () => toDateInputValue(todayAsDateOnly())
 
 /**
  * Recording money that has already moved — and, right beside it, the way to move it.

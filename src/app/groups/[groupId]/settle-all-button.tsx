@@ -14,6 +14,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/use-toast'
 import { Reimbursement } from '@/lib/balances'
+import { todayAsDateOnly } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { Participant } from '@prisma/client'
 import { Check, Loader2 } from 'lucide-react'
@@ -62,6 +63,7 @@ export function SettleAllButton({
       await mutateAsync({
         groupId,
         participantId: activeUserId ?? undefined,
+        date: todayAsDateOnly(),
         payments: reimbursements.map((r) => ({
           from: r.from,
           to: r.to,

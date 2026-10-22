@@ -15,6 +15,9 @@ export const settlePaymentsProcedure = baseProcedure
     z.object({
       groupId: z.string().min(1),
       participantId: z.string().optional(),
+      // The day as the person settling sees it. The server's own clock is the wrong calendar for a
+      // date-only field: in Europe after midnight its UTC date is still yesterday.
+      date: z.coerce.date().optional(),
       payments: z
         .array(
           z.object({
@@ -28,7 +31,12 @@ export const settlePaymentsProcedure = baseProcedure
         .min(1),
     }),
   )
-  .mutation(async ({ input: { groupId, payments, participantId } }) => {
-    const expenseIds = await createPayments(groupId, payments, participantId)
+  .mutation(async ({ input: { groupId, payments, participantId, date } }) => {
+    const expenseIds = await createPayments(
+      groupId,
+      payments,
+      participantId,
+      date,
+    )
     return { expenseIds }
   })

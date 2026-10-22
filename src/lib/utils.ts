@@ -58,6 +58,24 @@ export function formatDateOnly(
   })
 }
 
+/**
+ * Today as the reader's own calendar has it, in the shape date-only fields are kept in: midnight
+ * UTC of that day.
+ *
+ * `new Date()` is the wrong default for a date-only field. Those are read back through their UTC
+ * parts — `toDateInputValue`, `formatDateOnly`, and Postgres `DATE` on the way in — so "now" became
+ * yesterday east of UTC after local midnight and tomorrow west of UTC every evening, and an expense
+ * saved without touching its date kept the wrong day.
+ */
+export function todayAsDateOnly(now: Date = new Date()) {
+  return new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()))
+}
+
+/** A date-only value as `<input type="date">` takes it, `YYYY-MM-DD`, read through its UTC parts. */
+export function toDateInputValue(date: Date) {
+  return date.toISOString().slice(0, 10)
+}
+
 export function formatCategoryForAIPrompt(category: Category) {
   return `"${category.grouping}/${category.name}" (ID: ${category.id})`
 }

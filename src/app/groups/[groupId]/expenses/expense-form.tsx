@@ -83,6 +83,8 @@ import {
   formatCurrency,
   getCurrencyFromGroup,
   randomId,
+  toDateInputValue,
+  todayAsDateOnly,
 } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -316,8 +318,8 @@ const fingerprintValues = (values: unknown) => {
 }
 
 function formatDate(date?: Date) {
-  if (!date || isNaN(date as any)) date = new Date()
-  return date.toISOString().substring(0, 10)
+  if (!date || isNaN(date as any)) date = todayAsDateOnly()
+  return toDateInputValue(date)
 }
 
 // --- Main Component ---
@@ -414,7 +416,7 @@ export function ExpenseForm({
     defaultValues: expense
       ? {
           title: expense.title,
-          expenseDate: expense.expenseDate ?? new Date(),
+          expenseDate: expense.expenseDate ?? todayAsDateOnly(),
           originalCurrency: initialCurrencyCode,
           // Derived from the amounts on submit, never entered directly.
           originalAmount: undefined,
@@ -447,7 +449,7 @@ export function ExpenseForm({
       : searchParams.get('reimbursement')
       ? {
           title: t('reimbursement'),
-          expenseDate: new Date(),
+          expenseDate: todayAsDateOnly(),
           originalCurrency: group.currencyCode,
           originalAmount: undefined,
           conversionRate: undefined,
@@ -480,7 +482,7 @@ export function ExpenseForm({
           title: searchParams.get('title') ?? '',
           expenseDate: searchParams.get('date')
             ? new Date(searchParams.get('date') as string)
-            : new Date(),
+            : todayAsDateOnly(),
           originalCurrency: group.currencyCode ?? undefined,
           originalAmount: undefined,
           conversionRate: undefined,
@@ -796,7 +798,7 @@ export function ExpenseForm({
       form.reset({
         ...currentValues, // Keep current values
         title: data.title || '',
-        expenseDate: data.date ? new Date(data.date) : new Date(),
+        expenseDate: data.date ? new Date(data.date) : todayAsDateOnly(),
         category: data.categoryId ? Number(data.categoryId) : undefined,
         documents: data.documents || [],
         items: formItems, // This replaces useFieldArray automatically

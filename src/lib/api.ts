@@ -725,11 +725,14 @@ export async function deleteGroup(groupId: string) {
  * radius available.
  *
  * @param payments amounts in *minor* units, which is what balances are computed in.
+ * @param date the day the payments are dated, as midnight UTC of the settler's own calendar day.
+ *   Falls back to the server's clock, which is only the right day where the server's UTC date is.
  */
 export async function createPayments(
   groupId: string,
   payments: { from: string; to: string; amount: number; title: string }[],
   participantId?: string,
+  date?: Date,
 ) {
   const group = await getGroup(groupId)
   if (!group) throw new Error(`Invalid group ID: ${groupId}`)
@@ -762,7 +765,7 @@ export async function createPayments(
         data: {
           id: expenseId,
           groupId,
-          expenseDate: new Date(),
+          expenseDate: date ?? new Date(),
           categoryId: 1,
           amount: payment.amount,
           title: payment.title,
