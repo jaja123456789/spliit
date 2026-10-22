@@ -73,7 +73,9 @@ test('Create expense - evenly split (most common flow)', async ({ page }) => {
 
   // Step 10: Verify expense appears with correct title and amount
   await expect(page.getByText('Team Dinner')).toBeVisible({})
-  await expect(page.locator(`text=300.00`)).toBeVisible({})
+  await expect(
+    page.getByTestId('expense-amount').filter({ hasText: '300.00' }),
+  ).toBeVisible()
 
   // Step 11: Verify balances
   await navigateToTab(page, 'Balances')
@@ -168,7 +170,9 @@ test('Create expense - by shares split mode', async ({ page }) => {
 
   // Step 9: Verify expense appears
   await expect(page.getByText('Team Dinner Shares')).toBeVisible()
-  await expect(page.locator('text=300.00')).toBeVisible()
+  await expect(
+    page.getByTestId('expense-amount').filter({ hasText: '300.00' }),
+  ).toBeVisible()
 
   // Step 10: Verify balances (Alice paid 300, shares 1:2:3 so she is owed 250, Bob owes 100, Charlie owes 150)
   await navigateToTab(page, 'Balances')
@@ -263,7 +267,9 @@ test('Create expense - by percentage split mode', async ({ page }) => {
 
   // Step 9: Verify expense appears
   await expect(page.getByText('Team Dinner Percentage')).toBeVisible()
-  await expect(page.locator('text=300.00')).toBeVisible()
+  await expect(
+    page.getByTestId('expense-amount').filter({ hasText: '300.00' }),
+  ).toBeVisible()
 
   // Step 10: Verify balances
   await navigateToTab(page, 'Balances')
@@ -348,7 +354,9 @@ test('Create expense - by amount split mode', async ({ page }) => {
   // Step 9: Verify expense appears
   await navigateToTab(page, 'Expenses')
   await expect(page.getByText('Team Dinner Amounts')).toBeVisible()
-  await expect(page.locator('text=300.00')).toBeVisible()
+  await expect(
+    page.getByTestId('expense-amount').filter({ hasText: '300.00' }),
+  ).toBeVisible()
 
   // Step 10: Verify balances page loads and shows participants
   await navigateToTab(page, 'Balances')
