@@ -59,15 +59,12 @@ export async function fillParticipants(
     await participantInputs.nth(i).fill(participants[i]!)
   }
 
-  // Remove excess participant inputs if we have fewer than the default (usually 3)
+  // Remove excess participant inputs if we have fewer than the default (two, the first one yours)
   if (participants.length < initialCount) {
     for (let i = initialCount - 1; i >= participants.length; i--) {
-      // Find the remove button for this participant input
-      const input = participantInputs.nth(i)
-      const container = input.locator(
-        'xpath=ancestor::div[contains(@class,"flex")][1]',
-      )
-      const removeButton = container.locator('button').first()
+      // By its name, not by position: each row also holds a "Me" toggle and payment details.
+      const row = participantInputs.nth(i).locator('xpath=ancestor::li[1]')
+      const removeButton = row.getByRole('button', { name: /^Remove / })
 
       if (await removeButton.isVisible()) {
         await removeButton.click()
@@ -156,10 +153,10 @@ export async function removeParticipant(
     return false
   }
 
-  const container = participantInput.locator(
-    'xpath=ancestor::div[contains(@class,"flex")][1]',
-  )
-  const removeButton = container.locator('button:not([disabled])').first()
+  // A protected participant's button is named for the reason it cannot be removed, so only an
+  // unprotected row has a "Remove …" button to find.
+  const row = participantInput.locator('xpath=ancestor::li[1]')
+  const removeButton = row.getByRole('button', { name: /^Remove / })
 
   if (!(await removeButton.isVisible())) {
     return false

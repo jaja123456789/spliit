@@ -67,6 +67,15 @@ test.describe('Group Creation', () => {
     const participantInputs = page.getByRole('textbox', {
       name: /^Participant \d+$/,
     })
+    // Two empty rows to start, the first one yours. There were three, filled in as John, Jane and
+    // Jack, which every new group began by deleting.
+    await expect(participantInputs).toHaveCount(2)
+    await expect(participantInputs.nth(0)).toHaveValue('')
+    await expect(participantInputs.nth(0)).toHaveAttribute(
+      'placeholder',
+      'Your name',
+    )
+    await page.getByRole('button', { name: 'Add participant' }).click()
     await expect(participantInputs).toHaveCount(3)
 
     await participantInputs.nth(0).fill('A')

@@ -127,10 +127,11 @@ test('Updates stats when active user changes', async ({ page }) => {
   await page.goto(`/groups/${groupId}/expenses`)
   // Set Alice as active user via Settings
   await navigateToTab(page, 'Settings')
-  const activeUserSelector = page.getByTestId('active-user-selector')
-  await activeUserSelector.click()
-  await page.getByRole('option', { name: participantA }).click()
-  await page.getByRole('button', { name: /save/i }).click()
+  // "Which one is you" is the Me toggle on your own row now, not a select at the foot of the page.
+  await page
+    .getByRole('button', { name: `This is me: ${participantA}` })
+    .click()
+  await page.getByRole('button', { name: /^save$/i }).click()
 
   // Navigate to Stats and verify Alice's stats
   await navigateToTab(page, 'Stats')
@@ -147,10 +148,10 @@ test('Updates stats when active user changes', async ({ page }) => {
 
   // Change active user to Bob via Settings
   await navigateToTab(page, 'Settings')
-  const activeUserSelectorBob = page.getByTestId('active-user-selector')
-  await activeUserSelectorBob.click()
-  await page.getByRole('option', { name: participantB }).click()
-  await page.getByRole('button', { name: /save/i }).click()
+  await page
+    .getByRole('button', { name: `This is me: ${participantB}` })
+    .click()
+  await page.getByRole('button', { name: /^save$/i }).click()
 
   // Navigate back to Stats and verify Bob's stats have changed
   await navigateToTab(page, 'Stats')
@@ -182,10 +183,11 @@ test('Active user selection persists after page reload', async ({ page }) => {
   await page.goto(`/groups/${groupId}/expenses`)
   // Select Alice as active user via Settings
   await navigateToTab(page, 'Settings')
-  const activeUserSelector = page.getByTestId('active-user-selector')
-  await activeUserSelector.click()
-  await page.getByRole('option', { name: participantA }).click()
-  await page.getByRole('button', { name: /save/i }).click()
+  // "Which one is you" is the Me toggle on your own row now, not a select at the foot of the page.
+  await page
+    .getByRole('button', { name: `This is me: ${participantA}` })
+    .click()
+  await page.getByRole('button', { name: /^save$/i }).click()
 
   // Verify selection is applied by navigating to Stats
   await navigateToTab(page, 'Stats')
@@ -201,9 +203,10 @@ test('Active user selection persists after page reload', async ({ page }) => {
   // Navigate to Settings and verify Alice is still selected
   await navigateToTab(page, 'Settings')
 
-  // The active user selector should display Alice as selected
-  const activeUserSelectorAfterReload = page.getByTestId('active-user-selector')
-  await expect(activeUserSelectorAfterReload).toContainText(participantA)
+  // Alice's row should still be marked as you
+  await expect(
+    page.getByRole('button', { name: `This is me: ${participantA}` }),
+  ).toHaveAttribute('aria-pressed', 'true')
 
   // Alternatively, verify via Stats that Alice's stats are still showing
   await navigateToTab(page, 'Stats')

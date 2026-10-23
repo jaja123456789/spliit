@@ -176,6 +176,7 @@
     }
   },
   "GroupForm": {
+    "createTitle": "New group",
     "title": "Group information",
     "NameField": {
       "label": "Group name",
@@ -207,6 +208,11 @@
       "Jane": "Jane",
       "Jack": "Jack",
       "label": "Participant {number}",
+      "yourName": "Your name",
+      "me": "Me",
+      "thisIsMe": "This is me: {name}",
+      "whoIsYou": "Participants. Mark the one that is you.",
+      "meHint": "Mark your own name with Me. It is remembered on this device only.",
       "remove": "Remove {name}"
     },
     "Settings": {

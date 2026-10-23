@@ -1,3 +1,4 @@
+import { getRecentGroups } from '@/app/groups/recent-groups-helpers'
 import { SubmitButton } from '@/components/submit-button'
 import { Button } from '@/components/ui/button'
 import {
@@ -23,13 +24,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Locale } from '@/i18n/request'
 import {
   NEW_GROUP_ACTIVE_USER_KEY,
@@ -41,6 +35,7 @@ import { getGroup } from '@/lib/api'
 import { defaultCurrencyList, getCurrency } from '@/lib/currency'
 import { GroupFormValues, groupFormSchema } from '@/lib/schemas'
 import { cn } from '@/lib/utils'
+import { trpc } from '@/trpc/client'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CreditCard, Save, Smartphone, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
@@ -89,11 +84,9 @@ export function GroupForm({
           information: '',
           currency: getCurrency(defaultCurrencyCode, locale as Locale).symbol,
           currencyCode: defaultCurrencyCode,
-          participants: [
-            { name: t('Participants.John') },
-            { name: t('Participants.Jane') },
-            { name: t('Participants.Jack') },
-          ],
+          // Two empty rows, the first one yours. These used to be three filled-in names, John,
+          // Jane and Jack, which every new group began by deleting or overwriting.
+          participants: [{ name: '' }, { name: '' }],
           simplifyDebts: true,
         },
   })
@@ -103,32 +96,62 @@ export function GroupForm({
     keyName: 'key',
   })
 
-  // Keyed by participant id, not display name: two participants may share a name, and the
-  // previous name-keyed version also stored the *translated* "None" label, which no reader
-  // recognised outside English.
+  // Which row is you, keyed by the row rather than the name: two participants may share a name,
+  // and a row added a moment ago has no participant id yet. A participant's id when it has one,
+  // the form's own key for the row otherwise. In a new group the first row is you until you say
+  // otherwise; in an existing one it is whatever this device remembers.
+  const rowKey = (item: (typeof fields)[number]) => item.id || item.key
   const [activeUser, setActiveUser] = useState<string | null>(null)
   useEffect(() => {
-    if (activeUser === null && group?.id) {
-      setActiveUser(readActiveUser(group.id) ?? NO_ACTIVE_USER)
-    } else if (activeUser === null && !group) {
-      setActiveUser(NO_ACTIVE_USER)
-    }
-  }, [activeUser, group])
+    if (activeUser !== null) return
+    if (group?.id) setActiveUser(readActiveUser(group.id) ?? NO_ACTIVE_USER)
+    else if (fields[0]) setActiveUser(rowKey(fields[0]))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeUser, group, fields])
 
   const activeParticipantId = () =>
-    activeUser && activeUser !== NO_ACTIVE_USER ? activeUser : undefined
+    group &&
+    activeUser &&
+    activeUser !== NO_ACTIVE_USER &&
+    group.participants.some((p) => p.id === activeUser)
+      ? activeUser
+      : undefined
 
   const updateActiveUser = () => {
     if (!activeUser) return
+    const index = fields.findIndex((f) => rowKey(f) === activeUser)
+    const name =
+      index >= 0 ? form.getValues(`participants.${index}.name`) : undefined
     if (group?.id) {
-      writeActiveUser(group.id, activeParticipantId() ?? null)
+      const id = activeParticipantId()
+      writeActiveUser(group.id, id ?? null)
+      // A row added in this edit has no id until the save comes back, so it is handed over by
+      // name, the same way a new group's is.
+      if (!id && name) localStorage.setItem(`${group.id}-newUser`, name)
     } else {
       // A group being created has no participant ids yet, so the choice travels as a name and is
       // exchanged for an id on the first visit to the group.
-      const name = fields.find((f) => f.id === activeUser)?.name
-      localStorage.setItem(NEW_GROUP_ACTIVE_USER_KEY, name ?? NO_ACTIVE_USER)
+      localStorage.setItem(NEW_GROUP_ACTIVE_USER_KEY, name || NO_ACTIVE_USER)
     }
   }
+
+  // A new group most likely uses the currency of the last group you opened, not the instance's
+  // default (USD unless NEXT_PUBLIC_DEFAULT_CURRENCY_CODE says otherwise).
+  const [lastGroupId] = useState(() =>
+    group || typeof window === 'undefined'
+      ? undefined
+      : getRecentGroups()[0]?.id,
+  )
+  const lastGroup = trpc.groups.get.useQuery(
+    { groupId: lastGroupId ?? '' },
+    { enabled: !!lastGroupId },
+  )
+  useEffect(() => {
+    const code = lastGroup.data?.group?.currencyCode
+    if (group || !code || form.getFieldState('currencyCode').isDirty) return
+    form.setValue('currencyCode', code)
+    form.setValue('currency', getCurrency(code, locale as Locale).symbol)
+  }, [lastGroup.data, group, form, locale])
 
   return (
     <Form {...form}>
@@ -276,7 +299,10 @@ export function GroupForm({
             <CardDescription>{t('Participants.description')}</CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="flex flex-col gap-2">
+            <ul
+              className="flex flex-col gap-2"
+              aria-label={t('Participants.whoIsYou')}
+            >
               {fields.map((item, index) => (
                 <li key={item.key}>
                   <FormField
@@ -292,9 +318,36 @@ export function GroupForm({
                             <Input
                               className="text-base sm:text-base"
                               {...field}
-                              placeholder={t('Participants.new')}
+                              placeholder={
+                                !group && index === 0
+                                  ? t('Participants.yourName')
+                                  : t('Participants.new')
+                              }
                             />
                           </FormControl>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            aria-pressed={activeUser === rowKey(item)}
+                            aria-label={t('Participants.thisIsMe', {
+                              name: field.value || t('Participants.new'),
+                            })}
+                            onClick={() =>
+                              setActiveUser(
+                                activeUser === rowKey(item)
+                                  ? NO_ACTIVE_USER
+                                  : rowKey(item),
+                              )
+                            }
+                            className={cn(
+                              'h-11 shrink-0 px-3 text-sm sm:h-10',
+                              activeUser === rowKey(item)
+                                ? 'border-foreground bg-foreground text-background hover:bg-foreground/90 hover:text-background'
+                                : 'text-muted-foreground',
+                            )}
+                          >
+                            {t('Participants.me')}
+                          </Button>
                           {item.id &&
                           protectedParticipantIds.includes(item.id) ? (
                             // A hover card was unreachable by touch, so on a phone this button
@@ -451,7 +504,10 @@ export function GroupForm({
               ))}
             </ul>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex-col items-start gap-3">
+            <p className="text-sm text-muted-foreground">
+              {t('Participants.meHint')}
+            </p>
             <Button
               variant="secondary"
               onClick={() => {
@@ -472,63 +528,6 @@ export function GroupForm({
               {t('Participants.add')}
             </Button>
           </CardFooter>
-        </Card>
-
-        <Card bleed className="mb-4">
-          <CardHeader>
-            <CardTitle>{t('Settings.title')}</CardTitle>
-            <CardDescription>{t('Settings.description')}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid sm:grid-cols-2 gap-4">
-              {activeUser !== null && (
-                <FormItem>
-                  <FormLabel>{t('Settings.ActiveUserField.label')}</FormLabel>
-                  <Select
-                    onValueChange={(value) => {
-                      setActiveUser(value)
-                    }}
-                    defaultValue={activeUser}
-                  >
-                    <FormControl>
-                      <SelectTrigger data-testid="active-user-selector">
-                        <SelectValue
-                          placeholder={t(
-                            'Settings.ActiveUserField.placeholder',
-                          )}
-                        />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {[
-                        {
-                          key: NO_ACTIVE_USER,
-                          name: t('Settings.ActiveUserField.none'),
-                        },
-                        // `||`, not `??`: `append()` gives a new participant `id: ''`, and an
-                        // empty string survives `??`. A `<SelectItem value="">` makes Radix
-                        // throw, which took the whole page down as soon as you named a
-                        // participant you had just added.
-                        ...fields.map((f, index) => ({
-                          key: f.id || `new-${index}`,
-                          name: form.watch(`participants.${index}.name`),
-                        })),
-                      ]
-                        .filter((item) => item.name?.length > 0)
-                        .map(({ key, name }) => (
-                          <SelectItem key={key} value={key}>
-                            {name}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>
-                    {t('Settings.ActiveUserField.description')}
-                  </FormDescription>
-                </FormItem>
-              )}
-            </div>
-          </CardContent>
         </Card>
 
         {/* Sticky, as on the expense form: Save sat some 1,400px down a 2,000px page, below three
