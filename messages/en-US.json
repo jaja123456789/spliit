@@ -65,6 +65,12 @@
       "noResults": "No expense matches these filters.",
       "count": "{count, plural, one {# expense} other {# expenses}}",
       "yourShare": "your share"
+    },
+    "Deleted": {
+      "title": "“{title}” deleted",
+      "undo": "Undo",
+      "restored": "“{title}” restored",
+      "restoreFailed": "The expense could not be restored."
     }
   },
   "ExpenseCard": {
@@ -548,6 +554,8 @@
     "expenseCreated": "Expense <em>{expense}</em> created by <strong>{participant}</strong>.",
     "expenseUpdated": "Expense <em>{expense}</em> updated by <strong>{participant}</strong>.",
     "expenseDeleted": "Expense <em>{expense}</em> deleted by <strong>{participant}</strong>.",
+    "expenseRestored": "Expense <em>{expense}</em> restored by <strong>{participant}</strong>.",
+    "restore": "Restore",
     "recurringCreated": "{count, plural, one {An occurrence} other {# occurrences}} of recurring expense <em>{expense}</em> added automatically.",
     "Groups": {
       "today": "Today",

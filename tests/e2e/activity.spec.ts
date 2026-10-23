@@ -173,18 +173,22 @@ test('Log shows delete', async ({ page }) => {
   await expect(confirmButton).toBeVisible()
   await confirmButton.click()
 
-  // Wait for navigation back to group page
-  await page.waitForURL(/\/groups\/[^/]+/)
+  // Wait for navigation back to the list (the edit page's own URL matched a looser pattern)
+  await page.waitForURL(/\/groups\/[^/]+\/expenses$/)
 
-  // Verify expense is no longer visible in the main list
-  await expect(page.getByText(expenseTitle)).not.toBeVisible()
+  // Verify expense is no longer visible in the main list — in the list: the undo toast names it
+  await expect(
+    page.getByTestId('expense-title').filter({ hasText: expenseTitle }),
+  ).not.toBeVisible()
 
   // Navigate to Activity tab to verify delete was logged
   await navigateToTab(page, 'Activity')
 
   // Verify delete action text appears in activity
   // The activity list component renders the delete activity with the word "deleted"
-  const deleteActivity = page.getByText(/deleted/i)
+  const deleteActivity = page
+    .locator('[data-testid^="activity-item-"]')
+    .getByText(/deleted/i)
   await expect(deleteActivity).toBeVisible()
 })
 

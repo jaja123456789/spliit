@@ -3,6 +3,7 @@ import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { trpc } from '@/trpc/client'
 import { useRouter } from 'next/navigation'
 import { ExpenseForm } from './expense-form'
+import { useDeleteExpense } from './use-delete-expense'
 
 export function EditExpenseForm({
   groupId,
@@ -27,8 +28,7 @@ export function EditExpenseForm({
 
   const { mutateAsync: updateExpenseMutateAsync } =
     trpc.groups.expenses.update.useMutation()
-  const { mutateAsync: deleteExpenseMutateAsync } =
-    trpc.groups.expenses.delete.useMutation()
+  const deleteExpense = useDeleteExpense(groupId)
 
   const utils = trpc.useUtils()
   const router = useRouter()
@@ -52,12 +52,8 @@ export function EditExpenseForm({
         router.push(`/groups/${group.id}`)
       }}
       onDelete={async (participantId) => {
-        await deleteExpenseMutateAsync({
-          expenseId,
-          groupId,
-          participantId,
-        })
-        utils.groups.invalidate()
+        // Offers Undo in a toast, which stays up on the list this goes back to.
+        await deleteExpense({ expenseId, title: expense.title, participantId })
         router.push(`/groups/${group.id}`)
       }}
       runtimeFeatureFlags={runtimeFeatureFlags}

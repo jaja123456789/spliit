@@ -47,7 +47,12 @@ test.describe('Expense Deletion', () => {
     await page.waitForURL(/\/groups\/[^/]+\/expenses$/)
 
     // Verify expense is deleted
-    await expect(page.getByText('Expense to Delete')).not.toBeVisible()
+    // In the list: the toast offering to undo it names it too.
+    await expect(
+      page
+        .getByTestId('expense-title')
+        .filter({ hasText: 'Expense to Delete' }),
+    ).not.toBeVisible()
   })
 
   test('cancels deletion when clicking cancel', async ({ page }) => {
@@ -146,7 +151,9 @@ test.describe('Expense Deletion', () => {
 
     // Verify only the deleted expense is gone
     await expect(page.getByText('First Expense')).toBeVisible()
-    await expect(page.getByText('Second Expense')).not.toBeVisible()
+    await expect(
+      page.getByTestId('expense-title').filter({ hasText: 'Second Expense' }),
+    ).not.toBeVisible()
     await expect(page.getByText('Third Expense')).toBeVisible()
 
     // Verify amounts of remaining expenses
@@ -202,7 +209,9 @@ test.describe('Expense Deletion', () => {
     await page.waitForURL(/\/groups\/[^/]+\/expenses$/)
 
     // Verify reimbursement is deleted but regular expense remains
-    await expect(page.getByText(reimbursementTitle)).not.toBeVisible()
+    await expect(
+      page.getByTestId('expense-title').filter({ hasText: reimbursementTitle }),
+    ).not.toBeVisible()
     await expect(page.getByText('Regular Expense')).toBeVisible()
   })
 

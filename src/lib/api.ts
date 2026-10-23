@@ -1,7 +1,11 @@
 import {
+  DeletedExpenseSnapshot,
+  decodeActivityData,
   describeExpenseChanges,
   encodeActivityData,
+  encodeDeletedActivityData,
   encodeRecurringActivityData,
+  encodeRestoredActivityData,
 } from '@/lib/activity-changes'
 import { getBalances } from '@/lib/balances'
 import {
@@ -190,6 +194,58 @@ export async function createExpense(
   return expense
 }
 
+function snapshotOf(
+  expense: NonNullable<Awaited<ReturnType<typeof getExpense>>>,
+): DeletedExpenseSnapshot {
+  return {
+    id: expense.id,
+    title: expense.title,
+    amount: expense.amount,
+    categoryId: expense.categoryId,
+    expenseDate: expense.expenseDate.toISOString(),
+    createdAt: expense.createdAt.toISOString(),
+    isReimbursement: expense.isReimbursement,
+    splitMode: expense.splitMode,
+    notes: expense.notes,
+    originalAmount: expense.originalAmount,
+    originalCurrency: expense.originalCurrency,
+    conversionRate: expense.conversionRate?.toString() ?? null,
+    recurrenceRule: expense.recurrenceRule,
+    recurringExpenseLinkId: expense.recurringExpenseLinkId,
+    paidBy: expense.paidBy.map(({ participantId, amount }) => ({
+      participantId,
+      amount,
+    })),
+    paidFor: expense.paidFor.map(({ participantId, shares }) => ({
+      participantId,
+      shares,
+    })),
+    items: expense.items.map(({ id, name, price, participantIds }) => ({
+      id,
+      name,
+      price,
+      participantIds,
+    })),
+    documentIds: expense.documents.map((document) => document.id),
+    recurringLink: expense.recurringExpenseLink
+      ? {
+          id: expense.recurringExpenseLink.id,
+          nextExpenseCreatedAt:
+            expense.recurringExpenseLink.nextExpenseCreatedAt?.toISOString() ??
+            null,
+          nextExpenseDate:
+            expense.recurringExpenseLink.nextExpenseDate.toISOString(),
+        }
+      : null,
+  }
+}
+
+/**
+ * Deletes an expense, keeping a full copy of it in the deletion's activity entry so it can be put
+ * back — see `restoreExpense`.
+ *
+ * @returns The id of that activity entry: what undoing the deletion asks for.
+ */
 export async function deleteExpense(
   groupId: string,
   expenseId: string,
@@ -197,15 +253,127 @@ export async function deleteExpense(
 ) {
   const existingExpense = await getExpense(groupId, expenseId)
   if (!existingExpense) throw new Error(`Invalid expense ID: ${expenseId}`)
-  await prisma.$transaction(async (tx) => {
-    await logActivity(
+  const activity = await prisma.$transaction(async (tx) => {
+    const activity = await logActivity(
       groupId,
       ActivityType.DELETE_EXPENSE,
-      { participantId, expenseId, data: existingExpense.title },
+      {
+        participantId,
+        expenseId,
+        data: encodeDeletedActivityData(snapshotOf(existingExpense)),
+      },
       tx,
     )
     await tx.expense.delete({ where: { id: expenseId, groupId } })
+    return activity
   })
+  return { activityId: activity.id }
+}
+
+export class RestoreExpenseError extends Error {
+  constructor(readonly reason: 'notFound' | 'noSnapshot' | 'participantGone') {
+    super(`Cannot restore expense: ${reason}`)
+  }
+}
+
+/**
+ * Puts a deleted expense back as it was — same id, same creation time, its documents and its
+ * recurrence — from the copy its deletion recorded. Deletions made before copies were kept cannot
+ * be restored.
+ *
+ * Restoring twice is harmless: the second finds the expense back already and leaves it alone. A
+ * participant removed from the group in the meantime makes it impossible, since putting the
+ * expense back without them would change everyone's share.
+ */
+export async function restoreExpense(
+  groupId: string,
+  activityId: string,
+  participantId?: string,
+) {
+  const activity = await prisma.activity.findUnique({
+    where: { id: activityId, groupId },
+  })
+  if (!activity || activity.activityType !== ActivityType.DELETE_EXPENSE)
+    throw new RestoreExpenseError('notFound')
+  const { deleted: snapshot } = decodeActivityData(activity.data)
+  if (!snapshot) throw new RestoreExpenseError('noSnapshot')
+
+  const participants = await prisma.participant.findMany({
+    where: { groupId },
+    select: { id: true },
+  })
+  const present = new Set(participants.map((participant) => participant.id))
+  if (
+    [...snapshot.paidBy, ...snapshot.paidFor].some(
+      (entry) => !present.has(entry.participantId),
+    )
+  )
+    throw new RestoreExpenseError('participantGone')
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      await tx.expense.create({
+        data: {
+          id: snapshot.id,
+          groupId,
+          title: snapshot.title,
+          amount: snapshot.amount,
+          categoryId: snapshot.categoryId,
+          expenseDate: new Date(snapshot.expenseDate),
+          createdAt: new Date(snapshot.createdAt),
+          isReimbursement: snapshot.isReimbursement,
+          splitMode: snapshot.splitMode,
+          notes: snapshot.notes,
+          originalAmount: snapshot.originalAmount,
+          originalCurrency: snapshot.originalCurrency,
+          conversionRate: snapshot.conversionRate,
+          recurrenceRule: snapshot.recurrenceRule,
+          recurringExpenseLinkId: snapshot.recurringExpenseLinkId,
+          paidBy: { createMany: { data: snapshot.paidBy } },
+          paidFor: { createMany: { data: snapshot.paidFor } },
+          items: { createMany: { data: snapshot.items } },
+        },
+      })
+      // Their relation only cleared on delete, so the rows are still there — unless another
+      // expense has taken one since, which this leaves be.
+      await tx.expenseDocument.updateMany({
+        where: { id: { in: snapshot.documentIds }, expenseId: null },
+        data: { expenseId: snapshot.id },
+      })
+      if (snapshot.recurringLink) {
+        await tx.recurringExpenseLink.create({
+          data: {
+            id: snapshot.recurringLink.id,
+            groupId,
+            currentFrameExpenseId: snapshot.id,
+            nextExpenseCreatedAt: snapshot.recurringLink.nextExpenseCreatedAt
+              ? new Date(snapshot.recurringLink.nextExpenseCreatedAt)
+              : null,
+            nextExpenseDate: new Date(snapshot.recurringLink.nextExpenseDate),
+          },
+        })
+      }
+      await logActivity(
+        groupId,
+        ActivityType.CREATE_EXPENSE,
+        {
+          participantId,
+          expenseId: snapshot.id,
+          data: encodeRestoredActivityData(snapshot.title),
+        },
+        tx,
+      )
+    })
+  } catch (error) {
+    // Already back: a second tap on Undo, or the toast and the feed both used.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    )
+      return { expenseId: snapshot.id }
+    throw error
+  }
+  return { expenseId: snapshot.id }
 }
 
 /**

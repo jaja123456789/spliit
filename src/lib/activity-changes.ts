@@ -11,6 +11,8 @@
  * is not the expected JSON shape as exactly that.
  */
 
+import type { RecurrenceRule, SplitMode } from '@prisma/client'
+
 export type ActivityChange = {
   /** Message key under `Activity.Changes`. */
   field: 'title' | 'amount' | 'date' | 'category' | 'paidBy' | 'paidFor'
@@ -18,11 +20,48 @@ export type ActivityChange = {
   to: string
 }
 
+/**
+ * An expense as it stood when it was deleted — everything needed to put it back exactly, under its
+ * own id, so that links to it and its earlier history entries work again. Kept in the deletion's
+ * activity entry, which is what makes a deletion undoable from the toast and, later, from the feed.
+ * Dates are ISO strings and the conversion rate a decimal string, as JSON has no better.
+ */
+export type DeletedExpenseSnapshot = {
+  id: string
+  title: string
+  amount: number
+  categoryId: number
+  expenseDate: string
+  createdAt: string
+  isReimbursement: boolean
+  splitMode: SplitMode
+  notes: string | null
+  originalAmount: number | null
+  originalCurrency: string | null
+  conversionRate: string | null
+  recurrenceRule: RecurrenceRule | null
+  recurringExpenseLinkId: string | null
+  paidBy: { participantId: string; amount: number }[]
+  paidFor: { participantId: string; shares: number }[]
+  items: { id: string; name: string; price: number; participantIds: string[] }[]
+  /** Documents outlive their expense (the relation only clears), so ids are enough. */
+  documentIds: string[]
+  recurringLink: {
+    id: string
+    nextExpenseCreatedAt: string | null
+    nextExpenseDate: string
+  } | null
+}
+
 type ActivityData = {
   title: string
   changes: ActivityChange[]
   /** Set when a recurring expense caught up: how many occurrences were added at once. */
   occurrences?: number
+  /** Set on a deletion: the expense, so it can be restored. */
+  deleted?: DeletedExpenseSnapshot
+  /** Set on the creation a restore records. */
+  restored?: true
 }
 
 export function encodeActivityData(
@@ -49,10 +88,30 @@ export function encodeRecurringActivityData(
   } satisfies ActivityData)
 }
 
+export function encodeDeletedActivityData(
+  snapshot: DeletedExpenseSnapshot,
+): string {
+  return JSON.stringify({
+    title: snapshot.title,
+    changes: [],
+    deleted: snapshot,
+  } satisfies ActivityData)
+}
+
+export function encodeRestoredActivityData(title: string): string {
+  return JSON.stringify({
+    title,
+    changes: [],
+    restored: true,
+  } satisfies ActivityData)
+}
+
 export function decodeActivityData(data: string | null | undefined): {
   title: string
   changes: ActivityChange[]
   occurrences?: number
+  deleted?: DeletedExpenseSnapshot
+  restored?: true
 } {
   if (!data) return { title: '', changes: [] }
   if (!data.startsWith('{')) return { title: data, changes: [] }
@@ -67,6 +126,10 @@ export function decodeActivityData(data: string | null | undefined): {
       ...(typeof parsed.occurrences === 'number'
         ? { occurrences: parsed.occurrences }
         : {}),
+      ...(typeof parsed.deleted?.id === 'string'
+        ? { deleted: parsed.deleted }
+        : {}),
+      ...(parsed.restored === true ? { restored: true as const } : {}),
     }
   } catch {
     // A title that merely happens to start with "{" is not a crash.

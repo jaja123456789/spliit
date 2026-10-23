@@ -11,6 +11,6 @@ export const deleteGroupExpenseProcedure = baseProcedure
     }),
   )
   .mutation(async ({ input: { expenseId, groupId, participantId } }) => {
-    await deleteExpense(groupId, expenseId, participantId)
-    return {}
+    // The activity entry holds the copy that undoing the deletion restores from.
+    return deleteExpense(groupId, expenseId, participantId)
   })

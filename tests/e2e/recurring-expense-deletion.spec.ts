@@ -51,7 +51,10 @@ test.describe('Recurring Expense Deletion', () => {
     await page.waitForURL(/\/groups\/[^/]+\/expenses$/)
 
     // Verify first expense is deleted and second remains
-    await expect(page.getByText(expenseTitle1)).not.toBeVisible()
+    // In the list: the toast offering to undo the deletion names it too.
+    await expect(
+      page.getByTestId('expense-title').filter({ hasText: expenseTitle1 }),
+    ).not.toBeVisible()
     await expect(page.getByText(expenseTitle2)).toBeVisible()
   })
 
@@ -104,7 +107,10 @@ test.describe('Recurring Expense Deletion', () => {
     await page.waitForURL(/\/groups\/[^/]+\/expenses$/)
 
     // Verify recurring expense is deleted but regular expense remains
-    await expect(page.getByText(recurringTitle)).not.toBeVisible()
+    // In the list: the toast offering to undo the deletion names it too.
+    await expect(
+      page.getByTestId('expense-title').filter({ hasText: recurringTitle }),
+    ).not.toBeVisible()
     await expect(page.getByText(regularTitle)).toBeVisible()
   })
 
