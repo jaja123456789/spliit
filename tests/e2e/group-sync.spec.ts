@@ -73,9 +73,7 @@ test.describe('Group Cloud Sync', () => {
 
     // Group should be auto-synced - look for blue cloud icon
     const groupCard = page.locator(`li:has-text("${groupName}")`).first()
-    await expect(
-      groupCard.locator('svg.lucide-cloud').first(),
-    ).toBeVisible()
+    await expect(groupCard.locator('svg.lucide-cloud').first()).toBeVisible()
   })
 
   test('hydration merges local and server groups on sign-in', async ({
@@ -122,9 +120,7 @@ test.describe('Group Cloud Sync', () => {
       .first()
     await expect(syncButton).toBeVisible()
     await syncButton.click()
-    await expect(
-      page1.locator('svg.lucide-cloud').first(),
-    ).toBeVisible()
+    await expect(page1.locator('svg.lucide-cloud').first()).toBeVisible()
 
     // Star the group
     const starButton = page1.getByRole('button', { name: 'Add to favorites' })
