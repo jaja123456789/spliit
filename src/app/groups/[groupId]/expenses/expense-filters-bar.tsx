@@ -27,8 +27,7 @@ import { trpc } from '@/trpc/client'
 import { Check, ChevronDown, X } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
-import { ReactNode, useEffect, useState } from 'react'
-import { useDebounce } from 'use-debounce'
+import { ReactNode, useRef, useState } from 'react'
 import { useCurrentGroup } from '../current-group-context'
 
 /** Where each filter lives in the address. */
@@ -68,24 +67,39 @@ function writeFilters(filters: ExpenseFilters) {
 }
 
 /**
+ * Writes the address now — unless a picker on a phone still holds its history entry
+ * (`useMobilePopoverState` pushes one while it is open, and takes it back as it closes). Written
+ * onto that entry, the filters would vanish with it; so they wait for it to go.
+ */
+function writeFiltersWhenSettled(filters: ExpenseFilters) {
+  if (window.history.state?.drawerOpen) {
+    window.addEventListener('popstate', () => writeFilters(filters), {
+      once: true,
+    })
+  } else {
+    writeFilters(filters)
+  }
+}
+
+/**
  * The list's filters, kept in the address so that opening an expense and coming back finds the
  * list as it was left — and so a filtered view can be bookmarked or shared.
  *
- * State is the source of truth and the address follows it, a moment later: a picker on a phone
- * holds a history entry while it is open (`useMobilePopoverState`), and writing the address before
- * that entry is gone would write it onto the entry the picker is about to remove.
+ * The address is written as the filters change, in the same event. It used to follow a moment
+ * later, which let it land after a link had been clicked — and rewrite the address back to this
+ * list in the middle of the navigation away from it.
  */
 export function useExpenseListFilters() {
   const searchParams = useSearchParams()
   const [filters, setFilters] = useState(() => readFilters(searchParams))
-  const [settled] = useDebounce(filters, 300)
+  const latest = useRef(filters)
 
-  useEffect(() => {
-    writeFilters(settled)
-  }, [settled])
-
-  const update = (change: Partial<ExpenseFilters>) =>
-    setFilters((current) => ({ ...current, ...change }))
+  const update = (change: Partial<ExpenseFilters>) => {
+    const next = { ...latest.current, ...change }
+    latest.current = next
+    setFilters(next)
+    writeFiltersWhenSettled(next)
+  }
   return [filters, update] as const
 }
 
