@@ -54,8 +54,12 @@ test.describe('Group Editing', () => {
     // Verify updated information text is visible
     await expect(page.getByText(newGroupInfo, { exact: true })).toBeVisible()
 
-    // Verify group name is also updated in the Information section
-    await expect(page.getByText(newGroupName, { exact: true })).toBeVisible()
+    // Verify group name is also updated in the Information section. Inside the page's main
+    // content: Next's route announcer repeats the page title for screen readers, and whenever the
+    // navigation lands before the new title does, it holds the group name too.
+    await expect(
+      page.getByRole('main').getByText(newGroupName, { exact: true }),
+    ).toBeVisible()
   })
 
   test('add participant to existing group', async ({ page }) => {
