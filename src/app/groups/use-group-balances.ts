@@ -1,6 +1,6 @@
 'use client'
 
-import { readActiveUser } from '@/lib/active-user'
+import { onActiveUserChange, readActiveUser } from '@/lib/active-user'
 import { trpc } from '@/trpc/client'
 import { useEffect, useState } from 'react'
 
@@ -16,16 +16,22 @@ export function useGroupBalances(groupIds: string[]) {
     { groupId: string; participantId: string }[]
   >([])
 
-  // localStorage is not readable during render on the server, so the list is assembled after mount.
+  // localStorage is not readable during render on the server, so the list is assembled after mount
+  // — and again whenever an answer arrives, from this device or from the account.
   useEffect(() => {
-    setPairs(
-      groupIds
-        .map((groupId) => ({
-          groupId,
-          participantId: readActiveUser(groupId) ?? '',
-        }))
-        .filter((pair) => pair.participantId !== ''),
-    )
+    const read = () =>
+      setPairs(
+        groupIds
+          .map((groupId) => ({
+            groupId,
+            participantId: readActiveUser(groupId) ?? '',
+          }))
+          .filter((pair) => pair.participantId !== ''),
+      )
+    read()
+    return onActiveUserChange((groupId) => {
+      if (groupIds.includes(groupId)) read()
+    })
   }, [groupIds.join(',')]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data } = trpc.groups.balances.forGroups.useQuery(

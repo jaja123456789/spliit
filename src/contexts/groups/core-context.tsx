@@ -2,6 +2,7 @@
 
 import { clearAllLocalGroupsData } from '@/app/groups/recent-groups-helpers'
 import { useToast } from '@/components/ui/use-toast'
+import { seedActiveUser } from '@/lib/active-user'
 import { trpc } from '@/trpc/client'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
@@ -98,6 +99,12 @@ export function GroupsProvider({ children }: PropsWithChildren) {
 
       try {
         const cloudGroups = await utils.sync.listGroups.fetch()
+        // "Who you are" in each group, from the account, for groups this device has not been
+        // told about — a second phone used to ask again, group by group.
+        for (const synced of cloudGroups) {
+          if (synced.activeParticipantId)
+            seedActiveUser(synced.groupId, synced.activeParticipantId)
+        }
         return mergeGroups(localData, cloudGroups)
       } catch (error) {
         if (isUnauthorizedError(error)) {

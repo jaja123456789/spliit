@@ -39,6 +39,8 @@ export function readActiveUser(groupId: string): string | null {
   return stored
 }
 
+const CHANGE_EVENT = 'spliit:active-user-change'
+
 /** Pass `null` to record that no participant is selected. */
 export function writeActiveUser(groupId: string, participantId: string | null) {
   if (typeof localStorage === 'undefined') return
@@ -46,6 +48,40 @@ export function writeActiveUser(groupId: string, participantId: string | null) {
     activeUserStorageKey(groupId),
     participantId ?? NO_ACTIVE_USER,
   )
+  // Storage events only reach *other* tabs; this one hears about its own writes through this.
+  window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: groupId }))
+}
+
+/**
+ * Calls back with the group's id whenever "who you are" there changes: chosen in the identity
+ * modal, filled in from the account, or changed in another tab. Returns the unsubscribe.
+ *
+ * Readers used to take the value once, on mount, so choosing yourself in the modal left the list
+ * showing no share of yours until the page was loaded again.
+ */
+export function onActiveUserChange(callback: (groupId: string) => void) {
+  const suffix = activeUserStorageKey('')
+  const own = (event: Event) => callback((event as CustomEvent<string>).detail)
+  const otherTab = (event: StorageEvent) => {
+    if (event.key?.endsWith(suffix))
+      callback(event.key.slice(0, -suffix.length))
+  }
+  window.addEventListener(CHANGE_EVENT, own)
+  window.addEventListener('storage', otherTab)
+  return () => {
+    window.removeEventListener(CHANGE_EVENT, own)
+    window.removeEventListener('storage', otherTab)
+  }
+}
+
+/**
+ * Takes the account's answer for a group this device has never answered for. An answer given on
+ * this device — "nobody" included — is never overwritten: it is the more specific of the two.
+ */
+export function seedActiveUser(groupId: string, participantId: string) {
+  if (typeof localStorage === 'undefined') return
+  if (localStorage.getItem(activeUserStorageKey(groupId)) !== null) return
+  writeActiveUser(groupId, participantId)
 }
 
 /** Whether a choice has been recorded at all, including an explicit "nobody". */

@@ -1,5 +1,5 @@
 import { useEnv } from '@/components/env-provider'
-import { readActiveUser } from '@/lib/active-user'
+import { onActiveUserChange, readActiveUser } from '@/lib/active-user'
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import useSWR, { Fetcher } from 'swr'
 import {
@@ -116,7 +116,11 @@ export function useActiveUserState(groupId?: string) {
   )
 
   useEffect(() => {
-    if (groupId) setActiveUser(readActiveUser(groupId))
+    if (!groupId) return
+    setActiveUser(readActiveUser(groupId))
+    return onActiveUserChange((changed) => {
+      if (changed === groupId) setActiveUser(readActiveUser(groupId))
+    })
   }, [groupId])
 
   return activeUser
