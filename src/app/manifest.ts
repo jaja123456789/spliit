@@ -12,7 +12,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: `${basePath}/groups`,
     display: 'standalone',
     background_color: '#fff',
-    theme_color: '#047857',
+    theme_color: '#FBFAF9',
     icons: [
       {
         src: `${basePath}/logo/48x48.png`,

@@ -110,11 +110,12 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  // The browser's own bar matches the page's ground in dark mode, rather than staying a green band
-  // over a dark app. `ThemeColor` keeps it right when someone picks a theme other than the system's.
+  // The browser's own bar matches the page's ground in both themes. It was a green band in light
+  // mode, one more place the accent was spent on chrome. `ThemeColor` keeps it right when someone
+  // picks a theme other than the system's.
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#047857' },
-    { media: '(prefers-color-scheme: dark)', color: '#101413' },
+    { media: '(prefers-color-scheme: light)', color: '#FBFAF9' },
+    { media: '(prefers-color-scheme: dark)', color: '#131211' },
   ],
 }
 
@@ -212,7 +213,7 @@ export default async function RootLayout({
       className={`${nunitoSans.variable} ${plexMono.variable}`}
       suppressHydrationWarning
     >
-      <ApplePwaSplash icon={`${basePath}/logo-with-text.png`} color="#027756" />
+      <ApplePwaSplash icon={`${basePath}/logo-with-text.png`} color="#FBFAF9" />
       {/* `bg-muted/30 dark:bg-background` until now: light --background was pure white, the same
           value as --card, so the ground had to be faked with a tinted muted. It is its own token
           in both themes now. */}

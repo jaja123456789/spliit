@@ -2,12 +2,14 @@
 import { useTheme } from 'next-themes'
 import { useEffect } from 'react'
 
-const COLORS = { light: '#047857', dark: '#101413' } as const
+// The page's own ground in each theme, so the bar reads as part of the app rather than a band of
+// brand colour above it.
+const COLORS = { light: '#FBFAF9', dark: '#131211' } as const
 
 /**
  * Keeps the browser's bar in step with a theme picked in the app. The `theme-color` tags follow
  * the system's preference by media query, so choosing dark on a light system would otherwise leave
- * a green bar over a dark page.
+ * a light bar over a dark page.
  */
 export function ThemeColor() {
   const { theme, resolvedTheme } = useTheme()

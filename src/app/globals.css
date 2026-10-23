@@ -21,23 +21,32 @@
     --secondary: 36 15% 93.5%;
     --accent: 36 15% 93.5%; /* shadcn's hover surface, not the brand accent */
 
-    /* ground / sheet / sunken: 16.42 · 17.12 · 14.92 */
-    --foreground: 171 14% 10%;
-    --card-foreground: 171 14% 10%;
-    --popover-foreground: 171 14% 10%;
-    --secondary-foreground: 171 14% 10%;
-    --accent-foreground: 171 14% 10%;
-    /* 6.52 · 6.80 · 5.92. Darker than the palette this came from: the tertiary step below is pinned
-       at ~41% lightness by the AA floor on the sunken surface, so a secondary at 40% left the two
-       steps 1.14:1 apart — not a step at all. At 34% they are 1.30:1 apart and both clear AA. */
-    --muted-foreground: 165 8% 34%;
-    /* 5.00 · 5.21 · 4.54 — the floor. Meta, dates, counts. */
-    --subtle-foreground: 160 5.5% 41.4%;
+    /* The inks are a warm neutral, the same hue as the ground. They used to lean green (hue 160-171),
+       so every word on screen carried a trace of the accent, and with the accent itself on buttons,
+       links, tabs and money the app read green before anything was coloured on purpose.
+       ground / sheet / sunken: 16.71 · 17.44 · 15.18 */
+    --foreground: 30 8% 10%;
+    --card-foreground: 30 8% 10%;
+    --popover-foreground: 30 8% 10%;
+    --secondary-foreground: 30 8% 10%;
+    --accent-foreground: 30 8% 10%;
+    /* 7.16 · 7.47 · 6.50. Darker than the palette this came from: the tertiary step below is pinned
+       near 40% lightness by the AA floor on the sunken surface, so a secondary at 40% left the two
+       steps 1.14:1 apart — not a step at all. At 33% they are 1.32:1 apart and both clear AA. */
+    --muted-foreground: 30 6% 33%;
+    /* 5.44 · 5.68 · 4.94 — the floor. Meta, dates, counts. */
+    --subtle-foreground: 30 5% 40%;
 
+    /* Green is spent on two things only: the filled control that does the screen's job (Save, the
+       add button, a switch that is on) and money you are owed (--credit). Links, tabs, selection
+       and the ring that marks you are ink. Green text therefore always means money. */
     --primary: 162 88% 24%;
     --primary-foreground: 0 0% 100%; /* 5.86 on the fill */
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
+    /* shadcn's red-500 until now, the one token never measured: 3.76:1 as text on the sheet and
+       3.61:1 for a label on the fill, both short of AA. 6.20 · 6.47 · 5.63 as text, 6.47 for white
+       on the fill, 5.47 on its own 10% tint. */
+    --destructive: 0 72% 42%;
+    --destructive-foreground: 0 0% 100%;
     --border: 43 12% 88%; /* rule    #E4E2DD, 1.29 vs the sheet — decoration */
     /* A list separator. Structure, not a control: WCAG asks nothing of it, so it stays quiet.
        This is the value --input used to carry. */
@@ -45,8 +54,8 @@
     /* The visual boundary of a field. WCAG 1.4.11 wants 3:1 for the part of a control that
        identifies it, and at the old 1.62 every input, select and textarea in the app fell short —
        which is also why a field's own rule was indistinguishable from a divider drawn beside it.
-       3.46 on the sheet, 3.01 on --muted, so it holds on the sunken surfaces too. */
-    --input: 165 8% 52%; /* field   #7B8E89 */
+       3.93 on the sheet, 3.42 on --muted, so it holds on the sunken surfaces too. */
+    --input: 30 5% 50%; /* field   #868079 */
     --ring: 162 88% 24%;
     --radius: 0.75rem;
 
@@ -102,40 +111,45 @@
   /* Designed rather than inverted. The previous dark theme was a warm brown-black (#0C0A09) with a
      near-neon mint (S=90%) on it, and no elevation: ground, card and row were within a hair of each
      other, so nothing read as raised. The problem was never contrast — those values passed loudly.
-     It was saturation, and two neon hues fighting each other. */
+     It was saturation, and two neon hues fighting each other.
+     The surfaces were then tinted green (hue 156-170), which fixed the brown and made the whole
+     theme the accent's colour instead. They are a warm neutral now, barely off grey (4-5%
+     saturation), so the only colours on a dark screen are the ones that mean something. */
   .dark {
-    --background: 165 11% 7%; /* ground  #101413 */
-    --card: 156 9% 11%; /* sheet   #1A1F1D */
-    --popover: 156 9% 11%;
-    --muted: 170 8% 15%; /* sunken  #232928 */
-    --secondary: 170 8% 15%;
-    --accent: 170 8% 15%;
+    --background: 30 5% 7%; /* ground  #131211 */
+    --card: 30 4% 11%; /* sheet   #1D1C1B */
+    --popover: 30 4% 11%;
+    --muted: 30 4% 15%; /* sunken  #282625 */
+    --secondary: 30 4% 15%;
+    --accent: 30 4% 15%;
 
-    /* ground / sheet / sunken: 16.01 · 14.40 · 12.76 */
-    --foreground: 165 11% 93%;
-    --card-foreground: 165 11% 93%;
-    --popover-foreground: 165 11% 93%;
-    --secondary-foreground: 165 11% 93%;
-    --accent-foreground: 165 11% 93%;
-    --muted-foreground: 164 7% 68%; /* 8.61 · 7.74 · 6.86 */
-    /* 5.66 · 5.09 · 4.51 — lightened from the palette's own tertiary, which measured 4.21 on the
+    /* ground / sheet / sunken: 16.06 · 14.58 · 12.89 */
+    --foreground: 30 10% 93%;
+    --card-foreground: 30 10% 93%;
+    --popover-foreground: 30 10% 93%;
+    --secondary-foreground: 30 10% 93%;
+    --accent-foreground: 30 10% 93%;
+    --muted-foreground: 30 6% 68%; /* 8.46 · 7.67 · 6.79 */
+    /* 5.65 · 5.13 · 4.54 — lightened from the palette's own tertiary, which measured 4.21 on the
        sunken surface. */
-    --subtle-foreground: 164 6% 54%;
+    --subtle-foreground: 30 5% 55%;
 
     --primary: 160 45% 58%; /* #64C4A4 — the same hue at half the old saturation */
-    --primary-foreground: 166 26% 10%; /* 7.97 on the fill */
-    --destructive: 0 87% 47%;
-    --destructive-foreground: 0 85.7% 97.3%;
-    --border: 163 8% 17%; /* rule    #282F2D, 1.22 vs the sheet — decoration */
-    --divider: 165 7% 22%; /* rule-2  #343C3A, 1.47 vs the sheet */
-    --input: 165 7% 46%; /* field   #6D7E79, 3.90 vs the sheet */
+    --primary-foreground: 30 5% 7%; /* 8.90 on the fill */
+    /* 5.88 · 5.33 · 4.72 as text, 4.70 on its own 10% tint; the fill takes the ground as its label,
+       5.88. The red it replaces measured 3.38:1 on the sheet. */
+    --destructive: 0 80% 66%;
+    --destructive-foreground: 30 5% 7%;
+    --border: 30 4% 18%; /* rule    #302E2C, 1.26 vs the sheet — decoration */
+    --divider: 30 4% 23%; /* rule-2  #3D3B38, 1.52 vs the sheet */
+    --input: 30 4% 47%; /* field   #7D7873, 3.88 vs the sheet, 3.43 vs --muted */
     --ring: 160 45% 58%;
-    --chart-1: 160 45% 45%; /* 5.57 vs the sheet */
-    --chart-2: 165 7% 42%; /* 3.36 vs the sheet, 1.66 against --chart-1 */
+    --chart-1: 160 45% 45%; /* 5.69 vs the sheet */
+    --chart-2: 30 4% 42%; /* 3.23 vs the sheet, 1.76 against --chart-1 */
     /* Sage and clay rather than mint and safety-orange: same directions, half the saturation, and
        they stop competing with each other when they sit in the same column. */
-    --credit: 158 48% 66%; /* 10.40 · 9.36 · 8.29, and 7.59 at worst on bg-credit/10 */
-    --debt: 22 72% 64%; /* 7.61 · 6.85 · 6.07, and 5.85 at worst on bg-debt/10 */
+    --credit: 158 48% 66%; /* 10.49 · 9.52 · 8.42, and 7.77 at worst on bg-credit/10 */
+    --debt: 22 72% 64%; /* 7.67 · 6.96 · 6.16, and 5.91 at worst on bg-debt/10 */
     --star: 43 96% 56%;
     /* Same eight hues, the plate and the mark swapped over: a pale plate that reads as a tinted
        chip on white is a lamp on a dark sheet. Saturation drops to 26% on the plate for the
