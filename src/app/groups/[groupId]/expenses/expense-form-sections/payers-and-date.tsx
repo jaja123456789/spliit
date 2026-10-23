@@ -165,7 +165,7 @@ export function PayersAndDate({
                                         a face, and the one the concept draws with one. */}
                             <div className="flex min-w-0 items-center gap-2">
                               {isHighest && (
-                                <Crown className="h-3 w-3 shrink-0 text-primary" />
+                                <Crown className="h-3 w-3 shrink-0 text-muted-foreground" />
                               )}
                               {/* No plate of its own: SelectValue renders the chosen
                                           item's own children, which now carry one — drawing a

@@ -116,7 +116,7 @@ export function GroupTabBar({ groupId }: { groupId: string }) {
                 onClick={() => setOpen(false)}
                 className={cn(
                   'flex items-center gap-3 border-b py-4 text-sm font-medium last:border-0',
-                  value === tabValue && 'text-primary',
+                  value === tabValue && 'font-semibold text-foreground',
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -150,7 +150,7 @@ const TabBarTrigger = ({
     // label carries it, the way a tab bar has always done it.
     className={cn(
       'flex-col gap-1 rounded-none px-1 py-2 min-w-0 h-full',
-      'data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none',
+      'data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none',
     )}
   >
     <Icon className="h-5 w-5 shrink-0" aria-hidden={true} />

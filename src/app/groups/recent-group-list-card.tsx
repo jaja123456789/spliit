@@ -177,7 +177,7 @@ export function RecentGroupListCard({
                     {isSyncLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : groupIsSynced ? (
-                      <Cloud className="w-4 h-4 text-primary" />
+                      <Cloud className="w-4 h-4 text-subtle-foreground" />
                     ) : (
                       <CloudOff className="w-4 h-4 text-muted-foreground" />
                     )}

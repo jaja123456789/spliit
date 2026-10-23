@@ -138,7 +138,7 @@ export function ActivityItem({
       {expenseExists && (
         <ChevronRight
           aria-hidden
-          className="self-center hidden sm:block w-4 h-4 text-primary"
+          className="self-center hidden sm:block w-4 h-4 text-subtle-foreground"
         />
       )}
       {restorable && (

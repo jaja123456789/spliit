@@ -28,7 +28,7 @@ export function DraftOffer({
         <button
           type="button"
           data-testid="draft-restore"
-          className="font-medium text-primary underline-offset-2 hover:underline"
+          className="font-medium text-foreground underline decoration-foreground/30 underline-offset-2 hover:decoration-foreground"
           onClick={onRestore}
         >
           {t('Draft.restore')}

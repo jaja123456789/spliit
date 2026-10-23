@@ -344,7 +344,7 @@ export function GroupForm({
                                   form.watch(
                                     `participants.${index}.paymentProfile`,
                                   )
-                                    ? 'text-primary bg-primary/10'
+                                    ? 'text-foreground bg-accent'
                                     : 'text-muted-foreground'
                                 }
                               >

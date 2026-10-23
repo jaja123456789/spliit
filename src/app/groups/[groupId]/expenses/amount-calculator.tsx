@@ -208,14 +208,14 @@ export function AmountCalculator({
         </ButtonKey>
         <ButtonKey
           variant="secondary"
-          className="text-primary text-2xl"
+          className="text-foreground text-2xl"
           onClick={() => appendToDisplay('÷')}
         >
           ÷
         </ButtonKey>
         <ButtonKey
           variant="secondary"
-          className="text-primary text-2xl"
+          className="text-foreground text-2xl"
           onClick={() => appendToDisplay('×')}
         >
           ×
@@ -228,7 +228,7 @@ export function AmountCalculator({
         ))}
         <ButtonKey
           variant="secondary"
-          className="text-primary text-2xl"
+          className="text-foreground text-2xl"
           onClick={() => appendToDisplay('-')}
         >
           -
@@ -241,7 +241,7 @@ export function AmountCalculator({
         ))}
         <ButtonKey
           variant="secondary"
-          className="text-primary text-2xl"
+          className="text-foreground text-2xl"
           onClick={() => appendToDisplay('+')}
         >
           +

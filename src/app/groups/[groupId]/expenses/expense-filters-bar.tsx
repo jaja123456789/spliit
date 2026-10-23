@@ -433,7 +433,7 @@ function FilterChip({
       className={cn(
         'inline-flex h-8 items-center rounded-full border text-xs font-medium transition-colors',
         active
-          ? 'border-primary/40 bg-primary/10 text-foreground'
+          ? 'border-foreground/30 bg-accent text-foreground'
           : 'text-muted-foreground hover:bg-accent',
       )}
     >

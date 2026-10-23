@@ -81,10 +81,10 @@ export function TitleField({
                         `${category.grouping}.${category.name}`,
                       )}`}
                       // A glyph in a square is a picture; the chevron is what makes
-                      // it a control. Tinted with the accent, as the concept draws it:
-                      // it is the one control inside these two boxes, and a grey plate
-                      // on a white box had nothing to separate it from the box.
-                      className="flex h-12 w-14 shrink-0 items-center justify-center gap-0.5 rounded-lg bg-primary/10 px-1 text-primary transition-colors hover:bg-primary/20"
+                      // it a control. The concept tinted it with the accent; it is the
+                      // sunken surface instead, because green is kept for the filled
+                      // action and for money, and the chevron already says "control".
+                      className="flex h-12 w-14 shrink-0 items-center justify-center gap-0.5 rounded-lg bg-muted px-1 text-foreground transition-colors hover:bg-muted-foreground/15"
                     >
                       {isCategoryLoading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />

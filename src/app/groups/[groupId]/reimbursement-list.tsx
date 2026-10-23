@@ -97,7 +97,7 @@ export function ReimbursementList({
               variant="outline"
               size="sm"
               asChild
-              className="h-7 shrink-0 rounded-full border-primary px-3 text-xs text-primary hover:bg-primary/5 hover:text-primary"
+              className="h-7 shrink-0 rounded-full border-input px-3 text-xs text-foreground hover:bg-accent hover:text-foreground"
             >
               <Link
                 // A bare "Settle" repeated down a list tells a screen reader nothing about which

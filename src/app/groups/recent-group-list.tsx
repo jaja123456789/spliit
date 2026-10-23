@@ -143,7 +143,10 @@ function RecentGroupList_({
           {!session && (
             <p>
               <Button variant="link" asChild className="-m-4">
-                <Link href="/settings" className="text-primary hover:underline">
+                <Link
+                  href="/settings"
+                  className="font-medium text-foreground underline decoration-foreground/30 underline-offset-2 hover:decoration-foreground"
+                >
                   {t('NoRecent.enableCloudSync')}
                 </Link>
               </Button>{' '}
@@ -331,8 +334,8 @@ function GroupsPage({
         </div>
       </div>
       {hasPendingReceipt && (
-        <div className="flex items-start gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3 text-sm">
-          <Receipt className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+        <div className="flex items-start gap-3 rounded-lg border bg-muted/50 p-3 text-sm">
+          <Receipt className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
           <span>{t('sharedReceiptPending')}</span>
         </div>
       )}

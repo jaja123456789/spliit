@@ -34,11 +34,11 @@ export function SignInForm() {
   if (signInMutation.isSuccess) {
     return (
       <div className="space-y-4">
-        <div className="p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
-          <p className="text-sm font-medium text-green-900 dark:text-green-100">
+        <div className="rounded-lg border bg-muted/50 p-4">
+          <p className="text-sm font-medium text-foreground">
             {t('success.title')}
           </p>
-          <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+          <p className="text-sm text-muted-foreground mt-1">
             {t('success.body', { email })}
           </p>
         </div>

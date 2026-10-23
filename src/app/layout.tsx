@@ -156,7 +156,7 @@ function Content({ children }: { children: React.ReactNode }) {
                     variant="ghost"
                     size="sm"
                     asChild
-                    className="-my-3 min-h-[44px] text-primary sm:min-h-0"
+                    className="-my-3 min-h-[44px] text-foreground sm:min-h-0"
                   >
                     <Link href="/groups">{t('Header.groups')}</Link>
                   </Button>
@@ -166,7 +166,7 @@ function Content({ children }: { children: React.ReactNode }) {
                     variant="ghost"
                     size="sm"
                     asChild
-                    className="-my-3 min-h-[44px] text-primary sm:min-h-0"
+                    className="-my-3 min-h-[44px] text-foreground sm:min-h-0"
                   >
                     <Link href="/settings">{t('Header.settings')}</Link>
                   </Button>

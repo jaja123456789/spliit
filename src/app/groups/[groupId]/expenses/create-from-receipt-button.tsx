@@ -714,7 +714,7 @@ function ReceiptDialogContent({
                 <strong className="text-xs uppercase text-muted-foreground tracking-wider block mb-1">
                   Total Amount
                 </strong>
-                <div className="text-2xl font-bold text-primary">
+                <div className="text-2xl font-bold text-foreground">
                   {group && receiptInfo.amount ? (
                     formatCurrency(
                       receiptCurrency ?? getCurrencyFromGroup(group),
@@ -804,7 +804,7 @@ function ReceiptDialogContent({
               )}
             >
               {linesCheck.kind === 'match' ? (
-                <Check className="mt-0.5 h-4 w-4 shrink-0 text-credit" />
+                <Check className="mt-0.5 h-4 w-4 shrink-0 text-foreground" />
               ) : (
                 <Info className="mt-0.5 h-4 w-4 shrink-0" />
               )}

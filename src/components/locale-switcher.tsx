@@ -19,7 +19,7 @@ export function LocaleSwitcher() {
         <Button
           variant="ghost"
           size="sm"
-          className="-my-3 min-h-[44px] text-primary sm:min-h-0"
+          className="-my-3 min-h-[44px] text-foreground sm:min-h-0"
         >
           <span>{localeLabels[locale]}</span>
         </Button>

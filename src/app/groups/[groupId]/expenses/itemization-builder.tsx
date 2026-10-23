@@ -378,7 +378,7 @@ export function ItemizationBuilder({
           {isSelecting && (
             <div
               data-testid="selection-bar"
-              className="flex min-h-[52px] items-center justify-between gap-3 bg-primary/5 px-6 py-2"
+              className="flex min-h-[52px] items-center justify-between gap-3 bg-muted px-6 py-2"
             >
               {selectedIndexes.length > 0 ? (
                 <>
@@ -436,8 +436,8 @@ export function ItemizationBuilder({
                 className={cn(
                   'mx-6 rounded-lg border px-3 py-2 transition-colors',
                   isEditing ? 'space-y-2.5' : 'space-y-0',
-                  isRowSelected && 'border-primary/40 bg-primary/5',
-                  isOpen ? 'bg-primary/5' : 'bg-card',
+                  isRowSelected && 'border-foreground/30 bg-accent',
+                  isOpen ? 'bg-muted/50' : 'bg-card',
                   // The line the message at the foot of the list is talking about. A left edge
                   // rather than a full destructive fill: the row is still a line on a receipt and
                   // still has to be read, and nine tinted rows would say nothing at all.
@@ -846,7 +846,7 @@ export function ItemizationBuilder({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-11 rounded-md border-0 bg-primary/10 px-3 text-sm font-medium text-primary hover:bg-primary/20 sm:h-8 sm:text-xs"
+                className="h-11 rounded-md border border-input bg-card px-3 text-sm font-medium text-foreground hover:bg-accent sm:h-8 sm:text-xs"
                 onClick={addRemainderProportionally}
                 disabled={!canSplitProportionally}
                 title={
@@ -861,7 +861,7 @@ export function ItemizationBuilder({
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="h-11 rounded-md border-0 bg-primary/10 px-3 text-sm font-medium text-primary hover:bg-primary/20 sm:h-8 sm:text-xs"
+                className="h-11 rounded-md border border-input bg-card px-3 text-sm font-medium text-foreground hover:bg-accent sm:h-8 sm:text-xs"
                 onClick={addRemainderEvenly}
               >
                 {t('remainderEvenly')}
@@ -871,7 +871,7 @@ export function ItemizationBuilder({
         ) : (
           <div className="-mx-6 mt-2 flex items-baseline justify-between gap-3 bg-secondary/70 px-6 py-3">
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Check className="h-3.5 w-3.5 text-credit" />
+              <Check className="h-3.5 w-3.5 text-foreground" />
               {t('allAssigned')}
             </span>
             <span className="flex items-baseline gap-3">
@@ -936,7 +936,7 @@ function ParticipantChooser({
           variant="ghost"
           size="sm"
           type="button"
-          className="h-auto p-1 text-xs text-primary hover:bg-primary/10"
+          className="h-auto p-1 text-xs text-foreground underline decoration-foreground/30 underline-offset-2 hover:bg-accent"
           onClick={() =>
             onChange(allSelected ? [] : group.participants.map((p) => p.id))
           }
@@ -956,7 +956,7 @@ function ParticipantChooser({
               className={cn(
                 'flex items-center gap-3 px-3 py-2 rounded-md text-left text-sm transition-colors min-h-11',
                 isSelected
-                  ? 'bg-primary/5 font-medium text-primary'
+                  ? 'bg-accent font-medium text-foreground'
                   : 'hover:bg-muted',
               )}
               onClick={() =>
@@ -1165,17 +1165,18 @@ function YourShare({
         —
       </span>
     )
-  // One voice, one colour: the concept sets the whole figure — label included — in mono in the
-  // accent. The label in a second colour made it read as two things rather than one figure.
+  // One voice, one colour: the whole figure — label included — in one ink. The label in a second
+  // colour made it read as two things rather than one figure. The concept drew it in the accent,
+  // but green text means money you are owed, and your share of a line is what you spent.
   return (
-    <span className="flex shrink-0 items-baseline justify-end gap-1 font-mono text-xs font-semibold text-credit">
+    <span className="flex shrink-0 items-baseline justify-end gap-1 font-mono text-xs font-semibold text-foreground">
       {withLabel && <span>{t('yourShareShort')}</span>}
       <Money
         currency={currency}
         amount={amount}
         fractions
         bold
-        className="text-xs text-credit"
+        className="text-xs text-foreground"
       />
     </span>
   )
@@ -1354,7 +1355,7 @@ function RowPicker({
             <button
               type="button"
               data-testid={`preset-same-${rowIndex}`}
-              className="font-medium text-primary underline-offset-2 hover:underline"
+              className="font-medium text-foreground underline decoration-foreground/30 underline-offset-2 hover:decoration-foreground"
               onClick={() => onChange(previousIds!)}
             >
               {previousName
@@ -1365,7 +1366,7 @@ function RowPicker({
           <button
             type="button"
             data-testid={`preset-everyone-${rowIndex}`}
-            className="font-medium text-primary underline-offset-2 hover:underline"
+            className="font-medium text-foreground underline decoration-foreground/30 underline-offset-2 hover:decoration-foreground"
             onClick={() => onChange(allSelected ? [] : allIds)}
           >
             {allSelected ? t('clearAll') : t('selectAll')}
@@ -1391,7 +1392,7 @@ function RowPicker({
               onClick={() => toggle(participant.id)}
               className={cn(
                 'flex min-h-11 w-full items-center gap-3 px-3 py-1.5 text-left transition-colors',
-                on ? 'bg-primary/5' : 'hover:bg-muted/60',
+                on ? 'bg-accent' : 'hover:bg-muted/60',
               )}
             >
               <span

@@ -123,7 +123,7 @@ export function SplitSection({
             className={cn(
               'min-h-11 rounded-md px-2 text-sm font-medium transition-colors',
               splitControl === value
-                ? 'bg-primary/10 text-primary'
+                ? 'bg-card text-foreground shadow-sm'
                 : 'text-muted-foreground hover:text-foreground',
             )}
           >
@@ -138,7 +138,7 @@ export function SplitSection({
           className={cn(
             'min-h-11 rounded-md px-2 text-sm font-medium transition-colors',
             splitControl === 'OTHER'
-              ? 'bg-primary/10 text-primary'
+              ? 'bg-card text-foreground shadow-sm'
               : 'text-muted-foreground hover:text-foreground',
           )}
         >
@@ -298,7 +298,7 @@ export function SplitModeSheet({
                   className={cn(
                     'flex min-h-16 items-center justify-between gap-3 rounded-md px-4 py-3 text-left transition-colors',
                     active
-                      ? 'bg-primary/10'
+                      ? 'bg-muted ring-2 ring-inset ring-foreground'
                       : 'bg-muted hover:bg-muted-foreground/15',
                   )}
                 >
@@ -311,7 +311,7 @@ export function SplitModeSheet({
                     </span>
                   </span>
                   {active && (
-                    <Check className="h-5 w-5 shrink-0 text-primary" />
+                    <Check className="h-5 w-5 shrink-0 text-foreground" />
                   )}
                 </button>
               )

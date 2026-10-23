@@ -50,7 +50,7 @@ export function PaymentList({ groupId, participants, currency }: Props) {
   const recordRow = (
     <Link
       href={`/groups/${groupId}/payments/create`}
-      className="flex items-center gap-2 py-3 text-sm font-medium text-primary hover:underline"
+      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground hover:underline"
       data-testid="record-payment"
     >
       <Plus className="h-4 w-4" />
