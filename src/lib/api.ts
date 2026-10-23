@@ -999,6 +999,11 @@ export async function getBalancesForGroups(
   requests: { groupId: string; participantId: string }[],
 ) {
   if (requests.length === 0) return []
+  // The group's own screens see a recurring expense the moment it comes due, because reading a
+  // group's expenses creates the occurrences first. This read never did, so on the 1st of the month
+  // the home screen left the rent out of every figure until somebody opened the group: the same
+  // household read "owed €1,052.36" here and €6,455.76 inside.
+  await createRecurringExpenses([...new Set(requests.map((r) => r.groupId))])
   const expenses = await prisma.expense.findMany({
     select: {
       groupId: true,
@@ -1340,17 +1345,18 @@ export async function logActivity(
 
 /**
  * Materialises the recurring expenses that have come due. This runs on every read of a group's
- * expenses, so pass the group being read: `RecurringExpenseLink` is indexed on
- * `[groupId, nextExpenseCreatedAt, nextExpenseDate]` and without a group the leading column is
- * unconstrained, which turns the lookup into a scan of every recurring expense in the database.
+ * expenses, so pass the group being read — or the groups, when a screen sums several at once:
+ * `RecurringExpenseLink` is indexed on `[groupId, nextExpenseCreatedAt, nextExpenseDate]` and
+ * without a group the leading column is unconstrained, which turns the lookup into a scan of every
+ * recurring expense in the database.
  *
  * With nothing due — the usual case — that indexed lookup is all this costs.
  */
-export async function createRecurringExpenses(groupId?: string) {
+export async function createRecurringExpenses(groupId?: string | string[]) {
   const now = new Date()
   const dueLinks = await prisma.recurringExpenseLink.findMany({
     where: {
-      groupId,
+      groupId: Array.isArray(groupId) ? { in: groupId } : groupId,
       nextExpenseCreatedAt: null,
       nextExpenseDate: { lte: now },
     },
