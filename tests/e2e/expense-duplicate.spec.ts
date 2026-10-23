@@ -53,4 +53,45 @@ test.describe('Duplicating an expense', () => {
       await expect(row).toContainText('$42.50')
     }
   })
+
+  test('a new expense offers the ones entered often', async ({ page }) => {
+    await page.goto('/groups')
+    const groupId = await createGroupViaAPI(page, `Often ${randomId(4)}`, [
+      'Alice',
+      'Bob',
+    ])
+    for (const [amount, date] of [
+      [4000, '2026-10-01'],
+      [4520, '2026-10-08'],
+    ] as const) {
+      await createExpenseViaAPI(page, groupId, {
+        title: 'Groceries',
+        amount,
+        payerName: 'Bob',
+        expenseDate: new Date(date),
+      })
+    }
+    await createExpenseViaAPI(page, groupId, {
+      title: 'Cinema',
+      amount: 2400,
+      payerName: 'Alice',
+    })
+    await navigateToGroup(page, groupId)
+    await page.goto(`/groups/${groupId}/expenses/create`)
+
+    // Entered twice, so offered; the cinema once, so not. Typing makes them go.
+    const shortcuts = page.getByTestId('expense-shortcuts')
+    await expect(shortcuts.getByRole('button')).toHaveText([/^Groceries/])
+    await page.locator('[name="title"]').fill('Something else')
+    await expect(shortcuts).toHaveCount(0)
+    await page.locator('[name="title"]').fill('')
+    await expect(shortcuts).toBeVisible()
+
+    // The latest one: $45.20, paid by Bob.
+    await shortcuts.getByRole('button', { name: /Groceries/ }).click()
+    await page.waitForURL(/\/expenses\/create\?duplicate=/)
+    await expect(page.locator('[name="title"]')).toHaveValue('Groceries')
+    await expect(page.locator(AMOUNT_INPUT)).toHaveValue(/^45\.20?$/)
+    await expect(shortcuts).toHaveCount(0)
+  })
 })

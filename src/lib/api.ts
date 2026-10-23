@@ -961,6 +961,53 @@ export async function getBalancesForGroups(
   })
 }
 
+/**
+ * The expenses a group keeps entering — titles seen at least twice among its latest 200 — most
+ * frequent first, each as its latest instance: what a new expense offers to start from.
+ *
+ * A plain read: it only furnishes shortcuts, like `getGroupExpenseFacets`.
+ */
+export async function getExpenseShortcuts(groupId: string, limit = 6) {
+  const recent = await prisma.expense.findMany({
+    where: { groupId, isReimbursement: false },
+    select: { id: true, title: true, amount: true },
+    orderBy: [{ expenseDate: 'desc' }, { createdAt: 'desc' }],
+    take: 200,
+  })
+
+  const byTitle = new Map<
+    string,
+    {
+      expenseId: string
+      title: string
+      amount: number
+      count: number
+      latest: number
+    }
+  >()
+  recent.forEach((expense, index) => {
+    // "Groceries" and "groceries " are the same habit.
+    const key = expense.title.trim().toLocaleLowerCase()
+    if (!key) return
+    const entry = byTitle.get(key)
+    if (entry) entry.count++
+    else
+      byTitle.set(key, {
+        expenseId: expense.id,
+        title: expense.title.trim(),
+        amount: expense.amount,
+        count: 1,
+        latest: index,
+      })
+  })
+
+  return Array.from(byTitle.values())
+    .filter((entry) => entry.count >= 2)
+    .sort((a, b) => b.count - a.count || a.latest - b.latest)
+    .slice(0, limit)
+    .map(({ latest, ...entry }) => entry)
+}
+
 export async function getGroupExpenseCount(groupId: string) {
   return prisma.expense.count({ where: { groupId } })
 }

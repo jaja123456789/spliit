@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client'
 import {
   getAllGroupExpenses,
+  getExpenseShortcuts,
   getGroupExpenseFacets,
   getGroupExpenses,
 } from './api'
@@ -27,12 +28,14 @@ describe('narrowing a group’s expenses', () => {
       categoryId = 0,
       notes,
       originalAmount,
+      isReimbursement = false,
     }: {
       payer?: string
       date?: string
       categoryId?: number
       notes?: string
       originalAmount?: number
+      isReimbursement?: boolean
     } = {},
   ) =>
     prisma.expense.create({
@@ -46,6 +49,7 @@ describe('narrowing a group’s expenses', () => {
         originalCurrency: originalAmount ? 'USD' : undefined,
         expenseDate: new Date(date),
         categoryId,
+        isReimbursement,
         paidBy: { create: { participantId: payer, amount } },
         paidFor: {
           createMany: {
@@ -169,6 +173,32 @@ describe('narrowing a group’s expenses', () => {
       const all = await getAllGroupExpenses(groupId, filters)
       expect(all.map((e) => e.id).sort()).toEqual(list.map((e) => e.id).sort())
     }
+  })
+
+  it('offers the titles entered again and again, as their latest instance', async () => {
+    await expense('Groceries', 4000, { date: '2026-10-01' })
+    await expense('groceries ', 4520, { date: '2026-10-08' })
+    await expense('Rent', 90000, { date: '2026-08-01' })
+    await expense('Rent', 90000, { date: '2026-09-01' })
+    await expense('Rent', 91000, { date: '2026-10-01' })
+    await expense('Cinema', 2400, { date: '2026-10-09' })
+    // Settling up repeats too, but is not something to start an expense from.
+    await expense('Payment', 5000, {
+      date: '2026-10-02',
+      isReimbursement: true,
+    })
+    await expense('Payment', 5000, {
+      date: '2026-10-03',
+      isReimbursement: true,
+    })
+
+    const shortcuts = await getExpenseShortcuts(groupId)
+    expect(
+      shortcuts.map(({ title, amount, count }) => [title, amount, count]),
+    ).toEqual([
+      ['Rent', 91000, 3],
+      ['groceries', 4520, 2],
+    ])
   })
 
   it('offers the months and categories in use, with counts', async () => {

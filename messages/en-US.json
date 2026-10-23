@@ -434,7 +434,10 @@
     },
     "derivedFromPayers": "{count, plural, one {sum of # payer} other {sum of # payers}}",
     "derivedFromItems": "sum of the lines that are shared",
-    "changeCurrency": "Change currency"
+    "changeCurrency": "Change currency",
+    "Shortcuts": {
+      "label": "Start from one you often add"
+    }
   },
   "ExpenseDocumentsInput": {
     "TooBigToast": {

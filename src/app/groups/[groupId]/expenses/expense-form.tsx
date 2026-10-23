@@ -43,6 +43,7 @@ import {
 } from './expense-form-sections/helpers'
 import { MoreOptions } from './expense-form-sections/more-options'
 import { PayersAndDate } from './expense-form-sections/payers-and-date'
+import { RecentShortcuts } from './expense-form-sections/recent-shortcuts'
 import {
   SplitModeSheet,
   SplitSection,
@@ -282,6 +283,7 @@ export function ExpenseForm({
     control: form.control,
     name: 'isReimbursement',
   })
+  const title = useWatch({ control: form.control, name: 'title' })
 
   // Derived state
   const totalAmount = paidByValues.reduce(
@@ -804,6 +806,14 @@ export function ExpenseForm({
                 The category and the currency each sit beside the field they qualify. Both were a
                 row apiece further down before, the category behind More options — two taps and a
                 scroll from the words that determine it. */}
+            {isCreate &&
+              !isCopy &&
+              !importingReceipt &&
+              !isReimbursement &&
+              !title &&
+              totalAmount === 0 && (
+                <RecentShortcuts groupId={group.id} currency={groupCurrency} />
+              )}
             <div className="flex min-w-0 flex-col gap-4">
               <TitleField
                 form={form}

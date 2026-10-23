@@ -27,6 +27,13 @@ export function CreateExpenseForm({
       { enabled: !!duplicateOf, retry: false },
     )
   const template = duplicateOf ? templateData?.expense : undefined
+  // Asked alongside the group, not by the shortcuts once the form is up: arriving half a second
+  // later, they pushed the title field down under a finger already reaching for it.
+  const { isPending: shortcutsPending } =
+    trpc.groups.expenses.shortcuts.useQuery(
+      { groupId },
+      { enabled: !duplicateOf },
+    )
 
   const { mutateAsync: createExpenseMutateAsync } =
     trpc.groups.expenses.create.useMutation()
@@ -34,7 +41,7 @@ export function CreateExpenseForm({
   const utils = trpc.useUtils()
   const router = useRouter()
 
-  if (!group || !categories) return null
+  if (!group || !categories || (!duplicateOf && shortcutsPending)) return null
   // The form reads its starting values once, so it waits for the expense it copies. One that has
   // gone since — deleted on another phone — leaves an ordinary blank form.
   if (duplicateOf && !template && !templateMissing) return null
