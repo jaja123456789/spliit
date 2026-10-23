@@ -401,7 +401,9 @@ test('evenly chips re-divide when someone is dropped', async ({ page }) => {
 
   // And the expense saves with only the two who are still on it.
   await page.locator('button[type="submit"]').first().click()
-  await page.waitForURL(/\/groups\/[^/]+/)
+  // The list, not just any group URL: the create page's own URL matches `/groups/<id>`, so that
+  // returned at once and the Balances click raced the navigation the save had started.
+  await page.waitForURL(/\/groups\/[^/]+\/expenses$/)
   await navigateToTab(page, 'Balances')
   await expect(page.getByTestId('balance-row-Bob')).toContainText('$0.00')
 })
