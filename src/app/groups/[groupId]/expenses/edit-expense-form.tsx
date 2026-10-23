@@ -2,6 +2,7 @@
 import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { trpc } from '@/trpc/client'
 import { useRouter } from 'next/navigation'
+import { ExpenseComments } from './expense-comments'
 import { ExpenseForm } from './expense-form'
 import { useDeleteExpense } from './use-delete-expense'
 
@@ -36,27 +37,35 @@ export function EditExpenseForm({
   if (!group || !categories || !expense) return null
 
   return (
-    <ExpenseForm
-      group={group}
-      expense={expense}
-      categories={categories}
-      onSubmit={async (expenseFormValues, participantId) => {
-        await updateExpenseMutateAsync({
-          expenseId,
-          groupId,
-          expenseFormValues,
-          participantId,
-        })
-        // The whole group: totals, Stats, Balances and Activity all moved with this expense.
-        utils.groups.invalidate()
-        router.push(`/groups/${group.id}`)
-      }}
-      onDelete={async (participantId) => {
-        // Offers Undo in a toast, which stays up on the list this goes back to.
-        await deleteExpense({ expenseId, title: expense.title, participantId })
-        router.push(`/groups/${group.id}`)
-      }}
-      runtimeFeatureFlags={runtimeFeatureFlags}
-    />
+    <>
+      <ExpenseForm
+        group={group}
+        expense={expense}
+        categories={categories}
+        onSubmit={async (expenseFormValues, participantId) => {
+          await updateExpenseMutateAsync({
+            expenseId,
+            groupId,
+            expenseFormValues,
+            participantId,
+          })
+          // The whole group: totals, Stats, Balances and Activity all moved with this expense.
+          utils.groups.invalidate()
+          router.push(`/groups/${group.id}`)
+        }}
+        onDelete={async (participantId) => {
+          // Offers Undo in a toast, which stays up on the list this goes back to.
+          await deleteExpense({
+            expenseId,
+            title: expense.title,
+            participantId,
+          })
+          router.push(`/groups/${group.id}`)
+        }}
+        runtimeFeatureFlags={runtimeFeatureFlags}
+      />
+      {/* Beside the form, not in it: a form inside a form is not one. */}
+      <ExpenseComments groupId={groupId} expenseId={expenseId} />
+    </>
   )
 }

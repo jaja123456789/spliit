@@ -1,0 +1,20 @@
+-- AlterEnum
+ALTER TYPE "ActivityType" ADD VALUE 'COMMENT_EXPENSE';
+
+-- CreateTable
+CREATE TABLE "ExpenseComment" (
+    "id" TEXT NOT NULL,
+    "expenseId" TEXT NOT NULL,
+    "participantId" TEXT,
+    "text" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ExpenseComment_pkey" PRIMARY KEY ("id")
+);
+
+-- AddForeignKey
+ALTER TABLE "ExpenseComment" ADD CONSTRAINT "ExpenseComment_expenseId_fkey" FOREIGN KEY ("expenseId") REFERENCES "Expense"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ExpenseComment" ADD CONSTRAINT "ExpenseComment_participantId_fkey" FOREIGN KEY ("participantId") REFERENCES "Participant"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+

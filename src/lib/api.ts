@@ -3,6 +3,7 @@ import {
   decodeActivityData,
   describeExpenseChanges,
   encodeActivityData,
+  encodeCommentActivityData,
   encodeDeletedActivityData,
   encodeRecurringActivityData,
   encodeRestoredActivityData,
@@ -259,6 +260,14 @@ function snapshotOf(
       participantIds,
     })),
     documentIds: expense.documents.map((document) => document.id),
+    comments: expense.comments.map(
+      ({ id, participantId, text, createdAt }) => ({
+        id,
+        participantId,
+        text,
+        createdAt: createdAt.toISOString(),
+      }),
+    ),
     recurringLink: expense.recurringExpenseLink
       ? {
           id: expense.recurringExpenseLink.id,
@@ -366,6 +375,22 @@ export async function restoreExpense(
           items: { createMany: { data: snapshot.items } },
         },
       })
+      // Comments went with the expense. One whose author has left the group since comes back
+      // as from "someone", as it would have read had it stayed.
+      if (snapshot.comments?.length) {
+        await tx.expenseComment.createMany({
+          data: snapshot.comments.map((comment) => ({
+            id: comment.id,
+            expenseId: snapshot.id,
+            participantId:
+              comment.participantId && present.has(comment.participantId)
+                ? comment.participantId
+                : null,
+            text: comment.text,
+            createdAt: new Date(comment.createdAt),
+          })),
+        })
+      }
       // Their relation only cleared on delete, so the rows are still there — unless another
       // expense has taken one since, which this leaves be.
       await tx.expenseDocument.updateMany({
@@ -797,7 +822,7 @@ export async function getGroupExpenses(
       splitMode: true,
       recurrenceRule: true,
       title: true,
-      _count: { select: { documents: true } },
+      _count: { select: { documents: true, comments: true } },
     },
     where,
     orderBy: [{ expenseDate: 'desc' }, { createdAt: 'desc' }],
@@ -855,7 +880,7 @@ export async function getAllGroupExpenses(
   if (expenses.length === 0) return []
 
   const expenseIds = expenses.map((expense) => expense.id)
-  const [payers, shares, documentCounts] = await Promise.all([
+  const [payers, shares, documentCounts, commentCounts] = await Promise.all([
     prisma.expensePaidBy.findMany({
       where: { expenseId: { in: expenseIds } },
       select: { expenseId: true, amount: true, participantId: true },
@@ -869,6 +894,11 @@ export async function getAllGroupExpenses(
       where: { expenseId: { in: expenseIds } },
       _count: { _all: true },
     }),
+    prisma.expenseComment.groupBy({
+      by: ['expenseId'],
+      where: { expenseId: { in: expenseIds } },
+      _count: { _all: true },
+    }),
   ])
 
   const participantById = new Map(participants.map((p) => [p.id, p]))
@@ -877,6 +907,9 @@ export async function getAllGroupExpenses(
   const categoryById = new Map(categories.map((c) => [c.id, c]))
   const documentsByExpense = new Map(
     documentCounts.map((row) => [row.expenseId, row._count._all]),
+  )
+  const commentsByExpense = new Map(
+    commentCounts.map((row) => [row.expenseId!, row._count._all]),
   )
   const group = <Row extends { expenseId: string }>(rows: Row[]) => {
     const byExpense = new Map<string, Row[]>()
@@ -902,7 +935,10 @@ export async function getAllGroupExpenses(
       participant: participant(share.participantId),
       shares: share.shares,
     })),
-    _count: { documents: documentsByExpense.get(expense.id) ?? 0 },
+    _count: {
+      documents: documentsByExpense.get(expense.id) ?? 0,
+      comments: commentsByExpense.get(expense.id) ?? 0,
+    },
   }))
 }
 
@@ -1040,6 +1076,67 @@ export async function getExpenseShortcuts(groupId: string, limit = 6) {
     .map(({ latest, ...entry }) => entry)
 }
 
+/** An expense's comments, oldest first — a conversation reads downwards. */
+export async function getExpenseComments(groupId: string, expenseId: string) {
+  return prisma.expenseComment.findMany({
+    where: { expenseId, expense: { groupId } },
+    orderBy: { createdAt: 'asc' },
+    select: { id: true, text: true, createdAt: true, participantId: true },
+  })
+}
+
+export class CommentError extends Error {
+  constructor(readonly reason: 'expenseNotFound' | 'invalidParticipant') {
+    super(`Cannot comment: ${reason}`)
+  }
+}
+
+/** Adds a comment to an expense of this group, and a line to the activity feed saying so. */
+export async function createExpenseComment(
+  groupId: string,
+  expenseId: string,
+  text: string,
+  participantId?: string,
+) {
+  const expense = await prisma.expense.findUnique({
+    where: { id: expenseId, groupId },
+    select: { title: true },
+  })
+  if (!expense) throw new CommentError('expenseNotFound')
+  if (participantId) {
+    const participant = await prisma.participant.findFirst({
+      where: { id: participantId, groupId },
+      select: { id: true },
+    })
+    if (!participant) throw new CommentError('invalidParticipant')
+  }
+
+  return prisma.$transaction(async (tx) => {
+    await logActivity(
+      groupId,
+      ActivityType.COMMENT_EXPENSE,
+      {
+        participantId,
+        expenseId,
+        data: encodeCommentActivityData(expense.title, text),
+      },
+      tx,
+    )
+    return tx.expenseComment.create({
+      data: { id: randomId(), expenseId, participantId, text },
+      select: { id: true, text: true, createdAt: true, participantId: true },
+    })
+  })
+}
+
+/** Removes a comment, provided it belongs to an expense of this group. */
+export async function deleteExpenseComment(groupId: string, commentId: string) {
+  const { count } = await prisma.expenseComment.deleteMany({
+    where: { id: commentId, expense: { groupId } },
+  })
+  return { deleted: count > 0 }
+}
+
 export async function getGroupExpenseCount(groupId: string) {
   return prisma.expense.count({ where: { groupId } })
 }
@@ -1096,6 +1193,7 @@ export async function getExpense(groupId: string, expenseId: string) {
       documents: true,
       recurringExpenseLink: true,
       items: true,
+      comments: true,
     },
   })
 }

@@ -15,6 +15,7 @@ import { getBalances } from '@/lib/balances'
 import { Currency, getCurrency } from '@/lib/currency'
 import { useActiveUser } from '@/lib/hooks'
 import { cn, toDateInputValue } from '@/lib/utils'
+import { MessageSquare } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { Fragment, ReactNode, useState } from 'react'
@@ -107,6 +108,7 @@ export function ExpenseCard({
   participantCount,
 }: Props) {
   const locale = useLocale()
+  const tComments = useTranslations('ExpenseComments')
   const activeUserId = useActiveUser(groupId)
   const [sheetOpen, setSheetOpen] = useState(false)
   const longPress = useLongPress(() => setSheetOpen(true))
@@ -170,8 +172,23 @@ export function ExpenseCard({
               >
                 {expense.title}
               </div>
-              <div className="shrink-0 text-xs text-subtle-foreground">
+              <div className="flex shrink-0 items-center gap-2 text-xs text-subtle-foreground">
                 <DocumentsCount count={expense._count.documents} />
+                {expense._count.comments > 0 && (
+                  <span
+                    className="flex items-center"
+                    aria-label={tComments('count', {
+                      count: expense._count.comments,
+                    })}
+                    data-testid="expense-comment-count"
+                  >
+                    <MessageSquare
+                      className="mr-1 mt-0.5 h-3.5 w-3.5"
+                      aria-hidden
+                    />
+                    {expense._count.comments}
+                  </span>
+                )}
               </div>
             </div>
             <div className="shrink-0" data-testid="expense-amount">

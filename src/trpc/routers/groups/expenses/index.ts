@@ -1,4 +1,5 @@
 import { createTRPCRouter } from '@/trpc/init'
+import { expenseCommentsRouter } from '@/trpc/routers/groups/expenses/comments'
 import { createGroupExpenseProcedure } from '@/trpc/routers/groups/expenses/create.procedure'
 import { deleteGroupExpenseProcedure } from '@/trpc/routers/groups/expenses/delete.procedure'
 import { getGroupExpenseFacetsProcedure } from '@/trpc/routers/groups/expenses/facets.procedure'
@@ -19,4 +20,5 @@ export const groupExpensesRouter = createTRPCRouter({
   update: updateGroupExpenseProcedure,
   delete: deleteGroupExpenseProcedure,
   restore: restoreGroupExpenseProcedure,
+  comments: expenseCommentsRouter,
 })

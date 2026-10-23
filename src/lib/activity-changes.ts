@@ -46,6 +46,13 @@ export type DeletedExpenseSnapshot = {
   items: { id: string; name: string; price: number; participantIds: string[] }[]
   /** Documents outlive their expense (the relation only clears), so ids are enough. */
   documentIds: string[]
+  /** Absent from copies made before comments existed. */
+  comments?: {
+    id: string
+    participantId: string | null
+    text: string
+    createdAt: string
+  }[]
   recurringLink: {
     id: string
     nextExpenseCreatedAt: string | null
@@ -62,6 +69,8 @@ type ActivityData = {
   deleted?: DeletedExpenseSnapshot
   /** Set on the creation a restore records. */
   restored?: true
+  /** Set on a comment: what was said. */
+  comment?: string
 }
 
 export function encodeActivityData(
@@ -98,6 +107,17 @@ export function encodeDeletedActivityData(
   } satisfies ActivityData)
 }
 
+export function encodeCommentActivityData(
+  title: string,
+  comment: string,
+): string {
+  return JSON.stringify({
+    title,
+    changes: [],
+    comment,
+  } satisfies ActivityData)
+}
+
 export function encodeRestoredActivityData(title: string): string {
   return JSON.stringify({
     title,
@@ -112,6 +132,7 @@ export function decodeActivityData(data: string | null | undefined): {
   occurrences?: number
   deleted?: DeletedExpenseSnapshot
   restored?: true
+  comment?: string
 } {
   if (!data) return { title: '', changes: [] }
   if (!data.startsWith('{')) return { title: data, changes: [] }
@@ -130,6 +151,9 @@ export function decodeActivityData(data: string | null | undefined): {
         ? { deleted: parsed.deleted }
         : {}),
       ...(parsed.restored === true ? { restored: true as const } : {}),
+      ...(typeof parsed.comment === 'string'
+        ? { comment: parsed.comment }
+        : {}),
     }
   } catch {
     // A title that merely happens to start with "{" is not a crash.

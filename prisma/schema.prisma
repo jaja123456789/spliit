@@ -32,6 +32,7 @@ model Participant {
   groupId                  String
   expensesPaidBy           ExpensePaidBy[]
   expensesPaidFor          ExpensePaidFor[]
+  comments                 ExpenseComment[]
   activeSyncedGroupsForUser SyncedGroup[]
   paymentProfile           Json?            @db.JsonB // Structure: { venmo: string, paypal: string, cashapp: string, revolut: string }
 }
@@ -68,6 +69,19 @@ model Expense {
   recurringExpenseLinkId String?
 
   items                  ExpenseItem[]
+  comments               ExpenseComment[]
+}
+
+/// A note on an expense — "was this the whole bill?" — from whoever was "you" on the device.
+model ExpenseComment {
+  id            String       @id
+  expense       Expense      @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  expenseId     String
+  // Kept when its author leaves the group; it then reads as from "someone".
+  participant   Participant? @relation(fields: [participantId], references: [id], onDelete: SetNull)
+  participantId String?
+  text          String
+  createdAt     DateTime     @default(now())
 }
 
 model ExpenseItem {
@@ -154,6 +168,7 @@ enum ActivityType {
   CREATE_EXPENSE
   UPDATE_EXPENSE
   DELETE_EXPENSE
+  COMMENT_EXPENSE
 }
 
 // NextAuth models

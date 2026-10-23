@@ -58,6 +58,8 @@ function useSummary(activity: Activity, participantName?: string) {
     return <>{tr('expenseUpdated')}</>
   } else if (activity.activityType == ActivityType.DELETE_EXPENSE) {
     return <>{tr('expenseDeleted')}</>
+  } else if (activity.activityType == ActivityType.COMMENT_EXPENSE) {
+    return <>{tr('expenseCommented')}</>
   }
 }
 
@@ -77,7 +79,7 @@ export function ActivityItem({
 
   const expenseExists = activity.expense !== undefined
   const summary = useSummary(activity, participant?.name)
-  const { changes, deleted } = decodeActivityData(activity.data)
+  const { changes, deleted, comment } = decodeActivityData(activity.data)
   // A deletion that kept a copy of the expense, which is not back yet.
   const restorable =
     activity.activityType === ActivityType.DELETE_EXPENSE &&
@@ -112,6 +114,11 @@ export function ActivityItem({
       </div>
       <div className="flex-1">
         <div className="m-1">{summary}</div>
+        {comment && (
+          <p className="m-1 mt-0 line-clamp-3 whitespace-pre-wrap text-xs text-muted-foreground">
+            &ldquo;{comment}&rdquo;
+          </p>
+        )}
         {changes.length > 0 && (
           <ul className="m-1 mt-0 flex flex-col gap-0.5 text-xs text-muted-foreground">
             {changes.map((change, index) => (
