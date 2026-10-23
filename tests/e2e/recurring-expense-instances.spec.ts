@@ -192,8 +192,11 @@ test.describe('Recurring Expense Instances', () => {
 
     // Navigate to group and reload to trigger instance creation
     await navigateToGroup(page, groupId)
+    // Listening before the reload: the list can answer before `reload()` returns, and a wait
+    // started after it would never see it.
+    const listed = page.waitForResponse('**groups.expenses.list**')
     await page.reload()
-    await page.waitForResponse('**groups.expenses.list**')
+    await listed
 
     // Verify both expenses created new instances
     const updatedCount1 = await prisma.expense.count({

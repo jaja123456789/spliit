@@ -883,5 +883,15 @@
   },
   "Calculator": {
     "open": "Open calculator"
+  },
+  "Offline": {
+    "banner": "You are offline. New expenses will be added once you are back online.",
+    "queued": "Saved on this device",
+    "queuedDescription": "It will be added to the group as soon as you are back online.",
+    "flushed": "{count, plural, one {# expense} other {# expenses}} added from this device",
+    "pendingTitle": "Waiting to be added",
+    "pending": "Waiting for a connection",
+    "pendingError": "Could not be added: {error}",
+    "discard": "Discard"
   }
 }

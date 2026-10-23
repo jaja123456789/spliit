@@ -9,10 +9,20 @@ export const createGroupExpenseProcedure = baseProcedure
       groupId: z.string().min(1),
       expenseFormValues: expenseFormSchema,
       participantId: z.string().optional(),
+      /**
+       * Chosen by the client so that sending the same expense twice creates it once: an expense
+       * added offline is retried from the outbox until an answer gets back.
+       */
+      expenseId: z
+        .string()
+        .regex(/^[A-Za-z0-9_-]{10,40}$/)
+        .optional(),
     }),
   )
   .mutation(
-    async ({ input: { groupId, expenseFormValues, participantId } }) => {
+    async ({
+      input: { groupId, expenseFormValues, participantId, expenseId },
+    }) => {
       const cleanedPayers = expenseFormValues.paidBy.filter(
         (p) => Number(p.amount) !== 0,
       )
@@ -22,6 +32,7 @@ export const createGroupExpenseProcedure = baseProcedure
         expenseFormValues,
         groupId,
         participantId,
+        { expenseId },
       )
       return { expenseId: expense.id }
     },

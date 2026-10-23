@@ -3,6 +3,7 @@
 import { clearAllLocalGroupsData } from '@/app/groups/recent-groups-helpers'
 import { useToast } from '@/components/ui/use-toast'
 import { seedActiveUser } from '@/lib/active-user'
+import { isNetworkError } from '@/lib/network-error'
 import { trpc } from '@/trpc/client'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useSession } from 'next-auth/react'
@@ -107,8 +108,8 @@ export function GroupsProvider({ children }: PropsWithChildren) {
         }
         return mergeGroups(localData, cloudGroups)
       } catch (error) {
-        if (isUnauthorizedError(error)) {
-          // If the token is invalid, we just return local data
+        // An invalid token, or no network at all: this device's own list is still the list.
+        if (isUnauthorizedError(error) || isNetworkError(error)) {
           return localData
         }
         throw error

@@ -1,6 +1,11 @@
 'use client'
+import { useToast } from '@/components/ui/use-toast'
 import { RuntimeFeatureFlags } from '@/lib/featureFlags'
+import { isNetworkError } from '@/lib/network-error'
+import { enqueueExpense } from '@/lib/outbox'
+import { randomId } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
+import { useTranslations } from 'next-intl'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ExpenseForm } from './expense-form'
 
@@ -40,6 +45,8 @@ export function CreateExpenseForm({
 
   const utils = trpc.useUtils()
   const router = useRouter()
+  const { toast } = useToast()
+  const tOffline = useTranslations('Offline')
 
   if (!group || !categories || (!duplicateOf && shortcutsPending)) return null
   // The form reads its starting values once, so it waits for the expense it copies. One that has
@@ -54,15 +61,42 @@ export function CreateExpenseForm({
       categories={categories}
       template={template}
       onSubmit={async (expenseFormValues, participantId) => {
-        await createExpenseMutateAsync({
-          groupId,
-          expenseFormValues,
-          participantId,
-        })
+        // Chosen here so that the outbox can send it again without making two.
+        const expenseId = randomId()
+        const queue = () => {
+          enqueueExpense({
+            id: expenseId,
+            groupId,
+            values: expenseFormValues,
+            participantId,
+          })
+          toast({
+            title: tOffline('queued'),
+            description: tOffline('queuedDescription'),
+          })
+        }
+        if (!navigator.onLine) {
+          queue()
+        } else {
+          try {
+            await createExpenseMutateAsync({
+              groupId,
+              expenseFormValues,
+              participantId,
+              expenseId,
+            })
+          } catch (error) {
+            // A refusal is the form's to show; only a request that never arrived waits its turn.
+            if (!isNetworkError(error)) throw error
+            queue()
+          }
+        }
         // Everything about the group, not just the list: the totals above it, Stats, Balances and
         // Activity are their own queries and were left showing the group without this expense.
         utils.groups.invalidate()
-        router.push(`/groups/${group.id}`)
+        // The list itself, not the group's address: that redirects, and a redirect is not saved
+        // for offline use.
+        router.push(`/groups/${group.id}/expenses`)
       }}
       runtimeFeatureFlags={runtimeFeatureFlags}
     />

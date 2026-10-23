@@ -57,13 +57,32 @@ export async function createGroup(groupFormValues: GroupFormValues) {
   })
 }
 
+/**
+ * @param options.expenseId The new expense's id, when the caller chose it. Creating the same id
+ * again in the same group returns the expense already there — no second copy, no second activity
+ * line or notification — which is what makes retrying a create safe. An id taken in another group
+ * is an error.
+ */
 export async function createExpense(
   expenseFormValues: ExpenseFormValues,
   groupId: string,
   participantId?: string,
+  options?: { expenseId?: string },
 ): Promise<Expense> {
   const group = await getGroup(groupId)
   if (!group) throw new Error(`Invalid group ID: ${groupId}`)
+
+  const alreadyCreated = async () => {
+    if (!options?.expenseId) return null
+    const existing = await prisma.expense.findUnique({
+      where: { id: options.expenseId },
+    })
+    if (existing && existing.groupId !== groupId)
+      throw new Error(`Expense ID already in use: ${options.expenseId}`)
+    return existing
+  }
+  const existing = await alreadyCreated()
+  if (existing) return existing
 
   const groupCurrency = getCurrencyFromGroup(group)
 
@@ -86,7 +105,7 @@ export async function createExpense(
       participantIds: item.participantIds,
     })) || []
 
-  const expenseId = randomId()
+  const expenseId = options?.expenseId ?? randomId()
 
   const isCreateRecurrence =
     expenseFormValues.recurrenceRule !== RecurrenceRule.NONE
@@ -96,82 +115,95 @@ export async function createExpense(
     groupId,
   )
 
-  const expense = await prisma.$transaction(async (tx) => {
-    await logActivity(
-      groupId,
-      ActivityType.CREATE_EXPENSE,
-      { participantId, expenseId, data: expenseFormValues.title },
-      tx,
-    )
-    return tx.expense.create({
-      data: {
-        id: expenseId,
+  let expense: Expense
+  try {
+    expense = await prisma.$transaction(async (tx) => {
+      await logActivity(
         groupId,
-        expenseDate: expenseFormValues.expenseDate,
-        categoryId: expenseFormValues.category,
-        amount: amountAsMinorUnits(
-          Number(expenseFormValues.amount),
-          groupCurrency,
-        ),
-        // Stored in minor units of the currency the expense was entered in.
-        originalAmount: expenseFormValues.originalAmount
-          ? amountAsMinorUnits(
-              Number(expenseFormValues.originalAmount),
-              getCurrency(expenseFormValues.originalCurrency),
-            )
-          : null,
-        originalCurrency: expenseFormValues.originalCurrency,
-        conversionRate: expenseFormValues.conversionRate,
-        title: expenseFormValues.title,
-        splitMode: expenseFormValues.splitMode,
-        recurrenceRule: expenseFormValues.recurrenceRule,
-        recurringExpenseLink: {
-          ...(isCreateRecurrence
-            ? {
-                create: recurringExpenseLinkPayload,
-              }
-            : {}),
-        },
-        paidBy: {
-          createMany: {
-            data: expenseFormValues.paidBy.map((pb) => ({
-              participantId: pb.participant,
-              amount: amountAsMinorUnits(Number(pb.amount), groupCurrency),
-            })),
+        ActivityType.CREATE_EXPENSE,
+        { participantId, expenseId, data: expenseFormValues.title },
+        tx,
+      )
+      return tx.expense.create({
+        data: {
+          id: expenseId,
+          groupId,
+          expenseDate: expenseFormValues.expenseDate,
+          categoryId: expenseFormValues.category,
+          amount: amountAsMinorUnits(
+            Number(expenseFormValues.amount),
+            groupCurrency,
+          ),
+          // Stored in minor units of the currency the expense was entered in.
+          originalAmount: expenseFormValues.originalAmount
+            ? amountAsMinorUnits(
+                Number(expenseFormValues.originalAmount),
+                getCurrency(expenseFormValues.originalCurrency),
+              )
+            : null,
+          originalCurrency: expenseFormValues.originalCurrency,
+          conversionRate: expenseFormValues.conversionRate,
+          title: expenseFormValues.title,
+          splitMode: expenseFormValues.splitMode,
+          recurrenceRule: expenseFormValues.recurrenceRule,
+          recurringExpenseLink: {
+            ...(isCreateRecurrence
+              ? {
+                  create: recurringExpenseLinkPayload,
+                }
+              : {}),
           },
-        },
-        paidFor: {
-          createMany: {
-            data: expenseFormValues.paidFor.map((pf) => ({
-              participantId: pf.participant,
-              // Shares are stored as integers (cents if splitMode is BY_AMOUNT)
-              shares:
-                expenseFormValues.splitMode === 'BY_AMOUNT'
-                  ? amountAsMinorUnits(Number(pf.shares), groupCurrency)
-                  : Math.round(Number(pf.shares) * 100),
-            })),
+          paidBy: {
+            createMany: {
+              data: expenseFormValues.paidBy.map((pb) => ({
+                participantId: pb.participant,
+                amount: amountAsMinorUnits(Number(pb.amount), groupCurrency),
+              })),
+            },
           },
-        },
-        isReimbursement: expenseFormValues.isReimbursement,
-        items: {
-          createMany: {
-            data: itemData,
+          paidFor: {
+            createMany: {
+              data: expenseFormValues.paidFor.map((pf) => ({
+                participantId: pf.participant,
+                // Shares are stored as integers (cents if splitMode is BY_AMOUNT)
+                shares:
+                  expenseFormValues.splitMode === 'BY_AMOUNT'
+                    ? amountAsMinorUnits(Number(pf.shares), groupCurrency)
+                    : Math.round(Number(pf.shares) * 100),
+              })),
+            },
           },
-        },
-        documents: {
-          createMany: {
-            data: expenseFormValues.documents.map((doc) => ({
-              id: randomId(),
-              url: doc.url,
-              width: doc.width,
-              height: doc.height,
-            })),
+          isReimbursement: expenseFormValues.isReimbursement,
+          items: {
+            createMany: {
+              data: itemData,
+            },
           },
+          documents: {
+            createMany: {
+              data: expenseFormValues.documents.map((doc) => ({
+                id: randomId(),
+                url: doc.url,
+                width: doc.width,
+                height: doc.height,
+              })),
+            },
+          },
+          notes: expenseFormValues.notes,
         },
-        notes: expenseFormValues.notes,
-      },
+      })
     })
-  })
+  } catch (error) {
+    // The same id arriving twice at once — two tabs flushing one outbox. The other one won.
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2002'
+    ) {
+      const winner = await alreadyCreated()
+      if (winner) return winner
+    }
+    throw error
+  }
 
   const amountInMinorUnits = amountAsMinorUnits(
     Number(expenseFormValues.amount),

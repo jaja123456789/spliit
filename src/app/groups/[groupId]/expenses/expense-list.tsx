@@ -6,6 +6,10 @@ import {
   useExpenseListFilters,
 } from '@/app/groups/[groupId]/expenses/expense-filters-bar'
 import { ExpenseListTotal } from '@/app/groups/[groupId]/expenses/expense-list-total'
+import {
+  PendingExpenses,
+  useWarmOffline,
+} from '@/app/groups/[groupId]/expenses/pending-expenses'
 import { ShareButton } from '@/app/groups/[groupId]/share-button'
 import { Money } from '@/components/money'
 import { Button } from '@/components/ui/button'
@@ -14,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { NEW_GROUP_ACTIVE_USER_KEY, writeActiveUser } from '@/lib/active-user'
 import { ExpenseFilters, hasActiveFilters } from '@/lib/expense-filters'
 import { useActiveUserState } from '@/lib/hooks'
+import { useOutbox } from '@/lib/outbox'
 import {
   cn,
   formatDateOnly,
@@ -150,6 +155,8 @@ const ExpenseListForSearch = ({
   const { ref: loadingRef, inView } = useInView()
 
   const filtered = hasActiveFilters(filters)
+  const pending = useOutbox(groupId)
+  useWarmOffline(groupId)
   const {
     data,
     isLoading: expensesAreLoading,
@@ -213,7 +220,8 @@ const ExpenseListForSearch = ({
   // A group with no expenses is nearly always a group nobody has been invited to yet, so that is
   // what it offers — rather than a sentence about the absence of expenses under a search box that
   // has nothing to search. Adding an expense stays available; it is just not the first move.
-  if (expenses.length === 0)
+  // Not when one is waiting to be sent: that group is not empty, it is offline.
+  if (expenses.length === 0 && pending.length === 0)
     return (
       <div className="px-4 sm:px-6 py-10 text-center">
         <p className="text-base font-medium">{tEmpty('title')}</p>
@@ -265,6 +273,9 @@ const ExpenseListForSearch = ({
     <>
       {searchBar}
       {filtered && <FilterSummary groupId={groupId} filters={filters} />}
+      {pending.length > 0 && (
+        <PendingExpenses items={pending} currency={currency} />
+      )}
       <div
         className={cn('transition-opacity', isPlaceholderData && 'opacity-50')}
         aria-busy={isPlaceholderData}

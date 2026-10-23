@@ -2,7 +2,7 @@
 import { Prisma } from '@prisma/client'
 import type { QueryClient } from '@tanstack/react-query'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { httpBatchLink } from '@trpc/client'
+import { httpBatchLink, httpLink, splitLink } from '@trpc/client'
 import { createTRPCReact } from '@trpc/react-query'
 import { addBasePath } from 'next/dist/client/add-base-path'
 import { useState } from 'react'
@@ -59,9 +59,13 @@ export function TRPCProvider(
   const [trpcClient] = useState(() =>
     trpc.createClient({
       links: [
-        httpBatchLink({
-          transformer: superjson,
-          url: getUrl(),
+        // Reads one request each, writes batched. A batched read's address is whichever queries
+        // happened to start in the same tick, so the service worker could not find a saved answer
+        // for the same screen twice; one query, one address, and it can.
+        splitLink({
+          condition: (op) => op.type === 'query',
+          true: httpLink({ transformer: superjson, url: getUrl() }),
+          false: httpBatchLink({ transformer: superjson, url: getUrl() }),
         }),
       ],
     }),

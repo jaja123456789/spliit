@@ -66,6 +66,25 @@ export function useMediaQueryAfterHydration(query: string): boolean {
   )
 }
 
+/**
+ * Whether the browser believes it has a network. `true` while hydrating, as the server rendered
+ * it, so an offline load does not disagree with its own HTML.
+ */
+export function useOnline(): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      window.addEventListener('online', onChange)
+      window.addEventListener('offline', onChange)
+      return () => {
+        window.removeEventListener('online', onChange)
+        window.removeEventListener('offline', onChange)
+      }
+    },
+    () => navigator.onLine,
+    () => true,
+  )
+}
+
 export function useMobilePopoverState(
   open: boolean,
   setOpen: (open: boolean) => void,

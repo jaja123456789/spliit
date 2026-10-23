@@ -2,7 +2,10 @@ import { ApplePwaSplash } from '@/app/apple-pwa-splash'
 import { AuthProvider } from '@/components/auth-provider'
 import { EnvProvider } from '@/components/env-provider'
 import { LocaleSwitcher } from '@/components/locale-switcher'
+import { OfflineBanner } from '@/components/offline-banner'
+import { OutboxFlusher } from '@/components/outbox-flusher'
 import { ProgressBar } from '@/components/progress-bar'
+import { ServiceWorkerRegistration } from '@/components/service-worker-registration'
 import { ThemeColor } from '@/components/theme-color'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -182,9 +185,11 @@ function Content({ children }: { children: React.ReactNode }) {
             tabIndex={-1}
             className="pt-16 flex-1 flex flex-col outline-none"
           >
+            <OfflineBanner />
             {children}
           </div>
 
+          <OutboxFlusher />
           <Toaster />
         </GroupsProvider>
       </AuthProvider>
@@ -227,6 +232,7 @@ export default async function RootLayout({
                 <ProgressBar />
               </Suspense>
               <ThemeColor />
+              <ServiceWorkerRegistration />
               <Content>{children}</Content>
             </EnvProvider>
           </ThemeProvider>
