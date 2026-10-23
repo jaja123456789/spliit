@@ -51,7 +51,7 @@ import {
   ImagePlus,
   Info,
   Loader2,
-  Receipt,
+  ScanLine,
   Trash2,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
@@ -119,12 +119,15 @@ export function CreateFromReceiptButton({
       onOpenChange={setOpen}
       trigger={
         trigger ?? (
+          // Its own glyph: this was `Receipt`, the Expenses tab's icon, on the same screen.
           <Button
-            size="icon"
             variant="secondary"
             title={t('Dialog.triggerTitle')}
+            aria-label={t('Dialog.triggerTitle')}
+            className="h-10 w-10 gap-2 p-0 xl:w-auto xl:px-3"
           >
-            <Receipt className="w-4 h-4" />
+            <ScanLine className="w-4 h-4" />
+            <span className="hidden xl:inline">{t('scanEntry')}</span>
           </Button>
         )
       }

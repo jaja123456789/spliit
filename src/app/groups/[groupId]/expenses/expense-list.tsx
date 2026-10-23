@@ -29,7 +29,7 @@ import {
 import { trpc } from '@/trpc/client'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { keepPreviousData } from '@tanstack/react-query'
-import { Receipt } from 'lucide-react'
+import { ScanLine } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { ReactNode, forwardRef, useEffect, useMemo } from 'react'
@@ -242,7 +242,7 @@ const ExpenseListForSearch = ({
             <CreateFromReceiptButton
               trigger={
                 <Button variant="link" className="text-muted-foreground">
-                  <Receipt className="mr-2 h-4 w-4" />
+                  <ScanLine className="mr-2 h-4 w-4" />
                   {tReceipt('scanEntry')}
                 </Button>
               }

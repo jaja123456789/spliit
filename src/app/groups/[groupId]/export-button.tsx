@@ -16,8 +16,16 @@ export default function ExportButton({ groupId }: { groupId: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button title={t('export')} variant="secondary" size="icon">
+        {/* Words from 1280px, where the card has room for them beside the total; an icon with
+            its name as the accessible label and tooltip below that. */}
+        <Button
+          title={t('export')}
+          aria-label={t('export')}
+          variant="secondary"
+          className="h-10 w-10 gap-2 p-0 xl:w-auto xl:px-3"
+        >
           <Download className="w-4 h-4" />
+          <span className="hidden xl:inline">{t('export')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent>

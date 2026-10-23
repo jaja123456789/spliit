@@ -59,12 +59,17 @@ export default function GroupExpensesPageClient({
                   {enableReceiptExtract && <CreateFromReceiptButton />}
 
                   {/* Desktop Add Button (hidden on mobile to favor FAB) */}
-                  <Button asChild size="icon" className="hidden sm:inline-flex">
+                  <Button
+                    asChild
+                    className="hidden h-10 w-10 gap-2 p-0 sm:inline-flex xl:w-auto xl:px-3"
+                  >
                     <Link
                       href={`/groups/${groupId}/expenses/create`}
                       title={t('create')}
+                      aria-label={t('create')}
                     >
                       <Plus className="w-4 h-4" />
+                      <span className="hidden xl:inline">{t('create')}</span>
                     </Link>
                   </Button>
                 </>

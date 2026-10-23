@@ -27,7 +27,7 @@ import {
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { RecurrenceRule } from '@prisma/client'
-import { Receipt } from 'lucide-react'
+import { ScanLine } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
@@ -800,7 +800,7 @@ export function ExpenseForm({
                     className="-mt-1 -mb-3 h-11 w-full justify-center gap-2 text-sm font-normal text-muted-foreground hover:text-foreground sm:h-10"
                     data-testid="scan-receipt-in-form"
                   >
-                    <Receipt className="h-4 w-4" />
+                    <ScanLine className="h-4 w-4" />
                     {tReceipt('scanEntry')}
                   </Button>
                 }
