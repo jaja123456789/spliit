@@ -1,4 +1,4 @@
-import { getGroup, getGroupExpenses } from '@/lib/api'
+import { getAllGroupExpenses, getGroup } from '@/lib/api'
 import { bucketSpendingOverTime } from '@/lib/stats'
 import {
   calculateShares,
@@ -19,7 +19,7 @@ export const getGroupStatsProcedure = baseProcedure
   .query(async ({ input: { groupId, participantId } }) => {
     const [group, expenses] = await Promise.all([
       getGroup(groupId),
-      getGroupExpenses(groupId),
+      getAllGroupExpenses(groupId),
     ])
     if (!group) throw new Error(`Invalid group ID: ${groupId}`)
 

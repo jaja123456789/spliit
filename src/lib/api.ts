@@ -203,15 +203,26 @@ export async function deleteExpense(
   })
 }
 
+/**
+ * The participants who appear on any expense of the group — the ones group Settings will not let
+ * you remove. Asked of the database directly: this used to load the group's entire history with
+ * every relation, about 270 ms for a large group, to collect a handful of ids.
+ */
 export async function getGroupExpensesParticipants(groupId: string) {
-  const expenses = await getGroupExpenses(groupId)
+  const [payers, sharers] = await Promise.all([
+    prisma.expensePaidBy.findMany({
+      where: { expense: { groupId } },
+      select: { participantId: true },
+      distinct: ['participantId'],
+    }),
+    prisma.expensePaidFor.findMany({
+      where: { expense: { groupId } },
+      select: { participantId: true },
+      distinct: ['participantId'],
+    }),
+  ])
   return Array.from(
-    new Set(
-      expenses.flatMap((e) => [
-        ...e.paidBy.map((pb) => pb.participantId),
-        ...e.paidFor.map((pf) => pf.participant.id),
-      ]),
-    ),
+    new Set([...payers, ...sharers].map((row) => row.participantId)),
   )
 }
 
@@ -574,6 +585,102 @@ export async function getGroupExpenses(
     skip: options && options.offset,
     take: options && options.length,
   })
+}
+
+/**
+ * Every expense of a group, in exactly the shape `getGroupExpenses` returns, for the screens that
+ * add up the whole history: Balances, Stats and the total above the expense list.
+ *
+ * Those used `getGroupExpenses` itself, whose nested selects make Prisma assemble every payer and
+ * share as its own object graph — about 200 ms for a 1,935-expense group, when the same rows read
+ * flat take a few. This reads them flat and joins them here.
+ *
+ * The payers and shares are fetched with the same `expenseId IN (…)` the nested select issues, on
+ * purpose. The order those rows arrive in decides who gets the spare cent of an even split (ties go
+ * to the later participant, see `calculateShares`), and nothing in the schema fixes that order. A
+ * query shaped differently — joining on the group instead — came back in a different order for 10
+ * of 2,948 expenses on real data and moved cents between people. Same query shape, same order.
+ */
+export async function getAllGroupExpenses(
+  groupId: string,
+): Promise<Awaited<ReturnType<typeof getGroupExpenses>>> {
+  await createRecurringExpenses(groupId)
+  const [expenses, participants, categories] = await Promise.all([
+    prisma.expense.findMany({
+      select: {
+        amount: true,
+        originalAmount: true,
+        originalCurrency: true,
+        categoryId: true,
+        createdAt: true,
+        expenseDate: true,
+        id: true,
+        isReimbursement: true,
+        splitMode: true,
+        recurrenceRule: true,
+        title: true,
+      },
+      where: { groupId },
+      orderBy: [{ expenseDate: 'desc' }, { createdAt: 'desc' }],
+    }),
+    prisma.participant.findMany({
+      where: { groupId },
+      select: { id: true, name: true },
+    }),
+    getCategories(),
+  ])
+  if (expenses.length === 0) return []
+
+  const expenseIds = expenses.map((expense) => expense.id)
+  const [payers, shares, documentCounts] = await Promise.all([
+    prisma.expensePaidBy.findMany({
+      where: { expenseId: { in: expenseIds } },
+      select: { expenseId: true, amount: true, participantId: true },
+    }),
+    prisma.expensePaidFor.findMany({
+      where: { expenseId: { in: expenseIds } },
+      select: { expenseId: true, participantId: true, shares: true },
+    }),
+    prisma.expenseDocument.groupBy({
+      by: ['expenseId'],
+      where: { expenseId: { in: expenseIds } },
+      _count: { _all: true },
+    }),
+  ])
+
+  const participantById = new Map(participants.map((p) => [p.id, p]))
+  const participant = (id: string) =>
+    participantById.get(id) ?? { id, name: '' }
+  const categoryById = new Map(categories.map((c) => [c.id, c]))
+  const documentsByExpense = new Map(
+    documentCounts.map((row) => [row.expenseId, row._count._all]),
+  )
+  const group = <Row extends { expenseId: string }>(rows: Row[]) => {
+    const byExpense = new Map<string, Row[]>()
+    for (const row of rows) {
+      const list = byExpense.get(row.expenseId)
+      if (list) list.push(row)
+      else byExpense.set(row.expenseId, [row])
+    }
+    return byExpense
+  }
+  const payersByExpense = group(payers)
+  const sharesByExpense = group(shares)
+
+  return expenses.map(({ categoryId, ...expense }) => ({
+    ...expense,
+    category: categoryById.get(categoryId) ?? null,
+    paidBy: (payersByExpense.get(expense.id) ?? []).map((payer) => ({
+      amount: payer.amount,
+      participantId: payer.participantId,
+      participant: participant(payer.participantId),
+    })),
+    paidFor: (sharesByExpense.get(expense.id) ?? []).map((share) => ({
+      participant: participant(share.participantId),
+      shares: share.shares,
+    })),
+    _count: { documents: documentsByExpense.get(expense.id) ?? 0 },
+  }))
 }
 
 /**

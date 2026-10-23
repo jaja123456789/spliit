@@ -1,4 +1,4 @@
-import { getGroup, getGroupExpenses } from '@/lib/api' // Import getGroup
+import { getAllGroupExpenses, getGroup } from '@/lib/api'
 import {
   getBalances,
   getDirectReimbursements,
@@ -15,7 +15,7 @@ export const listGroupBalancesProcedure = baseProcedure
     const group = await getGroup(groupId)
     if (!group) throw new Error('Group not found')
 
-    const expenses = await getGroupExpenses(groupId)
+    const expenses = await getAllGroupExpenses(groupId)
     const balances = getBalances(expenses)
 
     // 2. Choose algorithm based on setting

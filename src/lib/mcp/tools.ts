@@ -1,4 +1,9 @@
-import { createExpense, getGroup, getGroupExpenses } from '@/lib/api'
+import {
+  createExpense,
+  getAllGroupExpenses,
+  getGroup,
+  getGroupExpenses,
+} from '@/lib/api'
 import {
   getBalances,
   getDirectReimbursements,
@@ -154,7 +159,7 @@ export async function getGroupBalances(
 ) {
   const { group, activeParticipantId } = await requireSyncedGroup(user, groupId)
   const currency = getCurrencyFromGroup(group)
-  const expenses = await getGroupExpenses(groupId)
+  const expenses = await getAllGroupExpenses(groupId)
   const balances = getBalances(expenses)
   const reimbursements = group.simplifyDebts
     ? getSuggestedReimbursements(balances)
