@@ -4,6 +4,11 @@ import {
   encodeRecurringActivityData,
 } from '@/lib/activity-changes'
 import { getBalances } from '@/lib/balances'
+import {
+  ExpenseFilters,
+  expenseFiltersWhere,
+  hasActiveFilters,
+} from '@/lib/expense-filters'
 import { prisma } from '@/lib/prisma'
 import { ExpenseFormValues, GroupFormValues } from '@/lib/schemas'
 import {
@@ -542,11 +547,30 @@ export async function getCategories() {
   return prisma.category.findMany()
 }
 
+/**
+ * The `where` for a group's expenses, narrowed by `filters` when any are set. The group's currency
+ * is only read when there is something to narrow by: it says what amount a number in the search
+ * means.
+ */
+async function groupExpensesWhere(
+  groupId: string,
+  filters?: ExpenseFilters,
+): Promise<Prisma.ExpenseWhereInput> {
+  if (!filters || !hasActiveFilters(filters)) return { groupId }
+  const group = await prisma.group.findUnique({
+    where: { id: groupId },
+    select: { currency: true, currencyCode: true },
+  })
+  const decimals = group ? getCurrencyFromGroup(group).decimal_digits : 2
+  return expenseFiltersWhere(groupId, filters, decimals)
+}
+
 export async function getGroupExpenses(
   groupId: string,
-  options?: { offset?: number; length?: number; filter?: string },
+  options?: { offset?: number; length?: number; filters?: ExpenseFilters },
 ) {
   await createRecurringExpenses(groupId)
+  const where = await groupExpensesWhere(groupId, options?.filters)
   return prisma.expense.findMany({
     select: {
       amount: true,
@@ -575,12 +599,7 @@ export async function getGroupExpenses(
       title: true,
       _count: { select: { documents: true } },
     },
-    where: {
-      groupId,
-      title: options?.filter
-        ? { contains: options.filter, mode: 'insensitive' }
-        : undefined,
-    },
+    where,
     orderBy: [{ expenseDate: 'desc' }, { createdAt: 'desc' }],
     skip: options && options.offset,
     take: options && options.length,
@@ -600,11 +619,15 @@ export async function getGroupExpenses(
  * to the later participant, see `calculateShares`), and nothing in the schema fixes that order. A
  * query shaped differently — joining on the group instead — came back in a different order for 10
  * of 2,948 expenses on real data and moved cents between people. Same query shape, same order.
+ *
+ * `filters` narrows it the way they narrow the list, for the figures summing up a search.
  */
 export async function getAllGroupExpenses(
   groupId: string,
+  filters?: ExpenseFilters,
 ): Promise<Awaited<ReturnType<typeof getGroupExpenses>>> {
   await createRecurringExpenses(groupId)
+  const where = await groupExpensesWhere(groupId, filters)
   const [expenses, participants, categories] = await Promise.all([
     prisma.expense.findMany({
       select: {
@@ -620,7 +643,7 @@ export async function getAllGroupExpenses(
         recurrenceRule: true,
         title: true,
       },
-      where: { groupId },
+      where,
       orderBy: [{ expenseDate: 'desc' }, { createdAt: 'desc' }],
     }),
     prisma.participant.findMany({
@@ -772,6 +795,44 @@ export async function getBalancesForGroups(
 
 export async function getGroupExpenseCount(groupId: string) {
   return prisma.expense.count({ where: { groupId } })
+}
+
+/**
+ * What the expense filters can offer for a group: the months that have expenses, newest first,
+ * and the categories in use, most used first — each with how many expenses it holds.
+ *
+ * A plain read, like `getBalancesForGroups`: it only furnishes a menu, so a recurring expense not
+ * yet materialised can wait for the list to do that.
+ */
+export async function getGroupExpenseFacets(groupId: string) {
+  const [days, categories] = await Promise.all([
+    prisma.expense.groupBy({
+      by: ['expenseDate'],
+      where: { groupId },
+      _count: { _all: true },
+    }),
+    prisma.expense.groupBy({
+      by: ['categoryId'],
+      where: { groupId },
+      _count: { _all: true },
+    }),
+  ])
+
+  const months = new Map<string, number>()
+  for (const day of days) {
+    // Date-only values are UTC midnights, so the UTC parts are the calendar day.
+    const month = day.expenseDate.toISOString().slice(0, 7)
+    months.set(month, (months.get(month) ?? 0) + day._count._all)
+  }
+
+  return {
+    months: Array.from(months, ([month, count]) => ({ month, count })).sort(
+      (a, b) => b.month.localeCompare(a.month),
+    ),
+    categories: categories
+      .map((row) => ({ id: row.categoryId, count: row._count._all }))
+      .sort((a, b) => b.count - a.count || a.id - b.id),
+  }
 }
 
 /**

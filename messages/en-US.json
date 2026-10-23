@@ -29,6 +29,7 @@
     "exportJson": "Export to JSON",
     "exportCsv": "Export to CSV",
     "searchPlaceholder": "Search for an expense…",
+    "searchClear": "Clear search",
     "ActiveUserModal": {
       "title": "Who are you?",
       "description": "Tell us which participant you are to let us customize how the information is displayed.",
@@ -50,12 +51,28 @@
       "invite": "Invite the others",
       "inviteHint": "Share the link so everyone can add what they paid for."
     },
-    "noResults": "No expense matches “{search}”."
+    "noResults": "No expense matches “{search}”.",
+    "Filters": {
+      "label": "Filters",
+      "paidBy": "Paid by",
+      "category": "Category",
+      "month": "Month",
+      "anyone": "Anyone",
+      "anyCategory": "Any category",
+      "anyTime": "Any time",
+      "clear": "Clear {filter}",
+      "clearAll": "Clear filters",
+      "noResults": "No expense matches these filters.",
+      "count": "{count, plural, one {# expense} other {# expenses}}",
+      "yourShare": "your share"
+    }
   },
   "ExpenseCard": {
     "paidBy": "Paid by <strong>{paidBy}</strong> for <paidFor></paidFor>",
+    "paidByOnly": "Paid by <strong>{paidBy}</strong>",
     "everyone": "everyone",
     "receivedBy": "Received by <strong>{paidBy}</strong> for <paidFor></paidFor>",
+    "receivedByOnly": "Received by <strong>{paidBy}</strong>",
     "yourBalance": "Your balance:",
     "notInvolved": "You are not involved"
   },

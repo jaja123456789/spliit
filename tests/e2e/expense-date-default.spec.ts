@@ -38,7 +38,10 @@ test.describe('Default expense date, east of UTC after midnight', () => {
     const row = page
       .locator('[data-testid^="expense-item-"]')
       .filter({ hasText: 'After midnight' })
-    await expect(row.getByTestId('expense-date')).toHaveText(/Oct 23, 2026/i)
+    // Dated today, local today: a slip back to the UTC day would make it "Yesterday".
+    const day = row.getByTestId('expense-date')
+    await expect(day).toHaveAttribute('datetime', '2026-10-23')
+    await expect(day).toHaveText('Today')
   })
 })
 

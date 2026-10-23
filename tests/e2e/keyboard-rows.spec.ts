@@ -25,7 +25,8 @@ test.describe('Keyboard access to rows', () => {
 
     const row = page.getByTestId(`expense-item-${expenseId}`)
     await expect(row).toBeVisible()
-    await page.getByPlaceholder(/search for an expense/i).focus()
+    // The filters come between the search box and the rows; the row is the next stop after them.
+    await page.getByTestId('filter-month').focus()
     await page.keyboard.press('Tab')
     await expect(row).toBeFocused()
 

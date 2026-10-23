@@ -124,7 +124,10 @@ test('Desktop view displays full layout', async ({ page }) => {
     .filter({ hasText: '$100.00' })
   await expect(desktopExpenseAmount).toBeVisible()
 
-  await expect(page.getByText('Paid by')).toBeVisible()
+  // Scoped to the row: the filter above the list is called "Paid by" too.
+  await expect(
+    page.locator('[data-testid^="expense-item-"]').getByText('Paid by'),
+  ).toBeVisible()
 })
 
 test('Date format changes with locale selection', async ({ page }) => {
@@ -151,14 +154,15 @@ test('Date format changes with locale selection', async ({ page }) => {
   const expenseItem = page.getByTestId(`expense-item-${expense}`)
   await expect(expenseItem).toBeVisible()
 
-  // Get the date text in English format (e.g., "Jan 17, 2026")
+  // The row says its day; the year is in the month heading above it.
   const expenseDateElement = page.getByTestId('expense-date').first()
-  await expect(expenseDateElement).toHaveText('Jan 17, 2026')
+  await expect(expenseDateElement).toHaveAttribute('datetime', '2026-01-17')
+  await expect(expenseDateElement).toHaveText('Jan 17')
 
   // Switch to Spanish locale
   await switchLocale(page, 'Español')
 
-  await expect(expenseDateElement).toHaveText('17 ene 2026')
+  await expect(expenseDateElement).toHaveText('17 ene')
 })
 
 test('Currency displays with correct format for locale', async ({ page }) => {

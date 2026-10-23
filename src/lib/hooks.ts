@@ -1,6 +1,6 @@
 import { useEnv } from '@/components/env-provider'
 import { readActiveUser } from '@/lib/active-user'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useSyncExternalStore } from 'react'
 import useSWR, { Fetcher } from 'swr'
 import {
   FrankfurterAPIResponse,
@@ -47,6 +47,23 @@ export function useMediaQuery(query: string): boolean {
   }, [query])
 
   return matches
+}
+
+/**
+ * `useMediaQuery` for a component the server renders too. It answers `false` while hydrating, as
+ * the server did, and the real answer straight after — `useMediaQuery` reads the window during the
+ * first render and so disagrees with the HTML it is hydrating on every desktop.
+ */
+export function useMediaQueryAfterHydration(query: string): boolean {
+  return useSyncExternalStore(
+    (onChange) => {
+      const matchMedia = window.matchMedia(query)
+      matchMedia.addEventListener('change', onChange)
+      return () => matchMedia.removeEventListener('change', onChange)
+    },
+    () => window.matchMedia(query).matches,
+    () => false,
+  )
 }
 
 export function useMobilePopoverState(

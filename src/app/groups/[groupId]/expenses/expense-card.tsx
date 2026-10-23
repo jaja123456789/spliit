@@ -9,13 +9,19 @@ import { getGroupExpenses } from '@/lib/api'
 import { getBalances } from '@/lib/balances'
 import { Currency, getCurrency } from '@/lib/currency'
 import { useActiveUser } from '@/lib/hooks'
-import { cn, formatDateOnly } from '@/lib/utils'
+import { cn, toDateInputValue } from '@/lib/utils'
 import { ChevronRight } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { Fragment } from 'react'
+import { Fragment, ReactNode } from 'react'
 
 type Expense = Awaited<ReturnType<typeof getGroupExpenses>>[number]
+
+/**
+ * Languages the shorter "Paid by X" is written in. Everywhere else the full sentence stays, rather
+ * than one translated sentence turning into English halfway down the list.
+ */
+const SHORT_SENTENCE_LOCALES = new Set(['en-US'])
 
 function Participants({
   expense,
@@ -25,6 +31,7 @@ function Participants({
   participantCount: number
 }) {
   const t = useTranslations('ExpenseCard')
+  const locale = useLocale()
   const key = expense.amount > 0 ? 'paidBy' : 'receivedBy'
 
   // Handle multiple payers display
@@ -39,8 +46,28 @@ function Participants({
     payerName = 'Unknown'
   }
 
+  const strong = (chunks: ReactNode) => (
+    <strong className="font-medium text-foreground">{chunks}</strong>
+  )
+
+  // Shared by the whole group — what nearly every expense is. Saying so on every row ("for Alice,
+  // Bob") buried the rows that are not, which are the ones worth reading. A count is enough to
+  // tell: removing someone from a group removes their shares with them, so every share belongs to
+  // a current member.
+  const forEveryone = expense.paidFor.length === participantCount
+  if (forEveryone && SHORT_SENTENCE_LOCALES.has(locale)) {
+    return (
+      <>
+        {t.rich(key === 'paidBy' ? 'paidByOnly' : 'receivedByOnly', {
+          strong,
+          paidBy: payerName,
+        })}
+      </>
+    )
+  }
+
   const paidFor =
-    expense.paidFor.length == participantCount && participantCount >= 4 ? (
+    forEveryone && participantCount >= 4 ? (
       <strong>{t('everyone')}</strong>
     ) : (
       expense.paidFor.map((paidFor, index) => (
@@ -51,9 +78,7 @@ function Participants({
       ))
     )
   const participants = t.rich(key, {
-    strong: (chunks) => (
-      <strong className="font-medium text-foreground">{chunks}</strong>
-    ),
+    strong,
     paidBy: payerName,
     paidFor: () => paidFor,
     forCount: expense.paidFor.length,
@@ -63,6 +88,8 @@ function Participants({
 
 type Props = {
   expense: Expense
+  /** The expense's day, as the list words it: "Today", "Oct 21". Its month heads the section. */
+  dateLabel: string
   currency: Currency
   groupId: string
   participantCount: number
@@ -70,6 +97,7 @@ type Props = {
 
 export function ExpenseCard({
   expense,
+  dateLabel,
   currency,
   groupId,
   participantCount,
@@ -116,14 +144,19 @@ export function ExpenseCard({
     >
       <div className="flex-1 min-w-0">
         <div className="flex justify-between items-baseline gap-3">
-          <div
-            className={cn(
-              'font-medium text-base truncate',
-              expense.isReimbursement && 'italic text-muted-foreground',
-            )}
-            data-testid="expense-title"
-          >
-            {expense.title}
+          <div className="flex items-baseline gap-2 min-w-0">
+            <div
+              className={cn(
+                'font-medium text-base truncate',
+                expense.isReimbursement && 'italic text-muted-foreground',
+              )}
+              data-testid="expense-title"
+            >
+              {expense.title}
+            </div>
+            <div className="shrink-0 text-xs text-subtle-foreground">
+              <DocumentsCount count={expense._count.documents} />
+            </div>
           </div>
           <div className="shrink-0" data-testid="expense-amount">
             <Money
@@ -137,6 +170,16 @@ export function ExpenseCard({
 
         <div className="flex justify-between items-baseline gap-3 mt-0.5">
           <div className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+            {/* The day leads the line it shares with the payer: a line of its own under every row
+                said the same thing as the rows around it. */}
+            <time
+              dateTime={toDateInputValue(expense.expenseDate)}
+              data-testid="expense-date"
+              className="text-subtle-foreground"
+            >
+              {dateLabel}
+            </time>
+            <span aria-hidden> · </span>
             <Participants
               expense={expense}
               participantCount={participantCount}
@@ -163,15 +206,6 @@ export function ExpenseCard({
               )
             )}
           </div>
-        </div>
-
-        <div className="flex items-center gap-3 mt-1 text-xs uppercase tracking-wider text-subtle-foreground font-medium">
-          <span data-testid="expense-date">
-            {formatDateOnly(expense.expenseDate, locale, {
-              dateStyle: 'medium',
-            })}
-          </span>
-          <DocumentsCount count={expense._count.documents} />
         </div>
       </div>
 

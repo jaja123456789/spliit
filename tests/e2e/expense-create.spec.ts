@@ -34,7 +34,12 @@ test.describe('Expense Creation', () => {
     ).toBeVisible()
 
     // Verify payer info is shown
-    await expect(page.getByText(/paid by/i).first()).toBeVisible()
+    await expect(
+      page
+        .locator('[data-testid^="expense-item-"]')
+        .getByText(/paid by/i)
+        .first(),
+    ).toBeVisible()
   })
 
   test('creates expense with category', async ({ page }) => {
