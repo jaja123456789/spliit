@@ -3,6 +3,7 @@ import { AuthProvider } from '@/components/auth-provider'
 import { EnvProvider } from '@/components/env-provider'
 import { LocaleSwitcher } from '@/components/locale-switcher'
 import { ProgressBar } from '@/components/progress-bar'
+import { ThemeColor } from '@/components/theme-color'
 import { ThemeProvider } from '@/components/theme-provider'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
@@ -106,7 +107,12 @@ export const metadata: Metadata = {
 }
 
 export const viewport: Viewport = {
-  themeColor: '#047857',
+  // The browser's own bar matches the page's ground in dark mode, rather than staying a green band
+  // over a dark app. `ThemeColor` keeps it right when someone picks a theme other than the system's.
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#047857' },
+    { media: '(prefers-color-scheme: dark)', color: '#101413' },
+  ],
 }
 
 function Content({ children }: { children: React.ReactNode }) {
@@ -116,20 +122,28 @@ function Content({ children }: { children: React.ReactNode }) {
     <TRPCProvider>
       <AuthProvider>
         <GroupsProvider>
+          {/* First in the tab order, visible only when focused: past the header's four links. */}
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[60] focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:ring-2 focus:ring-ring"
+          >
+            {t('Header.skipToContent')}
+          </a>
           <header className="fixed top-0 left-0 right-0 h-16 flex justify-between bg-background/60 supports-[backdrop-filter]:bg-background/50 p-2 border-b backdrop-blur-sm z-50">
+            {/* Not a heading. Every page has its own <h1> — the group's name, the page's title —
+                and the logo made it two on every screen. The height is pinned rather than left to
+                `h-auto`, which drew the logo at whatever size the served image happened to be. */}
             <Link
               className="flex items-center gap-2 hover:scale-105 transition-transform"
               href="/"
             >
-              <h1>
-                <Image
-                  src={`${basePath}/logo-with-text.png`}
-                  className="m-1 h-auto w-auto"
-                  width={(35 * 522) / 180}
-                  height={35}
-                  alt="Spliit"
-                />
-              </h1>
+              <Image
+                src={`${basePath}/logo-with-text.png`}
+                className="m-1 h-[35px] w-auto"
+                width={(35 * 522) / 180}
+                height={35}
+                alt="Spliit"
+              />
             </Link>
             <div role="navigation" aria-label="Menu" className="flex">
               <ul className="flex items-center text-sm">
@@ -163,48 +177,14 @@ function Content({ children }: { children: React.ReactNode }) {
             </div>
           </header>
 
-          <div className="pt-16 flex-1 flex flex-col">{children}</div>
+          <div
+            id="main-content"
+            tabIndex={-1}
+            className="pt-16 flex-1 flex flex-col outline-none"
+          >
+            {children}
+          </div>
 
-          <footer className="sm:p-8 md:p-16 sm:mt-16 sm:text-sm md:text-base md:mt-32 bg-muted/50 dark:bg-card border-t p-6 mt-8 flex flex-col sm:flex-row sm:justify-between gap-4 text-xs [&_a]:underline">
-            <div className="flex flex-col space-y-2">
-              <div className="sm:text-lg font-semibold text-base flex space-x-2 items-center">
-                <Link className="flex items-center gap-2" href="/">
-                  <Image
-                    src={`${basePath}/logo-with-text.png`}
-                    className="m-1 h-auto w-auto"
-                    width={(35 * 522) / 180}
-                    height={35}
-                    alt="Spliit"
-                  />
-                </Link>
-              </div>
-              <div className="flex flex-col space-y a--no-underline-text-white">
-                <span>{t('Footer.madeIn')}</span>
-                <span>
-                  {t.rich('Footer.builtBy', {
-                    author: (txt) => (
-                      <a
-                        href="https://scastiel.dev"
-                        target="_blank"
-                        rel="noopener"
-                      >
-                        {txt}
-                      </a>
-                    ),
-                    source: (txt) => (
-                      <a
-                        href="https://github.com/spliit-app/spliit/graphs/contributors"
-                        target="_blank"
-                        rel="noopener"
-                      >
-                        {txt}
-                      </a>
-                    ),
-                  })}
-                </span>
-              </div>
-            </div>
-          </footer>
           <Toaster />
         </GroupsProvider>
       </AuthProvider>
@@ -246,6 +226,7 @@ export default async function RootLayout({
               <Suspense>
                 <ProgressBar />
               </Suspense>
+              <ThemeColor />
               <Content>{children}</Content>
             </EnvProvider>
           </ThemeProvider>

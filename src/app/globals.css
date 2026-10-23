@@ -59,6 +59,9 @@
        10% tint to 4.15:1. At 39.5% the worst of the five surfaces it lands on is 4.59:1. */
     --credit: 162 88% 24%; /* 5.62 · 5.86 · 5.10, and 4.86 at worst on bg-credit/10 */
     --debt: 16 88% 39.5%; /* 5.31 · 5.53 · 4.82, and 4.59 at worst on bg-debt/10 */
+    /* A favourite's star: the one warm mark that means "chosen" rather than money. Amber, at the
+       step that keeps 3:1 against the sheet (a non-text mark); the orange-400 it replaces was 2.4. */
+    --star: 32 95% 44%;
     /* Chart marks. Deliberately a separate step from --primary: the dark --primary is tuned for
        small UI accents and glares as a large area fill, so each mode gets a step chosen for its
        own surface (both validated for lightness band, chroma and >=3:1 contrast).
@@ -133,6 +136,7 @@
        they stop competing with each other when they sit in the same column. */
     --credit: 158 48% 66%; /* 10.40 · 9.36 · 8.29, and 7.59 at worst on bg-credit/10 */
     --debt: 22 72% 64%; /* 7.61 · 6.85 · 6.07, and 5.85 at worst on bg-debt/10 */
+    --star: 43 96% 56%;
     /* Same eight hues, the plate and the mark swapped over: a pale plate that reads as a tinted
        chip on white is a lamp on a dark sheet. Saturation drops to 26% on the plate for the
        reason the rest of this theme drops it — eight saturated marks in one column fight. */

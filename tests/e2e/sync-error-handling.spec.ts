@@ -48,7 +48,7 @@ test.describe('Sync Error Handling', () => {
       await page.waitForTimeout(1000)
       // Should show synced state (blue cloud)
       await expect(
-        page.locator('svg.lucide-cloud.text-blue-500').first(),
+        page.locator('svg.lucide-cloud').first(),
       ).toBeVisible({
         timeout: 5000,
       })
@@ -102,7 +102,7 @@ test.describe('Sync Error Handling', () => {
       await page.waitForTimeout(1000)
       // Should show synced state (blue cloud)
       await expect(
-        page.locator('svg.lucide-cloud.text-blue-500').first(),
+        page.locator('svg.lucide-cloud').first(),
       ).toBeVisible({
         timeout: 5000,
       })
@@ -171,10 +171,10 @@ test.describe('Sync Error Handling', () => {
 
     // Verify both groups are synced
     await expect(
-      group1Card.locator('svg.lucide-cloud.text-blue-500').first(),
+      group1Card.locator('svg.lucide-cloud').first(),
     ).toBeVisible({ timeout: 5000 })
     await expect(
-      group2Card.locator('svg.lucide-cloud.text-blue-500').first(),
+      group2Card.locator('svg.lucide-cloud').first(),
     ).toBeVisible({ timeout: 5000 })
   })
 })

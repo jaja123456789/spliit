@@ -9,7 +9,8 @@
   },
   "Header": {
     "groups": "Groups",
-    "settings": "Settings"
+    "settings": "Settings",
+    "skipToContent": "Skip to content"
   },
   "Footer": {
     "madeIn": "Made in Montréal, Québec 🇨🇦",
@@ -133,7 +134,8 @@
         "unsyncTooltip": "Unsync from cloud",
         "syncTooltip": "Sync to cloud",
         "unfavoriteTooltip": "Remove from favorites",
-        "favoriteTooltip": "Add to favorites"
+        "favoriteTooltip": "Add to favorites",
+        "more": "More actions for {name}"
       },
       "toast": {
         "unsyncRemoved": {
@@ -590,7 +592,8 @@
   "Information": {
     "title": "Information",
     "description": "Use this place to add any information that can be relevant to the group participants.",
-    "empty": "No group information yet."
+    "empty": "No group information yet.",
+    "edit": "Edit group information"
   },
   "Settings": {
     "title": "Settings",
@@ -874,5 +877,8 @@
     "settleAllConfirm": "Record them",
     "settleAllCancel": "Cancel",
     "settleAllFailed": "Nothing was recorded. Try again."
+  },
+  "Calculator": {
+    "open": "Open calculator"
   }
 }

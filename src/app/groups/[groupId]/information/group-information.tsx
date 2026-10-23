@@ -25,7 +25,7 @@ export default function GroupInformation({ groupId }: { groupId: string }) {
           <CardTitle className="flex justify-between">
             <span>{t('title')}</span>
             <Button size="icon" asChild className="-mb-12">
-              <Link href={`/groups/${groupId}/edit`}>
+              <Link href={`/groups/${groupId}/edit`} aria-label={t('edit')}>
                 <Pencil className="w-4 h-4" />
               </Link>
             </Button>

@@ -18,6 +18,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       default: group?.name ?? '',
       template: `%s · ${group?.name} · Spliit`,
     },
+    // A group's address is its only key. Should one ever be linked from a public page, it should
+    // not also turn up in search results.
+    robots: { index: false, follow: false },
   }
 }
 

@@ -177,7 +177,7 @@ export function RecentGroupListCard({
                     {isSyncLoading ? (
                       <Loader2 className="w-4 h-4 animate-spin" />
                     ) : groupIsSynced ? (
-                      <Cloud className="w-4 h-4 text-blue-500" />
+                      <Cloud className="w-4 h-4 text-primary" />
                     ) : (
                       <CloudOff className="w-4 h-4 text-muted-foreground" />
                     )}
@@ -202,7 +202,7 @@ export function RecentGroupListCard({
                   }}
                 >
                   {groupIsStarred ? (
-                    <StarFilledIcon className="w-4 h-4 text-orange-400" />
+                    <StarFilledIcon className="w-4 h-4 text-star" />
                   ) : (
                     <Star className="w-4 h-4 text-muted-foreground" />
                   )}
@@ -213,6 +213,7 @@ export function RecentGroupListCard({
                       size="icon"
                       variant="ghost"
                       className="-my-3 -mr-3 -ml-1.5"
+                      aria-label={t('Card.actions.more', { name: group.name })}
                     >
                       <MoreHorizontal className="w-4 h-4" />
                     </Button>

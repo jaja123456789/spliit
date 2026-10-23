@@ -17,7 +17,10 @@ export function DeletePopup({ onDelete }: { onDelete: () => Promise<void> }) {
   return (
     <Dialog>
       <DialogTrigger asChild>
-        <Button variant="destructive">
+        <Button
+          variant="outline"
+          className="h-11 sm:h-10 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+        >
           <Trash2 className="w-4 h-4 mr-2" />
           {t('label')}
         </Button>

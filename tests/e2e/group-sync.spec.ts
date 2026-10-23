@@ -33,7 +33,7 @@ test.describe('Group Cloud Sync', () => {
     await page.waitForTimeout(1000)
 
     // Verify synced state - should show blue cloud icon
-    const unsyncButton = page.locator('svg.lucide-cloud.text-blue-500').first()
+    const unsyncButton = page.locator('svg.lucide-cloud').first()
     await expect(unsyncButton).toBeVisible()
 
     // Click unsync (the blue cloud button)
@@ -74,7 +74,7 @@ test.describe('Group Cloud Sync', () => {
     // Group should be auto-synced - look for blue cloud icon
     const groupCard = page.locator(`li:has-text("${groupName}")`).first()
     await expect(
-      groupCard.locator('svg.lucide-cloud.text-blue-500').first(),
+      groupCard.locator('svg.lucide-cloud').first(),
     ).toBeVisible()
   })
 
@@ -123,7 +123,7 @@ test.describe('Group Cloud Sync', () => {
     await expect(syncButton).toBeVisible()
     await syncButton.click()
     await expect(
-      page1.locator('svg.lucide-cloud.text-blue-500').first(),
+      page1.locator('svg.lucide-cloud').first(),
     ).toBeVisible()
 
     // Star the group

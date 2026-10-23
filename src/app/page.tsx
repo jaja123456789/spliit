@@ -1,6 +1,8 @@
 import { Button } from '@/components/ui/button'
+import { env } from '@/lib/env'
 import { Github } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import Image from 'next/image'
 import Link from 'next/link'
 
 // FIX for https://github.com/vercel/next.js/issues/58615
@@ -8,33 +10,74 @@ import Link from 'next/link'
 
 export default function HomePage() {
   const t = useTranslations()
+  const basePath = env.NEXT_PUBLIC_BASE_PATH
   return (
-    <main>
-      <section className="py-16 md:py-24 lg:py-32">
-        <div className="container flex max-w-screen-md flex-col items-center gap-4 text-center">
-          <h1 className="!leading-none font-bold text-2xl sm:text-3xl md:text-4xl lg:text-5xl landing-header py-2">
-            {t.rich('Homepage.title', {
-              strong: (chunks) => <strong>{chunks}</strong>,
-            })}
-          </h1>
-          <p className="max-w-[42rem] leading-normal text-muted-foreground sm:text-xl sm:leading-8">
-            {t.rich('Homepage.description', {
-              strong: (chunks) => <strong>{chunks}</strong>,
-            })}
-          </p>
-          <div className="flex gap-2">
-            <Button asChild>
-              <Link href="/groups">{t('Homepage.button.groups')}</Link>
-            </Button>
-            <Button asChild variant="secondary">
-              <Link href="https://github.com/spliit-app/spliit">
-                <Github className="w-4 h-4 mr-2" />
-                {t('Homepage.button.github')}
-              </Link>
-            </Button>
+    <>
+      <main className="flex-1">
+        <section className="py-16 md:py-24 lg:py-32">
+          <div className="container flex max-w-screen-md flex-col items-center gap-4 text-center">
+            <h1 className="!leading-none font-bold text-2xl sm:text-3xl md:text-4xl lg:text-5xl landing-header py-2">
+              {t.rich('Homepage.title', {
+                strong: (chunks) => <strong>{chunks}</strong>,
+              })}
+            </h1>
+            <p className="max-w-[42rem] leading-normal text-muted-foreground sm:text-xl sm:leading-8">
+              {t.rich('Homepage.description', {
+                strong: (chunks) => <strong>{chunks}</strong>,
+              })}
+            </p>
+            <div className="flex gap-2">
+              <Button asChild>
+                <Link href="/groups">{t('Homepage.button.groups')}</Link>
+              </Button>
+              <Button asChild variant="secondary">
+                <Link href="https://github.com/spliit-app/spliit">
+                  <Github className="w-4 h-4 mr-2" />
+                  {t('Homepage.button.github')}
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </section>
+      </main>
+      {/* Credits belong to the front page. In the root layout they closed every screen of the app —
+        about 190px of logo and links, the last lines behind the bottom tab bar. */}
+      <footer className="sm:p-8 md:p-16 sm:mt-16 sm:text-sm md:text-base md:mt-32 bg-muted/50 dark:bg-card border-t p-6 mt-8 flex flex-col sm:flex-row sm:justify-between gap-4 text-xs [&_a]:underline">
+        <div className="flex flex-col space-y-2">
+          <div className="sm:text-lg font-semibold text-base flex space-x-2 items-center">
+            <Link className="flex items-center gap-2" href="/">
+              <Image
+                src={`${basePath}/logo-with-text.png`}
+                className="m-1 h-[35px] w-auto"
+                width={(35 * 522) / 180}
+                height={35}
+                alt="Spliit"
+              />
+            </Link>
+          </div>
+          <div className="flex flex-col space-y a--no-underline-text-white">
+            <span>{t('Footer.madeIn')}</span>
+            <span>
+              {t.rich('Footer.builtBy', {
+                author: (txt) => (
+                  <a href="https://scastiel.dev" target="_blank" rel="noopener">
+                    {txt}
+                  </a>
+                ),
+                source: (txt) => (
+                  <a
+                    href="https://github.com/spliit-app/spliit/graphs/contributors"
+                    target="_blank"
+                    rel="noopener"
+                  >
+                    {txt}
+                  </a>
+                ),
+              })}
+            </span>
           </div>
         </div>
-      </section>
-    </main>
+      </footer>
+    </>
   )
 }

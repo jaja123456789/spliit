@@ -37,6 +37,7 @@ export function ShareButton({ group, label }: Props) {
           // screen reader and to anything else looking for one of them.
           title={label ?? t('title')}
           size={label ? 'default' : 'icon'}
+          variant={label ? 'default' : 'outline'}
           className="flex-shrink-0"
         >
           <Share className="w-4 h-4" />

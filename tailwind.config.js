@@ -92,6 +92,7 @@ module.exports = {
         },
         credit: 'hsl(var(--credit))',
         debt: 'hsl(var(--debt))',
+        star: 'hsl(var(--star))',
       },
       borderRadius: {
         lg: 'var(--radius)',

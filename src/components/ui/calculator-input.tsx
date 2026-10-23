@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/input-group"
 import { AmountCalculator } from "@/app/groups/[groupId]/expenses/amount-calculator"
 import { useMediaQuery, useMobilePopoverState } from '@/lib/hooks'
+import { useTranslations } from 'next-intl'
 
 interface CalculatorInputProps 
   extends Omit<React.ComponentProps<typeof InputGroupInput>, "onChange" | "value"> {
@@ -46,6 +47,7 @@ export function CalculatorInput({
   onBlur,
   ...props
 }: CalculatorInputProps) {
+  const t = useTranslations('Calculator')
   const [open, setOpen] = React.useState(false)
   const isDesktop = useMediaQuery("(min-width: 1024px)")
   useMobilePopoverState(open, setOpen, isDesktop)
@@ -117,7 +119,7 @@ export function CalculatorInput({
           /* DESKTOP: POPOVER */
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-9 sm:w-9">
+              <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-9 sm:w-9" aria-label={t('open')}>
                 <Calculator className="h-4 w-4 text-muted-foreground" />
               </Button>
             </PopoverTrigger>
@@ -133,7 +135,7 @@ export function CalculatorInput({
             onOpenChange={setOpen}
           >
             <DrawerTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-9 sm:w-9">
+              <Button variant="ghost" size="icon" className="h-11 w-11 sm:h-9 sm:w-9" aria-label={t('open')}>
                 <Calculator className="h-4 w-4 text-muted-foreground" />
               </Button>
             </DrawerTrigger>
