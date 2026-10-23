@@ -53,6 +53,9 @@ test.describe('Scanning a receipt', () => {
       timeout: 30_000,
     })
     await expect(page.getByText(/Reading a receipt is a guess/i)).toBeVisible()
+    // No document storage in this environment, so nothing is uploaded — and nothing claims a
+    // photo failed to attach, which every scan used to say in red.
+    await expect(page.getByText(/couldn.t be attached/)).toHaveCount(0)
     await expect(page.getByText('Cervejaria Ramiro')).toBeVisible()
 
     // Five fixture items, two of them with quantities, expand to nine lines.

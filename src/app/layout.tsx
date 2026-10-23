@@ -239,7 +239,10 @@ export default async function RootLayout({
             enableSystem
             disableTransitionOnChange
           >
-            <EnvProvider basePath={basePath}>
+            <EnvProvider
+              basePath={basePath}
+              enableExpenseDocuments={env.NEXT_PUBLIC_ENABLE_EXPENSE_DOCUMENTS}
+            >
               <Suspense>
                 <ProgressBar />
               </Suspense>

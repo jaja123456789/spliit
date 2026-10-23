@@ -1,6 +1,5 @@
 'use client'
 
-import { ExpenseDocumentsInput } from '@/components/expense-documents-input'
 import {
   Card,
   CardContent,
@@ -9,10 +8,22 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { FormField } from '@/components/ui/form'
+import { Skeleton } from '@/components/ui/skeleton'
 import { ExpenseFormValues } from '@/lib/schemas'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { useTranslations } from 'next-intl'
+import dynamic from 'next/dynamic'
 import { UseFormReturn } from 'react-hook-form'
+
+// Loaded on demand: it carries `next-s3-upload`'s client, and with it the AWS SDK (~100 KB gzipped),
+// which no one should download unless document storage is configured and this section is shown.
+const ExpenseDocumentsInput = dynamic(
+  () =>
+    import('@/components/expense-documents-input').then(
+      (m) => m.ExpenseDocumentsInput,
+    ),
+  { ssr: false, loading: () => <Skeleton className="h-24 w-full" /> },
+)
 
 type Group = NonNullable<AppRouterOutput['groups']['get']['group']>
 type Form = UseFormReturn<ExpenseFormValues>

@@ -22,6 +22,7 @@ import { formatFileSize, randomId } from '@/lib/utils'
 import { Loader2, Plus, Trash, X } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { getImageData, usePresignedUpload } from 'next-s3-upload'
+import { addBasePath } from 'next/dist/client/add-base-path'
 import Image from 'next/image'
 import { useEffect, useState } from 'react'
 
@@ -64,7 +65,10 @@ export function ExpenseDocumentsInput({ documents, updateDocuments }: Props) {
         } catch (e) {
           console.warn('Could not read image dimensions, proceeding anyway', e)
         }
-        const { url } = await uploadToS3(file)
+        // At the app's base path: the package's client defaults to `/api/s3-upload` from the root.
+        const { url } = await uploadToS3(file, {
+          endpoint: { request: { url: addBasePath('/api/s3-upload') } },
+        })
         updateDocuments([...documents, { id: randomId(), url, width, height }])
       } catch (err) {
         console.error(err)

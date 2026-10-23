@@ -4,6 +4,7 @@ import {
   ReceiptExtractedInfo,
   extractExpenseInformationFromImage,
 } from '@/app/groups/[groupId]/expenses/create-from-receipt-button-actions'
+import { useEnv } from '@/components/env-provider'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -27,6 +28,7 @@ import { Locale } from '@/i18n/request'
 import { getCurrency, normalizeCurrencyCode } from '@/lib/currency'
 import { useMediaQuery } from '@/lib/hooks'
 import { checkReceiptLines } from '@/lib/receipt-lines'
+import { getImageData, uploadToS3 } from '@/lib/s3-upload'
 import {
   FROM_SHARE_PARAM,
   clearPendingShareImage,
@@ -53,7 +55,6 @@ import {
   Trash2,
 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
-import { getImageData, usePresignedUpload } from 'next-s3-upload'
 import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import {
@@ -162,7 +163,9 @@ function ReceiptDialogContent({
   const locale = useLocale()
   const t = useTranslations('CreateFromReceipt')
   const [pending, setPending] = useState(false)
-  const { uploadToS3 } = usePresignedUpload()
+  // Photos are kept as documents only where document storage exists. Without it every scan
+  // tried anyway, failed, and told the reader "1 photo couldn't be attached" in red.
+  const { ENABLE_EXPENSE_DOCUMENTS: canKeepPhotos } = useEnv()
   const { toast } = useToast()
   const router = useRouter()
 
@@ -355,7 +358,7 @@ function ReceiptDialogContent({
       const analysisPromise = extractExpenseInformationFromImage(base64Images)
 
       // 3. Start Uploads
-      const uploadPromises = draftImages.map((img) =>
+      const uploadPromises = (canKeepPhotos ? draftImages : []).map((img) =>
         uploadToS3(img.file)
           .then((res) => ({
             url: res.url,
