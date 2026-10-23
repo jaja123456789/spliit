@@ -80,7 +80,13 @@
     "receivedBy": "Received by <strong>{paidBy}</strong> for <paidFor></paidFor>",
     "receivedByOnly": "Received by <strong>{paidBy}</strong>",
     "yourBalance": "Your balance:",
-    "notInvolved": "You are not involved"
+    "notInvolved": "You are not involved",
+    "Actions": {
+      "label": "Actions for “{title}”",
+      "edit": "Edit",
+      "duplicate": "Duplicate",
+      "delete": "Delete"
+    }
   },
   "Groups": {
     "myGroups": "My groups",

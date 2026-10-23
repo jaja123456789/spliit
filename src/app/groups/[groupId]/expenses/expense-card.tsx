@@ -3,6 +3,11 @@
 // cluster in two or three categories — and cost 26px of every row's width to say something the
 // title already said. The category is still chosen and shown on the expense itself.
 import { DocumentsCount } from '@/app/groups/[groupId]/expenses/documents-count'
+import {
+  ExpenseRowMenu,
+  ExpenseRowSheet,
+  useLongPress,
+} from '@/app/groups/[groupId]/expenses/expense-row-actions'
 import { Money } from '@/components/money'
 import { Locale } from '@/i18n/request'
 import { getGroupExpenses } from '@/lib/api'
@@ -10,10 +15,9 @@ import { getBalances } from '@/lib/balances'
 import { Currency, getCurrency } from '@/lib/currency'
 import { useActiveUser } from '@/lib/hooks'
 import { cn, toDateInputValue } from '@/lib/utils'
-import { ChevronRight } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { Fragment, ReactNode } from 'react'
+import { Fragment, ReactNode, useState } from 'react'
 
 type Expense = Awaited<ReturnType<typeof getGroupExpenses>>[number]
 
@@ -104,6 +108,8 @@ export function ExpenseCard({
 }: Props) {
   const locale = useLocale()
   const activeUserId = useActiveUser(groupId)
+  const [sheetOpen, setSheetOpen] = useState(false)
+  const longPress = useLongPress(() => setSheetOpen(true))
 
   let userBalanceAmount = 0
 
@@ -127,89 +133,114 @@ export function ExpenseCard({
       : null
 
   return (
-    // A link, not a `div` with a click handler. The row is the only way into an expense — and so
-    // into editing or deleting it — and a `div` is not focusable: tabbing through the list went
-    // from the search box straight to the footer, past every row. A link also answers to
-    // middle-click and "open in new tab". Not prefetched: a list of a thousand rows would otherwise
-    // fetch a route for every one that scrolls past.
-    <Link
-      href={`/groups/${groupId}/expenses/${expense.id}/edit`}
-      prefetch={false}
-      data-testid={`expense-item-${expense.id}`}
+    // Its actions sit beside the link rather than inside it: a button within a link is two
+    // controls fighting over one click.
+    <div
       className={cn(
-        'group relative flex items-start gap-3 px-4 sm:px-6 py-3.5 text-sm transition-colors hover:bg-accent/50',
-        'border-b last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
-        expense.isReimbursement && 'italic bg-muted/20',
+        'flex items-center border-b last:border-b-0 transition-colors hover:bg-accent/50',
+        expense.isReimbursement && 'bg-muted/20',
       )}
     >
-      <div className="flex-1 min-w-0">
-        <div className="flex justify-between items-baseline gap-3">
-          <div className="flex items-baseline gap-2 min-w-0">
-            <div
-              className={cn(
-                'font-medium text-base truncate',
-                expense.isReimbursement && 'italic text-muted-foreground',
-              )}
-              data-testid="expense-title"
-            >
-              {expense.title}
+      {/* A link, not a `div` with a click handler. The row is the only way into an expense, and a
+          `div` is not focusable: tabbing through the list went from the search box straight to
+          the footer, past every row. A link also answers to middle-click and "open in new tab".
+          Not prefetched: a list of a thousand rows would otherwise fetch a route for every one
+          that scrolls past. Held down on a phone, it offers the row's actions instead. */}
+      <Link
+        href={`/groups/${groupId}/expenses/${expense.id}/edit`}
+        prefetch={false}
+        data-testid={`expense-item-${expense.id}`}
+        {...longPress}
+        className={cn(
+          'relative flex flex-1 min-w-0 items-start gap-3 px-4 sm:pl-6 sm:pr-2 py-3.5 text-sm',
+          'select-none [-webkit-touch-callout:none]',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
+          expense.isReimbursement && 'italic',
+        )}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-baseline gap-3">
+            <div className="flex items-baseline gap-2 min-w-0">
+              <div
+                className={cn(
+                  'font-medium text-base truncate',
+                  expense.isReimbursement && 'italic text-muted-foreground',
+                )}
+                data-testid="expense-title"
+              >
+                {expense.title}
+              </div>
+              <div className="shrink-0 text-xs text-subtle-foreground">
+                <DocumentsCount count={expense._count.documents} />
+              </div>
             </div>
-            <div className="shrink-0 text-xs text-subtle-foreground">
-              <DocumentsCount count={expense._count.documents} />
-            </div>
-          </div>
-          <div className="shrink-0" data-testid="expense-amount">
-            <Money
-              currency={currency}
-              amount={expense.amount}
-              bold={!expense.isReimbursement}
-              className={cn('text-base', expense.isReimbursement && 'italic')}
-            />
-          </div>
-        </div>
-
-        <div className="flex justify-between items-baseline gap-3 mt-0.5">
-          <div className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
-            {/* The day leads the line it shares with the payer: a line of its own under every row
-                said the same thing as the rows around it. */}
-            <time
-              dateTime={toDateInputValue(expense.expenseDate)}
-              data-testid="expense-date"
-              className="text-subtle-foreground"
-            >
-              {dateLabel}
-            </time>
-            <span aria-hidden> · </span>
-            <Participants
-              expense={expense}
-              participantCount={participantCount}
-            />
-          </div>
-          <div className="shrink-0 text-xs">
-            {original ? (
+            <div className="shrink-0" data-testid="expense-amount">
               <Money
-                currency={original.currency}
-                amount={original.amount}
-                className="text-subtle-foreground"
+                currency={currency}
+                amount={expense.amount}
+                bold={!expense.isReimbursement}
+                className={cn('text-base', expense.isReimbursement && 'italic')}
               />
-            ) : (
-              userBalanceAmount !== 0 && (
-                // Your share as a signed figure rather than a sentence. "You lent" and
-                // "You borrowed" were hard-coded English in a 23-locale app; the sign says the
-                // same thing in every one of them.
+            </div>
+          </div>
+
+          <div className="flex justify-between items-baseline gap-3 mt-0.5">
+            <div className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+              {/* The day leads the line it shares with the payer: a line of its own under every row
+                said the same thing as the rows around it. */}
+              <time
+                dateTime={toDateInputValue(expense.expenseDate)}
+                data-testid="expense-date"
+                className="text-subtle-foreground"
+              >
+                {dateLabel}
+              </time>
+              <span aria-hidden> · </span>
+              <Participants
+                expense={expense}
+                participantCount={participantCount}
+              />
+            </div>
+            <div className="shrink-0 text-xs">
+              {original ? (
                 <Money
-                  currency={currency}
-                  amount={userBalanceAmount}
-                  signed
-                  colored
+                  currency={original.currency}
+                  amount={original.amount}
+                  className="text-subtle-foreground"
                 />
-              )
-            )}
+              ) : (
+                userBalanceAmount !== 0 && (
+                  // Your share as a signed figure rather than a sentence. "You lent" and
+                  // "You borrowed" were hard-coded English in a 23-locale app; the sign says the
+                  // same thing in every one of them.
+                  <Money
+                    currency={currency}
+                    amount={userBalanceAmount}
+                    signed
+                    colored
+                  />
+                )
+              )}
+            </div>
           </div>
         </div>
+      </Link>
+      <div className="hidden sm:flex shrink-0 pr-4">
+        <ExpenseRowMenu
+          groupId={groupId}
+          expenseId={expense.id}
+          title={expense.title}
+        />
       </div>
-
-      <ChevronRight className="w-4 h-4 self-center shrink-0 text-subtle-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 hidden sm:block" />
-    </Link>
+      {sheetOpen && (
+        <ExpenseRowSheet
+          open
+          onOpenChange={setSheetOpen}
+          groupId={groupId}
+          expenseId={expense.id}
+          title={expense.title}
+        />
+      )}
+    </div>
   )
 }
