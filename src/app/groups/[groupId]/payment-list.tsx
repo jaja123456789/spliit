@@ -94,7 +94,7 @@ export function PaymentList({ groupId, participants, currency }: Props) {
             <Link
               key={payment.id}
               href={`/groups/${groupId}/expenses/${payment.id}/edit`}
-              className="flex items-center gap-3 py-3 border-b last:border-0 hover:bg-muted/40 -mx-2 px-2 rounded-md"
+              className="flex items-center gap-3 py-3 border-b last:border-0 hover:bg-muted/40 -mx-2 px-2"
               data-testid={`payment-row-${payment.id}`}
             >
               <ProfileAvatar
