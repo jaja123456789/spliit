@@ -75,12 +75,10 @@ export async function setActiveUser(
 ): Promise<void> {
   await navigateToTab(page, 'Settings')
 
-  // Open the active user selector
-  const activeUserSelector = page.getByTestId('active-user-selector')
-  await activeUserSelector.click()
-
-  // Select the user
-  await page.getByRole('option', { name: userName }).click()
+  // Mark the user's own row with Me: the toggle replaced the "Active user" select.
+  const toggle = page.getByRole('button', { name: `This is me: ${userName}` })
+  if ((await toggle.getAttribute('aria-pressed')) !== 'true')
+    await toggle.click()
 
   // Save the settings
   await clickSave(page)
