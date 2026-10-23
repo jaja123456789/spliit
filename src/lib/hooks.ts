@@ -85,18 +85,33 @@ export function useBaseUrl() {
 }
 
 /**
- * @returns The active participant's id, or `null` — which covers both "not read from local storage
- * yet" and "nobody is selected". Callers no longer need to know the sentinel; see
- * `@/lib/active-user`.
+ * @returns The active participant's id, `null` when nobody is selected, and `undefined` until it has
+ * been read — which cannot happen before the first effect, since local storage does not exist
+ * during the server render.
+ *
+ * A query keyed on the answer should wait for it (`enabled: activeUser !== undefined`). Asking
+ * first as "nobody" and again once the answer arrived made every visit to Stats or Expenses load
+ * the group's whole history twice, the first time for a figure that was thrown away.
  */
-export function useActiveUser(groupId?: string) {
-  const [activeUser, setActiveUser] = useState<string | null>(null)
+export function useActiveUserState(groupId?: string) {
+  const [activeUser, setActiveUser] = useState<string | null | undefined>(
+    undefined,
+  )
 
   useEffect(() => {
     if (groupId) setActiveUser(readActiveUser(groupId))
   }, [groupId])
 
   return activeUser
+}
+
+/**
+ * @returns The active participant's id, or `null` — which covers both "not read from local storage
+ * yet" and "nobody is selected". For display; a query that depends on it wants
+ * `useActiveUserState`. Callers no longer need to know the sentinel; see `@/lib/active-user`.
+ */
+export function useActiveUser(groupId?: string) {
+  return useActiveUserState(groupId) ?? null
 }
 
 const fetcher: Fetcher<FrankfurterAPIResponse> = (url: string) =>

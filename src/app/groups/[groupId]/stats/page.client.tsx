@@ -2,7 +2,7 @@
 import { Totals } from '@/app/groups/[groupId]/stats/totals'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useActiveUser } from '@/lib/hooks'
+import { useActiveUserState } from '@/lib/hooks'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { useTranslations } from 'next-intl'
@@ -29,10 +29,14 @@ function ChartsSkeleton() {
 export function TotalsPageClient() {
   const t = useTranslations('Stats')
   const { groupId, group } = useCurrentGroup()
-  const activeUser = useActiveUser(groupId)
+  const activeUser = useActiveUserState(groupId)
 
   const participantId = activeUser ?? undefined
-  const { data } = trpc.groups.stats.get.useQuery({ groupId, participantId })
+  // Not before we know who "you" are: see `useActiveUserState`.
+  const { data } = trpc.groups.stats.get.useQuery(
+    { groupId, participantId },
+    { enabled: activeUser !== undefined },
+  )
 
   return (
     <div className="space-y-4">

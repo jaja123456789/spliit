@@ -3,7 +3,7 @@
 import { Money } from '@/components/money'
 import { SheetHeader } from '@/components/sheet-header'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useActiveUser } from '@/lib/hooks'
+import { useActiveUserState } from '@/lib/hooks'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { useTranslations } from 'next-intl'
@@ -24,12 +24,13 @@ import { useCurrentGroup } from '../current-group-context'
  */
 export function ExpenseListTotal({ actions }: { actions?: ReactNode }) {
   const { groupId, group } = useCurrentGroup()
-  const activeUser = useActiveUser(groupId)
+  const activeUser = useActiveUserState(groupId)
   const t = useTranslations('Expenses.Totals')
-  const { data } = trpc.groups.stats.get.useQuery({
-    groupId,
-    participantId: activeUser ?? undefined,
-  })
+  // Not before we know who "you" are: see `useActiveUserState`.
+  const { data } = trpc.groups.stats.get.useQuery(
+    { groupId, participantId: activeUser ?? undefined },
+    { enabled: activeUser !== undefined },
+  )
 
   const currency = group ? getCurrencyFromGroup(group) : null
   const ready = !!currency && !!data

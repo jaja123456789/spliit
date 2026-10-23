@@ -3,7 +3,7 @@ import { TotalsFigure } from '@/app/groups/[groupId]/stats/totals-figure'
 import { Money } from '@/components/money'
 import { SheetHeader } from '@/components/sheet-header'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useActiveUser } from '@/lib/hooks'
+import { useActiveUserState } from '@/lib/hooks'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { useTranslations } from 'next-intl'
@@ -18,11 +18,15 @@ import { useCurrentGroup } from '../current-group-context'
  */
 export function Totals() {
   const { groupId, group } = useCurrentGroup()
-  const activeUser = useActiveUser(groupId)
+  const activeUser = useActiveUserState(groupId)
   const t = useTranslations('Stats.Totals')
 
   const participantId = activeUser ?? undefined
-  const { data } = trpc.groups.stats.get.useQuery({ groupId, participantId })
+  // Not before we know who "you" are: see `useActiveUserState`.
+  const { data } = trpc.groups.stats.get.useQuery(
+    { groupId, participantId },
+    { enabled: activeUser !== undefined },
+  )
   // Read the balance from the same query the Balances tab renders, rather than recomputing it.
   // Balances count reimbursements and these spending figures don't, so a locally derived
   // `paid - share` would be the balance from before anyone settled up and the two tabs would
