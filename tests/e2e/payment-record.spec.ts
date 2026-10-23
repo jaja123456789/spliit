@@ -29,7 +29,9 @@ test.describe('Recording a payment', () => {
     // The pill knows who owes whom and how much, and the sheet arrives filled in.
     await expect(page.getByTestId('payment-from')).toContainText('Bob')
     await expect(page.getByTestId('payment-to')).toContainText('Alice')
-    await expect(page.locator('input[name="paymentAmount"]')).toHaveValue('30')
+    await expect(page.locator('input[name="paymentAmount"]')).toHaveValue(
+      '30.00',
+    )
 
     await page.getByTestId('payment-save').click()
     await page.waitForURL(/\/balances/)

@@ -15,11 +15,11 @@ import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { useActiveUser, useCurrencyRate } from '@/lib/hooks'
 import { ExpenseFormValues, expenseFormSchema } from '@/lib/schemas'
 import {
-  amountAsDecimal,
   cn,
   convertAmount,
   convertAmountParts,
   distributeMinorUnits,
+  formatAmountAsDecimal,
   getCurrencyFromGroup,
   randomId,
   todayAsDateOnly,
@@ -125,15 +125,19 @@ export function ExpenseForm({
           initialExpenseCurrency,
         )
       : 0
+  //
+  // Written out in the currency's decimals — "37.90", not the 37.9 a number prints as — because
+  // that is how an amount is read, and how the inputs hold what is typed into them. The schema
+  // accepts the string; the type says number because that is what it parses to.
   const toFormAmounts = (amountsInMinorUnits: number[]) =>
-    isConvertedExpense
+    (isConvertedExpense
       ? distributeMinorUnits(
           amountsInMinorUnits,
           originalTotalInMinorUnits,
-        ).map((amount) => amountAsDecimal(amount, initialExpenseCurrency))
+        ).map((amount) => formatAmountAsDecimal(amount, initialExpenseCurrency))
       : amountsInMinorUnits.map((amount) =>
-          amountAsDecimal(amount, groupCurrency),
-        )
+          formatAmountAsDecimal(amount, groupCurrency),
+        )) as unknown as number[]
 
   const paidByAmounts = toFormAmounts(
     source?.paidBy.map((pb) => pb.amount) ?? [],
@@ -193,10 +197,10 @@ export function ExpenseForm({
           paidBy: [
             {
               participant: searchParams.get('from') ?? defaultPayerId,
-              amount: amountAsDecimal(
+              amount: formatAmountAsDecimal(
                 Number(searchParams.get('amount')) || 0,
                 groupCurrency,
-              ),
+              ) as unknown as number,
             },
           ],
           paidFor: [
@@ -229,7 +233,13 @@ export function ExpenseForm({
           paidBy: [
             {
               participant: defaultPayerId,
-              amount: amountAsDecimal(Number(initialAmount), groupCurrency),
+              // Left a bare 0 when nothing was passed in: the empty form shows "0", not "0.00".
+              amount: Number(initialAmount)
+                ? (formatAmountAsDecimal(
+                    Number(initialAmount),
+                    groupCurrency,
+                  ) as unknown as number)
+                : 0,
             },
           ],
           isReimbursement: false,

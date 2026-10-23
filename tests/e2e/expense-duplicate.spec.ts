@@ -33,8 +33,8 @@ test.describe('Duplicating an expense', () => {
     await page.waitForURL(/\/expenses\/create\?duplicate=/)
 
     await expect(page.locator('[name="title"]')).toHaveValue('Groceries')
-    // "42.5" today: the form drops a trailing zero on amounts it fills in, copies or edits alike.
-    await expect(page.locator(AMOUNT_INPUT)).toHaveValue(/^42\.50?$/)
+    // In the currency's decimals, as an amount is read.
+    await expect(page.locator(AMOUNT_INPUT)).toHaveValue('42.50')
     await expect(page.locator('input[name="expenseDate"]')).toHaveValue(
       toDateInputValue(todayAsDateOnly()),
     )
@@ -91,7 +91,7 @@ test.describe('Duplicating an expense', () => {
     await shortcuts.getByRole('button', { name: /Groceries/ }).click()
     await page.waitForURL(/\/expenses\/create\?duplicate=/)
     await expect(page.locator('[name="title"]')).toHaveValue('Groceries')
-    await expect(page.locator(AMOUNT_INPUT)).toHaveValue(/^45\.20?$/)
+    await expect(page.locator(AMOUNT_INPUT)).toHaveValue('45.20')
     await expect(shortcuts).toHaveCount(0)
   })
 })

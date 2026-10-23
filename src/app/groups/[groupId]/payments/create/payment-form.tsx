@@ -18,7 +18,7 @@ import { readActiveUser } from '@/lib/active-user'
 import { Currency } from '@/lib/currency'
 import { PaymentProfile, getPaymentOptions } from '@/lib/payment-links'
 import {
-  amountAsDecimal,
+  formatAmountAsDecimal,
   formatCurrency,
   getCurrencyFromGroup,
   toDateInputValue,
@@ -78,7 +78,7 @@ export function PaymentForm({ group }: { group: Group }) {
   )
   const [amount, setAmount] = useState(() =>
     prefilledAmount
-      ? String(amountAsDecimal(Number(prefilledAmount) || 0, currency))
+      ? formatAmountAsDecimal(Number(prefilledAmount) || 0, currency)
       : '',
   )
   const [date, setDate] = useState(todayAsInputValue)
