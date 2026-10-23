@@ -2,10 +2,12 @@
 
 import { DeletePopup } from '@/components/delete-popup'
 import { SubmitButton } from '@/components/submit-button'
+import { Button } from '@/components/ui/button'
 import { ExpenseFormValues } from '@/lib/schemas'
 import { AppRouterOutput } from '@/trpc/routers/_app'
-import { Save } from 'lucide-react'
+import { Copy, Save } from 'lucide-react'
 import { useTranslations } from 'next-intl'
+import Link from 'next/link'
 import { UseFormReturn } from 'react-hook-form'
 
 type Group = NonNullable<AppRouterOutput['groups']['get']['group']>
@@ -14,9 +16,12 @@ type Wording = 'Expense' | 'Income'
 
 export function SubmitBar({
   isCreate,
+  duplicateHref,
   onDelete,
 }: {
   isCreate: boolean
+  /** Where a copy of this expense starts — the create form, filled in from it. */
+  duplicateHref?: string
   onDelete?: () => Promise<void>
 }) {
   const t = useTranslations('ExpenseForm')
@@ -32,6 +37,14 @@ export function SubmitBar({
           <Save className="w-4 h-4 mr-2" />
           {t(isCreate ? 'create' : 'save')}
         </SubmitButton>
+        {duplicateHref && (
+          <Button variant="outline" className="h-11 sm:h-10" asChild>
+            <Link href={duplicateHref}>
+              <Copy className="w-4 h-4 mr-2" />
+              {t('duplicate')}
+            </Link>
+          </Button>
+        )}
         {!isCreate && onDelete && (
           <DeletePopup onDelete={onDelete}></DeletePopup>
         )}

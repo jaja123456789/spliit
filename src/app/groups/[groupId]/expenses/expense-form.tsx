@@ -55,6 +55,7 @@ export function ExpenseForm({
   group,
   categories,
   expense,
+  template,
   onSubmit,
   onDelete,
   runtimeFeatureFlags,
@@ -62,6 +63,11 @@ export function ExpenseForm({
   group: NonNullable<AppRouterOutput['groups']['get']['group']>
   categories: AppRouterOutput['categories']['list']['categories']
   expense?: AppRouterOutput['groups']['expenses']['get']['expense']
+  /**
+   * A new expense that starts as a copy of this one: same title, amount, people, split, category
+   * and items, dated today. Its receipts and its recurrence stay with the original.
+   */
+  template?: AppRouterOutput['groups']['expenses']['get']['expense']
   onSubmit: (value: ExpenseFormValues, participantId?: string) => Promise<void>
   onDelete?: (participantId?: string) => Promise<void>
   runtimeFeatureFlags: RuntimeFeatureFlags
@@ -70,6 +76,8 @@ export function ExpenseForm({
   const tReceipt = useTranslations('CreateFromReceipt')
   const locale = useLocale() as Locale
   const isCreate = expense === undefined
+  // What the form's values come from: the expense being edited, or the one being copied.
+  const source = expense ?? template
   const searchParams = useSearchParams()
   const groupCurrency = getCurrencyFromGroup(group)
   const activeUserId = useActiveUser(group.id)
@@ -89,16 +97,16 @@ export function ExpenseForm({
   // An expense can be entered in another currency than the group's, as long as the group uses a
   // real currency code: a custom symbol has no exchange rate to convert from.
   const conversionAvailable = !!group.currencyCode
-  const initialRate = expense?.conversionRate?.toNumber()
+  const initialRate = source?.conversionRate?.toNumber()
   // Without a rate the stored amounts cannot be read back in the original currency, so such an
   // expense opens in the group currency.
   const isConvertedExpense =
     conversionAvailable &&
     !!initialRate &&
-    !!expense?.originalCurrency &&
-    expense.originalCurrency !== group.currencyCode
+    !!source?.originalCurrency &&
+    source.originalCurrency !== group.currencyCode
   const initialCurrencyCode =
-    (isConvertedExpense ? expense?.originalCurrency : group.currencyCode) ?? ''
+    (isConvertedExpense ? source?.originalCurrency : group.currencyCode) ?? ''
   const initialExpenseCurrency =
     conversionAvailable && initialCurrencyCode
       ? getCurrency(initialCurrencyCode, locale)
@@ -108,9 +116,9 @@ export function ExpenseForm({
   // expense was entered in, so every part is scaled back to it. They are distributed over the
   // original total so that they keep adding up to it exactly.
   const originalTotalInMinorUnits =
-    expense && isConvertedExpense
+    source && isConvertedExpense
       ? getOriginalTotalInMinorUnits(
-          expense,
+          source,
           initialRate!,
           groupCurrency,
           initialExpenseCurrency,
@@ -127,49 +135,51 @@ export function ExpenseForm({
         )
 
   const paidByAmounts = toFormAmounts(
-    expense?.paidBy.map((pb) => pb.amount) ?? [],
+    source?.paidBy.map((pb) => pb.amount) ?? [],
   )
-  const itemPrices = toFormAmounts(expense?.items.map((i) => i.price) ?? [])
+  const itemPrices = toFormAmounts(source?.items.map((i) => i.price) ?? [])
   const paidForAmounts =
-    expense?.splitMode === 'BY_AMOUNT'
-      ? toFormAmounts(expense.paidFor.map((pf) => pf.shares))
+    source?.splitMode === 'BY_AMOUNT'
+      ? toFormAmounts(source.paidFor.map((pf) => pf.shares))
       : []
 
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseFormSchema),
     mode: 'onChange',
-    defaultValues: expense
+    defaultValues: source
       ? {
-          title: expense.title,
-          expenseDate: expense.expenseDate ?? todayAsDateOnly(),
+          title: source.title,
+          expenseDate: expense?.expenseDate ?? todayAsDateOnly(),
           originalCurrency: initialCurrencyCode,
           // Derived from the amounts on submit, never entered directly.
           originalAmount: undefined,
-          conversionRate: initialRate,
-          category: expense.categoryId,
-          paidBy: expense.paidBy.map((pb, index) => ({
+          // A copy is dated today, so it takes today's rate rather than the original's.
+          conversionRate: expense ? initialRate : undefined,
+          category: source.categoryId,
+          paidBy: source.paidBy.map((pb, index) => ({
             participant: pb.participantId,
             amount: paidByAmounts[index],
           })),
-          paidFor: expense.paidFor.map(({ participantId, shares }, index) => ({
+          paidFor: source.paidFor.map(({ participantId, shares }, index) => ({
             participant: participantId,
-            shares: (expense.splitMode === 'BY_AMOUNT'
+            shares: (source.splitMode === 'BY_AMOUNT'
               ? paidForAmounts[index]
               : (shares / 100).toString()) as any,
           })),
-          splitMode: expense.splitMode,
+          splitMode: source.splitMode,
           saveDefaultSplittingOptions: false,
-          isReimbursement: expense.isReimbursement,
-          documents: expense.documents,
-          notes: expense.notes ?? '',
-          recurrenceRule: expense.recurrenceRule ?? undefined,
-          items:
-            expense?.items.map((i, index) => ({
-              id: i.id,
-              name: i.name,
-              price: itemPrices[index],
-              participantIds: i.participantIds,
-            })) ?? [],
+          isReimbursement: source.isReimbursement,
+          documents: expense?.documents ?? [],
+          notes: source.notes ?? '',
+          recurrenceRule: expense
+            ? expense.recurrenceRule ?? undefined
+            : RecurrenceRule.NONE,
+          items: source.items.map((i, index) => ({
+            id: expense ? i.id : randomId(),
+            name: i.name,
+            price: itemPrices[index],
+            participantIds: i.participantIds,
+          })),
         }
       : searchParams.get('reimbursement')
       ? {
@@ -320,6 +330,7 @@ export function ExpenseForm({
   // undo the extraction the user just waited for.
   const importingReceipt =
     isCreate && searchParams.get('fromReceipt') === 'true'
+  const isCopy = isCreate && template !== undefined
   const draftScope = isCreate
     ? createDraftScope(group.id)
     : editDraftScope(expense.id)
@@ -328,7 +339,7 @@ export function ExpenseForm({
   const [manuallyEditedParticipants, setManuallyEditedParticipants] = useState<
     Set<string>
   >(() => {
-    if (expense?.splitMode === 'BY_AMOUNT') {
+    if (source?.splitMode === 'BY_AMOUNT') {
       return new Set(group.participants.map((p) => p.id))
     }
     return new Set()
@@ -533,7 +544,7 @@ export function ExpenseForm({
   const { pendingDraft, restoreDraft, discardDraft } = useExpenseDraft({
     form,
     draftScope,
-    importingReceipt,
+    prefilled: importingReceipt || isCopy,
     onRestored: () => setShowMoreOptions(true),
   })
 
@@ -909,6 +920,11 @@ export function ExpenseForm({
 
         <SubmitBar
           isCreate={isCreate}
+          duplicateHref={
+            expense
+              ? `/groups/${group.id}/expenses/create?duplicate=${expense.id}`
+              : undefined
+          }
           onDelete={
             onDelete ? () => onDelete(activeUserId ?? undefined) : undefined
           }

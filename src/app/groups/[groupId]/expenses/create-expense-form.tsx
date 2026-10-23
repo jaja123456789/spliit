@@ -19,6 +19,14 @@ export function CreateExpenseForm({
   const categories = categoriesData?.categories
 
   const searchParams = useSearchParams()
+  // "Duplicate" on an expense opens this form as a copy of it.
+  const duplicateOf = searchParams.get('duplicate')
+  const { data: templateData, isError: templateMissing } =
+    trpc.groups.expenses.get.useQuery(
+      { groupId, expenseId: duplicateOf ?? '' },
+      { enabled: !!duplicateOf, retry: false },
+    )
+  const template = duplicateOf ? templateData?.expense : undefined
 
   const { mutateAsync: createExpenseMutateAsync } =
     trpc.groups.expenses.create.useMutation()
@@ -27,11 +35,17 @@ export function CreateExpenseForm({
   const router = useRouter()
 
   if (!group || !categories) return null
+  // The form reads its starting values once, so it waits for the expense it copies. One that has
+  // gone since — deleted on another phone — leaves an ordinary blank form.
+  if (duplicateOf && !template && !templateMissing) return null
 
   return (
     <ExpenseForm
+      // A different starting point is a different form, not a change to this one.
+      key={template?.id ?? 'new'}
       group={group}
       categories={categories}
+      template={template}
       onSubmit={async (expenseFormValues, participantId) => {
         await createExpenseMutateAsync({
           groupId,

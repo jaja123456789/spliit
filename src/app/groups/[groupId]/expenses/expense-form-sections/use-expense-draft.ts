@@ -23,12 +23,16 @@ import { fingerprintValues } from './helpers'
 export function useExpenseDraft({
   form,
   draftScope,
-  importingReceipt,
+  prefilled,
   onRestored,
 }: {
   form: UseFormReturn<ExpenseFormValues>
   draftScope: string
-  importingReceipt: boolean
+  /**
+   * The form opened already filled in — from a receipt, or as a copy of another expense. That is a
+   * more specific intent than a leftover draft, so no draft is offered over it.
+   */
+  prefilled: boolean
   /** Called after a draft has been poured back in — the form opens More options for it. */
   onRestored: () => void
 }) {
@@ -48,14 +52,14 @@ export function useExpenseDraft({
   // immediately overwrites what is stored — which is right, that is a new expense — but must not
   // take away the thing still being offered on screen.
   useEffect(() => {
-    if (importingReceipt) return
+    if (prefilled) return
     if (pristineValuesRef.current === null) {
       pristineValuesRef.current = form.getValues()
     }
     const draft = readExpenseDraft(draftScope)
     if (!draft) return
     setPendingDraft(draft)
-  }, [draftScope, importingReceipt, form])
+  }, [draftScope, prefilled, form])
 
   const restoreDraft = () => {
     if (!pendingDraft) return
@@ -79,7 +83,7 @@ export function useExpenseDraft({
   // Keep the draft alive while its form is on screen — see `touchExpenseDraft`. Only while
   // visible: a backgrounded tab is someone who has left, and their two minutes should be running.
   useEffect(() => {
-    if (importingReceipt) return
+    if (prefilled) return
     const touch = () => {
       if (document.visibilityState === 'visible') touchExpenseDraft(draftScope)
     }
@@ -89,7 +93,7 @@ export function useExpenseDraft({
       window.clearInterval(timer)
       document.removeEventListener('visibilitychange', touch)
     }
-  }, [draftScope, importingReceipt])
+  }, [draftScope, prefilled])
 
   // Deciding when a draft is worth keeping is fiddlier than it looks. `formState.isDirty` is
   // useless — the amount round-trips through a string, so the form reports itself dirty on mount
