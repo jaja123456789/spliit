@@ -64,7 +64,9 @@ test.describe('Group Creation', () => {
     await page.getByLabel('Group name').fill(validName)
 
     // Test: Participant name with 1 character should fail
-    const participantInputs = page.getByRole('textbox', { name: 'New' })
+    const participantInputs = page.getByRole('textbox', {
+      name: /^Participant \d+$/,
+    })
     await expect(participantInputs).toHaveCount(3)
 
     await participantInputs.nth(0).fill('A')
@@ -136,7 +138,9 @@ test.describe('Group Creation', () => {
     await fillParticipants(page, participants)
 
     // Verify we have 5 participant inputs
-    const participantInputs = page.getByRole('textbox', { name: 'New' })
+    const participantInputs = page.getByRole('textbox', {
+      name: /^Participant \d+$/,
+    })
     await expect(participantInputs).toHaveCount(5)
 
     await page.getByRole('button', { name: 'Create' }).click()

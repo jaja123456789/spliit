@@ -187,7 +187,7 @@
     "CurrencyCodeField": {
       "label": "Main currency",
       "createDescription": "All amounts and balances will be in this currency.",
-      "editDescription": "All amounts and balances will be in this currency. Changing this will NOT convert expenses already entered, except when the currency has different \"minor units\" than the current one (e.g. changing from US Dollar to Japanese Yen)",
+      "editDescription": "Amounts already entered are not converted. Moving to a currency with a different number of decimals — dollars to yen, say — changes what every one of them reads.",
       "customOption": "Custom"
     },
     "Participants": {
@@ -198,7 +198,9 @@
       "add": "Add participant",
       "John": "John",
       "Jane": "Jane",
-      "Jack": "Jack"
+      "Jack": "Jack",
+      "label": "Participant {number}",
+      "remove": "Remove {name}"
     },
     "Settings": {
       "title": "Local settings",

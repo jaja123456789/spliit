@@ -40,6 +40,7 @@ import {
 import { getGroup } from '@/lib/api'
 import { defaultCurrencyList, getCurrency } from '@/lib/currency'
 import { GroupFormValues, groupFormSchema } from '@/lib/schemas'
+import { cn } from '@/lib/utils'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { CreditCard, Save, Smartphone, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
@@ -154,9 +155,6 @@ export function GroupForm({
                       {...field}
                     />
                   </FormControl>
-                  <FormDescription>
-                    {t('NameField.description')}
-                  </FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
@@ -168,27 +166,29 @@ export function GroupForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t('CurrencyCodeField.label')}</FormLabel>
-                  <CurrencySelector
-                    currencies={defaultCurrencyList(
-                      locale as Locale,
-                      t('CurrencyCodeField.customOption'),
-                    )}
-                    defaultValue={form.watch(field.name) ?? ''}
-                    onValueChange={(newCurrency) => {
-                      field.onChange(newCurrency)
-                      const currency = getCurrency(newCurrency)
-                      if (
-                        currency.code.length ||
-                        form.getFieldState('currency').isTouched
-                      )
-                        form.setValue('currency', currency.symbol, {
-                          shouldValidate: true,
-                          shouldTouch: true,
-                          shouldDirty: true,
-                        })
-                    }}
-                    isLoading={false}
-                  />
+                  <FormControl>
+                    <CurrencySelector
+                      currencies={defaultCurrencyList(
+                        locale as Locale,
+                        t('CurrencyCodeField.customOption'),
+                      )}
+                      defaultValue={form.watch(field.name) ?? ''}
+                      onValueChange={(newCurrency) => {
+                        field.onChange(newCurrency)
+                        const currency = getCurrency(newCurrency)
+                        if (
+                          currency.code.length ||
+                          form.getFieldState('currency').isTouched
+                        )
+                          form.setValue('currency', currency.symbol, {
+                            shouldValidate: true,
+                            shouldTouch: true,
+                            shouldDirty: true,
+                          })
+                      }}
+                      isLoading={false}
+                    />
+                  </FormControl>
                   <FormDescription>
                     {t(
                       group
@@ -285,144 +285,112 @@ export function GroupForm({
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="sr-only">
-                          Participant #{index + 1}
+                          {t('Participants.label', { number: index + 1 })}
                         </FormLabel>
-                        <FormControl>
-                          <div className="flex gap-2">
+                        <div className="flex gap-2">
+                          <FormControl>
                             <Input
                               className="text-base sm:text-base"
                               {...field}
                               placeholder={t('Participants.new')}
                             />
-                            {item.id &&
-                            protectedParticipantIds.includes(item.id) ? (
-                              // A hover card was unreachable by touch, so on a phone this button
-                              // was simply dead with no explanation. A popover opens on tap, which
-                              // also means the button must stay enabled to receive the tap.
-                              <Popover>
-                                <PopoverTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    type="button"
-                                    size="icon"
-                                    aria-label={t(
-                                      'Participants.protectedParticipant',
-                                    )}
-                                  >
-                                    <Trash2 className="w-4 h-4 text-destructive opacity-50" />
-                                  </Button>
-                                </PopoverTrigger>
-                                <PopoverContent
-                                  align="end"
-                                  className="w-64 text-sm"
-                                >
-                                  {t('Participants.protectedParticipant')}
-                                </PopoverContent>
-                              </Popover>
-                            ) : (
-                              <Button
-                                variant="ghost"
-                                className="text-destructive"
-                                onClick={() => remove(index)}
-                                type="button"
-                                size="icon"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            )}
+                          </FormControl>
+                          {item.id &&
+                          protectedParticipantIds.includes(item.id) ? (
+                            // A hover card was unreachable by touch, so on a phone this button
+                            // was simply dead with no explanation. A popover opens on tap, which
+                            // also means the button must stay enabled to receive the tap.
                             <Popover>
                               <PopoverTrigger asChild>
                                 <Button
                                   variant="ghost"
+                                  type="button"
                                   size="icon"
-                                  title="Payment Methods"
-                                  className={
-                                    form.watch(
-                                      `participants.${index}.paymentProfile`,
-                                    )
-                                      ? 'text-primary bg-primary/10'
-                                      : 'text-muted-foreground'
-                                  }
+                                  aria-label={t(
+                                    'Participants.protectedParticipant',
+                                  )}
                                 >
-                                  <CreditCard className="w-4 h-4" />
+                                  <Trash2 className="w-4 h-4 text-destructive opacity-50" />
                                 </Button>
                               </PopoverTrigger>
-                              <PopoverContent className="w-80" align="end">
+                              <PopoverContent
+                                align="end"
+                                className="w-64 text-sm"
+                              >
+                                {t('Participants.protectedParticipant')}
+                              </PopoverContent>
+                            </Popover>
+                          ) : (
+                            <Button
+                              variant="ghost"
+                              className="text-destructive"
+                              onClick={() => remove(index)}
+                              type="button"
+                              size="icon"
+                              aria-label={t('Participants.remove', {
+                                name: field.value || t('Participants.new'),
+                              })}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                title="Payment Methods"
+                                className={
+                                  form.watch(
+                                    `participants.${index}.paymentProfile`,
+                                  )
+                                    ? 'text-primary bg-primary/10'
+                                    : 'text-muted-foreground'
+                                }
+                              >
+                                <CreditCard className="w-4 h-4" />
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80" align="end">
+                              <div className="grid gap-4">
+                                <div className="space-y-1">
+                                  <h4 className="font-medium leading-none">
+                                    Payment Methods
+                                  </h4>
+                                  <p className="text-xs text-muted-foreground">
+                                    Add details to enable direct repayment
+                                    links.
+                                  </p>
+                                </div>
+
                                 <div className="grid gap-4">
-                                  <div className="space-y-1">
-                                    <h4 className="font-medium leading-none">
-                                      Payment Methods
-                                    </h4>
-                                    <p className="text-xs text-muted-foreground">
-                                      Add details to enable direct repayment
-                                      links.
-                                    </p>
-                                  </div>
-
-                                  <div className="grid gap-4">
-                                    {/* Payment Apps Section */}
-                                    <div className="space-y-2">
-                                      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Payment Apps
-                                      </h5>
-                                      {[
-                                        'venmo',
-                                        'paypal',
-                                        'cashapp',
-                                        'revolut',
-                                      ].map((provider) => (
-                                        <FormField
-                                          key={provider}
-                                          control={form.control}
-                                          name={
-                                            `participants.${index}.paymentProfile.${provider}` as any
-                                          }
-                                          render={({ field }) => (
-                                            <FormItem className="grid grid-cols-3 items-center gap-3 space-y-0">
-                                              <FormLabel className="capitalize text-xs cursor-pointer">
-                                                {provider}
-                                              </FormLabel>
-                                              <div className="col-span-2">
-                                                <FormControl>
-                                                  <Input
-                                                    className="h-11 sm:h-8 text-base sm:text-sm"
-                                                    placeholder="username"
-                                                    {...field}
-                                                    value={
-                                                      (field.value as string) ??
-                                                      ''
-                                                    }
-                                                  />
-                                                </FormControl>
-                                              </div>
-                                            </FormItem>
-                                          )}
-                                        />
-                                      ))}
-                                    </div>
-
-                                    {/* Manual Section */}
-                                    <div className="space-y-2 pt-2 border-t">
-                                      <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-                                        Manual Details
-                                      </h5>
-
+                                  {/* Payment Apps Section */}
+                                  <div className="space-y-2">
+                                    <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                      Payment Apps
+                                    </h5>
+                                    {[
+                                      'venmo',
+                                      'paypal',
+                                      'cashapp',
+                                      'revolut',
+                                    ].map((provider) => (
                                       <FormField
+                                        key={provider}
                                         control={form.control}
                                         name={
-                                          `participants.${index}.paymentProfile.phone` as any
+                                          `participants.${index}.paymentProfile.${provider}` as any
                                         }
                                         render={({ field }) => (
                                           <FormItem className="grid grid-cols-3 items-center gap-3 space-y-0">
-                                            <FormLabel className="text-xs cursor-pointer flex items-center gap-1">
-                                              <Smartphone className="w-3 h-3" />{' '}
-                                              Phone
+                                            <FormLabel className="capitalize text-xs cursor-pointer">
+                                              {provider}
                                             </FormLabel>
                                             <div className="col-span-2">
                                               <FormControl>
                                                 <Input
                                                   className="h-11 sm:h-8 text-base sm:text-sm"
-                                                  placeholder="+1 234..."
+                                                  placeholder="username"
                                                   {...field}
                                                   value={
                                                     (field.value as string) ??
@@ -434,13 +402,47 @@ export function GroupForm({
                                           </FormItem>
                                         )}
                                       />
-                                    </div>
+                                    ))}
+                                  </div>
+
+                                  {/* Manual Section */}
+                                  <div className="space-y-2 pt-2 border-t">
+                                    <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                      Manual Details
+                                    </h5>
+
+                                    <FormField
+                                      control={form.control}
+                                      name={
+                                        `participants.${index}.paymentProfile.phone` as any
+                                      }
+                                      render={({ field }) => (
+                                        <FormItem className="grid grid-cols-3 items-center gap-3 space-y-0">
+                                          <FormLabel className="text-xs cursor-pointer flex items-center gap-1">
+                                            <Smartphone className="w-3 h-3" />{' '}
+                                            Phone
+                                          </FormLabel>
+                                          <div className="col-span-2">
+                                            <FormControl>
+                                              <Input
+                                                className="h-11 sm:h-8 text-base sm:text-sm"
+                                                placeholder="+1 234..."
+                                                {...field}
+                                                value={
+                                                  (field.value as string) ?? ''
+                                                }
+                                              />
+                                            </FormControl>
+                                          </div>
+                                        </FormItem>
+                                      )}
+                                    />
                                   </div>
                                 </div>
-                              </PopoverContent>
-                            </Popover>
-                          </div>
-                        </FormControl>
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -482,13 +484,13 @@ export function GroupForm({
               {activeUser !== null && (
                 <FormItem>
                   <FormLabel>{t('Settings.ActiveUserField.label')}</FormLabel>
-                  <FormControl>
-                    <Select
-                      onValueChange={(value) => {
-                        setActiveUser(value)
-                      }}
-                      defaultValue={activeUser}
-                    >
+                  <Select
+                    onValueChange={(value) => {
+                      setActiveUser(value)
+                    }}
+                    defaultValue={activeUser}
+                  >
+                    <FormControl>
                       <SelectTrigger data-testid="active-user-selector">
                         <SelectValue
                           placeholder={t(
@@ -496,30 +498,30 @@ export function GroupForm({
                           )}
                         />
                       </SelectTrigger>
-                      <SelectContent>
-                        {[
-                          {
-                            key: NO_ACTIVE_USER,
-                            name: t('Settings.ActiveUserField.none'),
-                          },
-                          // `||`, not `??`: `append()` gives a new participant `id: ''`, and an
-                          // empty string survives `??`. A `<SelectItem value="">` makes Radix
-                          // throw, which took the whole page down as soon as you named a
-                          // participant you had just added.
-                          ...fields.map((f, index) => ({
-                            key: f.id || `new-${index}`,
-                            name: form.watch(`participants.${index}.name`),
-                          })),
-                        ]
-                          .filter((item) => item.name?.length > 0)
-                          .map(({ key, name }) => (
-                            <SelectItem key={key} value={key}>
-                              {name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </FormControl>
+                    </FormControl>
+                    <SelectContent>
+                      {[
+                        {
+                          key: NO_ACTIVE_USER,
+                          name: t('Settings.ActiveUserField.none'),
+                        },
+                        // `||`, not `??`: `append()` gives a new participant `id: ''`, and an
+                        // empty string survives `??`. A `<SelectItem value="">` makes Radix
+                        // throw, which took the whole page down as soon as you named a
+                        // participant you had just added.
+                        ...fields.map((f, index) => ({
+                          key: f.id || `new-${index}`,
+                          name: form.watch(`participants.${index}.name`),
+                        })),
+                      ]
+                        .filter((item) => item.name?.length > 0)
+                        .map(({ key, name }) => (
+                          <SelectItem key={key} value={key}>
+                            {name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                   <FormDescription>
                     {t('Settings.ActiveUserField.description')}
                   </FormDescription>
@@ -529,8 +531,19 @@ export function GroupForm({
           </CardContent>
         </Card>
 
-        <div className="flex mt-4 gap-2">
+        {/* Sticky, as on the expense form: Save sat some 1,400px down a 2,000px page, below three
+            cards of settings that are mostly changed one at a time. In a group the bar rides above
+            the phone's tab bar; creating a group has no tab bar. */}
+        <div
+          className={cn(
+            'sticky z-30 -mx-4 mt-4 flex gap-2 border-t bg-background/95 px-4 py-3 backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:mx-0 sm:rounded-lg sm:border sm:px-3',
+            group
+              ? 'bottom-[calc(3.5rem+env(safe-area-inset-bottom))] sm:bottom-2'
+              : 'bottom-0 sm:bottom-2',
+          )}
+        >
           <SubmitButton
+            className="h-11 flex-1 sm:h-10 sm:flex-none"
             loadingContent={t(group ? 'Settings.saving' : 'Settings.creating')}
             onClick={updateActiveUser}
           >

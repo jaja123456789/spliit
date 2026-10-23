@@ -36,6 +36,10 @@ type Props = {
    * makes no sense there.
    */
   renderTrigger?: (currency: Currency) => React.ReactNode
+  /** Passed to the default trigger, so a form label can point at it (`FormControl` sets these). */
+  id?: string
+  'aria-describedby'?: string
+  'aria-invalid'?: boolean
 }
 
 export function CurrencySelector({
@@ -44,6 +48,7 @@ export function CurrencySelector({
   defaultValue,
   isLoading,
   renderTrigger,
+  ...triggerProps
 }: Props) {
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState<string>(defaultValue)
@@ -69,6 +74,7 @@ export function CurrencySelector({
               currency={selectedCurrency}
               open={open}
               isLoading={isLoading}
+              {...triggerProps}
             />
           )}
         </PopoverTrigger>
@@ -94,6 +100,7 @@ export function CurrencySelector({
             currency={selectedCurrency}
             open={open}
             isLoading={isLoading}
+            {...triggerProps}
           />
         )}
       </DrawerTrigger>

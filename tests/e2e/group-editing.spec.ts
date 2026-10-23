@@ -75,7 +75,9 @@ test.describe('Group Editing', () => {
     await navigateToTab(page, 'Settings')
 
     // Verify initial participant count
-    const participantInputs = page.getByRole('textbox', { name: 'New' })
+    const participantInputs = page.getByRole('textbox', {
+      name: /^Participant \d+$/,
+    })
     await expect(participantInputs).toHaveCount(initialParticipants.length)
 
     // Verify initial participant names
@@ -134,7 +136,9 @@ test.describe('Group Editing', () => {
     await navigateToTab(page, 'Settings')
 
     // Verify all 4 participants are present
-    await expect(page.getByRole('textbox', { name: 'New' })).toHaveCount(4)
+    await expect(
+      page.getByRole('textbox', { name: /^Participant \d+$/ }),
+    ).toHaveCount(4)
 
     // Verify 3 protected participants (Alice, Bob, Charlie)
     const protectedCount = await countProtectedParticipants(page)
@@ -260,7 +264,9 @@ test.describe('Group Editing', () => {
     await navigateToTab(page, 'Settings')
 
     // Try to rename Bob to Alice (duplicate)
-    const participantInputs = page.getByRole('textbox', { name: 'New' })
+    const participantInputs = page.getByRole('textbox', {
+      name: /^Participant \d+$/,
+    })
     const bobInput = participantInputs.nth(1)
 
     await bobInput.clear()

@@ -44,7 +44,9 @@ export async function fillParticipants(
   page: Page,
   participants: string[],
 ): Promise<void> {
-  const participantInputs = page.getByRole('textbox', { name: 'New' })
+  const participantInputs = page.getByRole('textbox', {
+    name: /^Participant \d+$/,
+  })
   const initialCount = await participantInputs.count()
 
   // Fill needed participants
@@ -103,7 +105,9 @@ export async function verifyGroupHeading(
  * Gets the list of participant names from the settings page
  */
 export async function getParticipantNames(page: Page): Promise<string[]> {
-  const participantInputs = page.getByRole('textbox', { name: 'New' })
+  const participantInputs = page.getByRole('textbox', {
+    name: /^Participant \d+$/,
+  })
   const count = await participantInputs.count()
   const names: string[] = []
 
