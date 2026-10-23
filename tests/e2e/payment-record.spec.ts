@@ -42,6 +42,61 @@ test.describe('Recording a payment', () => {
     await expect(page.getByTestId('balance-row-Alice')).toContainText('$0.00')
   })
 
+  test('copies a phone number without recording the payment', async ({
+    page,
+    context,
+    browserName,
+  }) => {
+    // A phone number is the one handle that is copied rather than opened. Its button sat inside the
+    // sheet's form with no type, which makes it a submit button: one tap copied the number and
+    // recorded the payment too, before anyone had paid anything.
+    const canReadClipboard = browserName === 'chromium'
+    if (canReadClipboard) {
+      await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+    }
+    await page.goto('/groups')
+    const groupId = await createGroupViaAPI(page, `copy ${randomId(4)}`, [
+      { name: 'Alice', paymentProfile: { phone: '+1 555 0100' } },
+      'Bob',
+    ])
+    await createExpenseViaAPI(page, groupId, {
+      title: 'Dinner',
+      amount: 6000,
+      payerName: 'Alice',
+    })
+
+    await page.goto(`/groups/${groupId}/balances`)
+    await page
+      .getByTestId('reimbursement-row-Bob-Alice')
+      .getByRole('link', { name: /settle/i })
+      .click()
+    await page.waitForURL(/\/payments\/create/)
+    await page
+      .getByTestId('pay-with-options')
+      .getByRole('button', { name: '+1 555 0100' })
+      .click()
+
+    if (canReadClipboard) {
+      expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
+        '+1 555 0100',
+      )
+    }
+    // Still on the sheet, and "Record payment" is the only button that submits it.
+    await expect(page.getByTestId('payment-save')).toHaveText('Record payment')
+    await expect(
+      page
+        .locator('form', { has: page.getByTestId('payment-save') })
+        .locator('button:not([type="button"])'),
+    ).toHaveCount(1)
+
+    // The debt stands until the payment is recorded on purpose.
+    await page.goto(`/groups/${groupId}/balances`)
+    await expect(page.getByTestId('reimbursement-row-Bob-Alice')).toBeVisible()
+    await expect(page.getByTestId('payments-list')).toContainText(
+      'No payments recorded yet.',
+    )
+  })
+
   test('lists what has been paid, not only what is left', async ({ page }) => {
     // Payments used to exist only as italic rows in the expense list. The Balances sheet now shows
     // them under the suggestions they cancel out.

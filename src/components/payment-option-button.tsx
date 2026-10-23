@@ -88,8 +88,15 @@ export function PaymentOptionButton({
     )
   }
 
+  // `type="button"` because the settle sheet is a form, and a button inside one submits it unless
+  // told otherwise: copying the number used to record the payment as well.
   return (
-    <Button variant="outline" className={classes} onClick={handleCopy}>
+    <Button
+      type="button"
+      variant="outline"
+      className={classes}
+      onClick={handleCopy}
+    >
       {content}
     </Button>
   )

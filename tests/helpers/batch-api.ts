@@ -1,3 +1,4 @@
+import type { PaymentProfile } from '@/lib/payment-links'
 import { amountAsDecimal, getCurrencyFromGroup } from '@/lib/utils'
 import type { AppRouter } from '@/trpc/routers/_app'
 import type { Page } from '@playwright/test'
@@ -35,7 +36,11 @@ interface GroupFormValues {
   information?: string
   currency: string
   currencyCode: string
-  participants: Array<{ id?: string; name: string }>
+  participants: Array<{
+    id?: string
+    name: string
+    paymentProfile?: PaymentProfile
+  }>
 }
 
 function createTrpcClient(page: Page) {
@@ -54,10 +59,13 @@ function createTrpcClient(page: Page) {
   })
 }
 
+/** A participant is a name, or a name with the payment handles the settle sheet offers. */
 export async function createGroupViaAPI(
   page: Page,
   groupName: string,
-  participants: string[],
+  participants: Array<
+    string | { name: string; paymentProfile?: PaymentProfile }
+  >,
   currency = 'USD',
   persistOptions: {
     suppressActiveUserModal: boolean
@@ -70,7 +78,9 @@ export async function createGroupViaAPI(
     name: groupName,
     currency,
     currencyCode: currency,
-    participants: participants.map((name) => ({ name })),
+    participants: participants.map((participant) =>
+      typeof participant === 'string' ? { name: participant } : participant,
+    ),
   }
 
   const result = await trpc.groups.create.mutate({ groupFormValues })
