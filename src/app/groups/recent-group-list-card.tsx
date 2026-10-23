@@ -26,9 +26,9 @@ import { cn, formatCurrency } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { StarFilledIcon } from '@radix-ui/react-icons'
 import {
-  Calendar,
   Cloud,
   CloudOff,
+  History,
   Loader2,
   MoreHorizontal,
   Star,
@@ -272,14 +272,23 @@ export function RecentGroupListCard({
                           })}
                     </span>
                   )}
-                  <div className="flex items-center">
-                    <Calendar className="w-3 h-3 inline mx-1" />
-                    <span>
-                      {new Date(groupDetail.createdAt).toLocaleDateString(
+                  {/* When something last happened in the group, not when it was created: for a
+                      household that date was the same for years. `updatedAt` is the newest
+                      activity line, or the creation time while there is none. */}
+                  <div
+                    className="flex items-center"
+                    title={t('Card.lastActivity', {
+                      date: new Date(groupDetail.updatedAt).toLocaleDateString(
                         locale,
-                        {
-                          dateStyle: 'medium',
-                        },
+                        { dateStyle: 'medium' },
+                      ),
+                    })}
+                  >
+                    <History className="w-3 h-3 inline mx-1" />
+                    <span>
+                      {formatLastActivity(
+                        new Date(groupDetail.updatedAt),
+                        locale,
                       )}
                     </span>
                   </div>
@@ -314,4 +323,21 @@ export function RecentGroupListCard({
       </AlertDialog>
     </li>
   )
+}
+
+/**
+ * "today", "yesterday", "3 days ago", "last month" — in the reader's language, from Intl, so no
+ * new strings. Past a year the date itself says more than "2 years ago".
+ */
+function formatLastActivity(date: Date, locale: string) {
+  const startOfDay = (d: Date) =>
+    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const days = Math.round(
+    (startOfDay(new Date()) - startOfDay(date)) / 86_400_000,
+  )
+  const rtf = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' })
+  if (days < 7) return rtf.format(-Math.max(days, 0), 'day')
+  if (days < 30) return rtf.format(-Math.round(days / 7), 'week')
+  if (days < 365) return rtf.format(-Math.round(days / 30), 'month')
+  return date.toLocaleDateString(locale, { dateStyle: 'medium' })
 }

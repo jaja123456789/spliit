@@ -152,6 +152,7 @@
           "removeAndUnsync": "Remove and unsync"
         }
       },
+      "lastActivity": "Last activity {date}",
       "settled": "settled up",
       "owedToYou": "you are owed {amount}",
       "youOwe": "you owe {amount}"
