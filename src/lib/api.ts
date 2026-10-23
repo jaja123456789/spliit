@@ -1221,6 +1221,12 @@ export async function getActivities(
       groupId,
       id: { in: expenseIds },
     },
+    // Who paid whom, by id: a payment's line says "Robin paid Alex", and the names come from the
+    // group the client already has.
+    include: {
+      paidBy: { select: { participantId: true } },
+      paidFor: { select: { participantId: true } },
+    },
   })
   return activities.map((activity) => ({
     ...activity,

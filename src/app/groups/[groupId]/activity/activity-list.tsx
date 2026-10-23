@@ -142,6 +142,7 @@ export function ActivityList() {
                   groupId={groupId}
                   activity={activity}
                   participant={participant}
+                  participants={group.participants}
                   dateStyle={dateStyle}
                   currency={group ? getCurrencyFromGroup(group) : undefined}
                 />

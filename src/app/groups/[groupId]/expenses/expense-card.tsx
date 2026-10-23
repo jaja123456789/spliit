@@ -15,7 +15,7 @@ import { getBalances } from '@/lib/balances'
 import { Currency, getCurrency } from '@/lib/currency'
 import { useActiveUser } from '@/lib/hooks'
 import { cn, toDateInputValue } from '@/lib/utils'
-import { MessageSquare } from 'lucide-react'
+import { ArrowLeftRight, MessageSquare } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { Fragment, ReactNode, useState } from 'react'
@@ -91,6 +91,59 @@ function Participants({
   return <>{participants}</>
 }
 
+/**
+ * A payment is a transfer between two people, so it reads as one: "Robin paid you". It used to read
+ * as an expense titled "Payment" — "Paid by Robin for Alex" — with your balance change beside it,
+ * which for a payment you received was −€350.00 in the debt colour: right in balance terms (you
+ * are owed €350 less), and read as a loss on the one row that is good news.
+ */
+function PaymentLine({
+  expense,
+  activeUserId,
+}: {
+  expense: Expense
+  activeUserId: string | null
+}) {
+  const t = useTranslations('ExpenseCard')
+  const payer = expense.paidBy[0]?.participant
+  const recipients = expense.paidFor.map(({ participant }) => participant)
+  const names = (people: { name: string }[]) =>
+    people.map(({ name }) => name).join(', ')
+  if (activeUserId && payer?.id === activeUserId)
+    return <>{t('paymentByYou', { to: names(recipients) })}</>
+  if (
+    activeUserId &&
+    recipients.length === 1 &&
+    recipients[0].id === activeUserId
+  )
+    return <>{t('paymentToYou', { from: payer?.name ?? '' })}</>
+  return (
+    <>
+      {t('paymentBetween', { from: payer?.name ?? '', to: names(recipients) })}
+    </>
+  )
+}
+
+/**
+ * The title a payment was saved with, when somebody wrote one. The app titles them itself —
+ * "Payment from Robin to Alex", or plain "Payment" from older versions — and a row that already
+ * says "Robin paid Alex" has no use for that, but a note like "October rent share" it does.
+ */
+function usePaymentNote(expense: Expense) {
+  const t = useTranslations('Payment')
+  const from = expense.paidBy[0]?.participant.name ?? ''
+  const to = expense.paidFor
+    .map(({ participant }) => participant.name)
+    .join(', ')
+  const title = expense.title.trim()
+  const generated =
+    title === '' ||
+    /^payment$/i.test(title) ||
+    /^payment from .+ to .+$/i.test(title) ||
+    title === t('defaultTitle', { from, to })
+  return generated ? null : title
+}
+
 type Props = {
   expense: Expense
   /** The expense's day, as the list words it: "Today", "Oct 21". Its month heads the section. */
@@ -112,6 +165,8 @@ export function ExpenseCard({
   const activeUserId = useActiveUser(groupId)
   const [sheetOpen, setSheetOpen] = useState(false)
   const longPress = useLongPress(() => setSheetOpen(true))
+  const isPayment = expense.isReimbursement
+  const paymentNote = usePaymentNote(expense)
 
   let userBalanceAmount = 0
 
@@ -137,12 +192,7 @@ export function ExpenseCard({
   return (
     // Its actions sit beside the link rather than inside it: a button within a link is two
     // controls fighting over one click.
-    <div
-      className={cn(
-        'flex items-center border-b last:border-b-0 transition-colors hover:bg-accent/50',
-        expense.isReimbursement && 'bg-muted/20',
-      )}
-    >
+    <div className="flex items-center border-b last:border-b-0 transition-colors hover:bg-accent/50">
       {/* A link, not a `div` with a click handler. The row is the only way into an expense, and a
           `div` is not focusable: tabbing through the list went from the search box straight to
           the footer, past every row. A link also answers to middle-click and "open in new tab".
@@ -157,20 +207,31 @@ export function ExpenseCard({
           'relative flex flex-1 min-w-0 items-start gap-3 px-4 sm:pl-6 sm:pr-2 py-3.5 text-sm',
           'select-none [-webkit-touch-callout:none]',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
-          expense.isReimbursement && 'italic',
         )}
       >
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-baseline gap-3">
             <div className="flex items-baseline gap-2 min-w-0">
               <div
-                className={cn(
-                  'font-medium text-base truncate',
-                  expense.isReimbursement && 'italic text-muted-foreground',
-                )}
+                className="flex min-w-0 items-center gap-1.5 font-medium text-base"
                 data-testid="expense-title"
               >
-                {expense.title}
+                {isPayment && (
+                  <ArrowLeftRight
+                    aria-hidden
+                    className="h-3.5 w-3.5 shrink-0 text-subtle-foreground"
+                  />
+                )}
+                <span className="truncate">
+                  {isPayment ? (
+                    <PaymentLine
+                      expense={expense}
+                      activeUserId={activeUserId}
+                    />
+                  ) : (
+                    expense.title
+                  )}
+                </span>
               </div>
               <div className="flex shrink-0 items-center gap-2 text-xs text-subtle-foreground">
                 <DocumentsCount count={expense._count.documents} />
@@ -195,8 +256,8 @@ export function ExpenseCard({
               <Money
                 currency={currency}
                 amount={expense.amount}
-                bold={!expense.isReimbursement}
-                className={cn('text-base', expense.isReimbursement && 'italic')}
+                bold={!isPayment}
+                className="text-base"
               />
             </div>
           </div>
@@ -212,11 +273,22 @@ export function ExpenseCard({
               >
                 {dateLabel}
               </time>
-              <span aria-hidden> · </span>
-              <Participants
-                expense={expense}
-                participantCount={participantCount}
-              />
+              {isPayment ? (
+                paymentNote && (
+                  <>
+                    <span aria-hidden> · </span>
+                    {paymentNote}
+                  </>
+                )
+              ) : (
+                <>
+                  <span aria-hidden> · </span>
+                  <Participants
+                    expense={expense}
+                    participantCount={participantCount}
+                  />
+                </>
+              )}
             </div>
             <div className="shrink-0 text-xs">
               {original ? (
@@ -226,6 +298,7 @@ export function ExpenseCard({
                   className="text-subtle-foreground"
                 />
               ) : (
+                !isPayment &&
                 userBalanceAmount !== 0 && (
                   // Your share as a signed figure rather than a sentence. "You lent" and
                   // "You borrowed" were hard-coded English in a 23-locale app; the sign says the

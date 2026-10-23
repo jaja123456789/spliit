@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { ActivityChange, decodeActivityData } from '@/lib/activity-changes'
 import { Currency } from '@/lib/currency'
 import { useActiveUser } from '@/lib/hooks'
-import { DateTimeStyle, cn, formatDate } from '@/lib/utils'
+import { DateTimeStyle, cn, formatCurrency, formatDate } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { ActivityType, Participant } from '@prisma/client'
 import { ChevronRight } from 'lucide-react'
@@ -20,12 +20,20 @@ type Props = {
   groupId: string
   activity: Activity
   participant?: Participant
+  /** The group's people, to name both ends of a payment. */
+  participants?: Participant[]
   dateStyle: DateTimeStyle
   currency?: Currency
 }
 
-function useSummary(activity: Activity, participantName?: string) {
+function useSummary(
+  activity: Activity,
+  participantName?: string,
+  participants?: Participant[],
+  currency?: Currency,
+) {
   const t = useTranslations('Activity')
+  const locale = useLocale()
   const participant = participantName ?? t('someone')
   const {
     title: expense,
@@ -41,6 +49,33 @@ function useSummary(activity: Activity, participantName?: string) {
       em: (chunks) => <em>&ldquo;{chunks}&rdquo;</em>,
       strong: (chunks) => <strong>{chunks}</strong>,
     })
+
+  // A payment is not an expense somebody created; it is money that moved. "Expense "Payment"
+  // created by Robin" said neither who received it nor how much.
+  const payment = activity.expense?.isReimbursement ? activity.expense : null
+  const nameOf = (id?: string) =>
+    participants?.find((p) => p.id === id)?.name ?? t('someone')
+  if (
+    payment &&
+    activity.activityType == ActivityType.CREATE_EXPENSE &&
+    occurrences === undefined &&
+    !restored
+  ) {
+    return (
+      <>
+        {t.rich('paymentRecorded', {
+          payer: nameOf(payment.paidBy[0]?.participantId),
+          recipient: payment.paidFor
+            .map((p) => nameOf(p.participantId))
+            .join(', '),
+          amount: currency
+            ? formatCurrency(currency, payment.amount, locale)
+            : '',
+          strong: (chunks) => <strong>{chunks}</strong>,
+        })}
+      </>
+    )
+  }
 
   if (activity.activityType == ActivityType.UPDATE_GROUP) {
     return <>{tr('settingsModified')}</>
@@ -67,6 +102,7 @@ export function ActivityItem({
   groupId,
   activity,
   participant,
+  participants,
   dateStyle,
   currency,
 }: Props) {
@@ -78,7 +114,12 @@ export function ActivityItem({
   const [restoring, setRestoring] = useState(false)
 
   const expenseExists = activity.expense !== undefined
-  const summary = useSummary(activity, participant?.name)
+  const summary = useSummary(
+    activity,
+    participant?.name,
+    participants,
+    currency,
+  )
   const { changes, deleted, comment } = decodeActivityData(activity.data)
   // A deletion that kept a copy of the expense, which is not back yet.
   const restorable =
