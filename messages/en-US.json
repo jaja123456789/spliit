@@ -72,7 +72,8 @@
       "undo": "Undo",
       "restored": "“{title}” restored",
       "restoreFailed": "The expense could not be restored."
-    }
+    },
+    "balancesPanel": "Balances"
   },
   "ExpenseCard": {
     "paidBy": "Paid by <strong>{paidBy}</strong> for <paidFor></paidFor>",

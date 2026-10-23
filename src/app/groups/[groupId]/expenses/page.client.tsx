@@ -1,11 +1,13 @@
 'use client'
 
+import BalancesAndReimbursements from '@/app/groups/[groupId]/balances/balances-and-reimbursements'
 import { ActiveUserModal } from '@/app/groups/[groupId]/expenses/active-user-modal'
 import { CreateFromReceiptButton } from '@/app/groups/[groupId]/expenses/create-from-receipt-button'
 import { ExpenseList } from '@/app/groups/[groupId]/expenses/expense-list'
 import ExportButton from '@/app/groups/[groupId]/export-button'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { useMediaQueryAfterHydration } from '@/lib/hooks'
 import { cn } from '@/lib/utils' // Import cn
 import { Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
@@ -20,6 +22,7 @@ export default function GroupExpensesPageClient({
 }) {
   const t = useTranslations('Expenses')
   const { groupId } = useCurrentGroup()
+  const isWide = useMediaQueryAfterHydration('(min-width: 1024px)')
   const [isScrolled, setIsScrolled] = useState(false)
 
   // Detect scroll to show shadow on sticky headers if implemented,
@@ -39,29 +42,44 @@ export default function GroupExpensesPageClient({
           with two competing edges around every expense.
           `mb-20` is load-bearing on mobile: it is the clearance that stops the FAB covering the
           last row. */}
-      <Card bleed className="mb-20 sm:mb-4 overflow-hidden">
-        <CardContent className="p-0 flex flex-col gap-3 pb-4 sm:pb-6 relative min-h-[300px]">
-          <ExpenseList
-            enableReceiptExtract={enableReceiptExtract}
-            actions={
-              <>
-                <ExportButton groupId={groupId} />
-                {enableReceiptExtract && <CreateFromReceiptButton />}
+      {/* From `lg`, two columns: the list, and the balances beside it — the question most visits
+          end on — kept in view while the list scrolls. The grid is CSS, so the list's column is
+          the right width from the first paint; only the panel's content waits for the client. */}
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6">
+        {/* `overflow-clip`, not `-hidden`: both keep the rows inside the rounded corners, but
+            `hidden` makes the card a scroll container, and the month headings' `sticky` then
+            stuck to the card — which never scrolls — instead of to the page. */}
+        <Card bleed className="mb-20 sm:mb-4 overflow-clip">
+          <CardContent className="p-0 flex flex-col gap-3 pb-4 sm:pb-6 relative min-h-[300px]">
+            <ExpenseList
+              enableReceiptExtract={enableReceiptExtract}
+              actions={
+                <>
+                  <ExportButton groupId={groupId} />
+                  {enableReceiptExtract && <CreateFromReceiptButton />}
 
-                {/* Desktop Add Button (hidden on mobile to favor FAB) */}
-                <Button asChild size="icon" className="hidden sm:inline-flex">
-                  <Link
-                    href={`/groups/${groupId}/expenses/create`}
-                    title={t('create')}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Link>
-                </Button>
-              </>
-            }
-          />
-        </CardContent>
-      </Card>
+                  {/* Desktop Add Button (hidden on mobile to favor FAB) */}
+                  <Button asChild size="icon" className="hidden sm:inline-flex">
+                    <Link
+                      href={`/groups/${groupId}/expenses/create`}
+                      title={t('create')}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Link>
+                  </Button>
+                </>
+              }
+            />
+          </CardContent>
+        </Card>
+        <aside
+          aria-label={t('balancesPanel')}
+          className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto"
+        >
+          {/* Mounted on wide screens only: a phone would fetch balances it never shows. */}
+          {isWide && <BalancesAndReimbursements variant="panel" />}
+        </aside>
+      </div>
 
       {/* Mobile Floating Action Button (FAB) */}
       {/* Above the tab bar, not on it: the bar is 3.5rem plus the home indicator, and this

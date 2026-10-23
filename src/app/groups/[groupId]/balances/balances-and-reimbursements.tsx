@@ -15,7 +15,16 @@ import { useTranslations } from 'next-intl'
 import { match } from 'ts-pattern'
 import { useCurrentGroup } from '../current-group-context'
 
-export default function BalancesAndReimbursements() {
+/**
+ * @param variant `panel` is the same sheet beside the expense list on a wide screen: who owes what
+ * and the payments that would settle it, without the history of payments already made — that is
+ * the Balances tab's to show, and beside a list it would only compete with it.
+ */
+export default function BalancesAndReimbursements({
+  variant = 'page',
+}: {
+  variant?: 'page' | 'panel'
+}) {
   const { groupId, group } = useCurrentGroup()
   const activeUserId = useActiveUser(groupId)
   const { data: balancesData, isLoading: balancesAreLoading } =
@@ -132,18 +141,24 @@ export default function BalancesAndReimbursements() {
           moment you want to record the payment that settled it. It lives here instead, where it is
           true whatever the balances say, and the payments themselves finally have somewhere to be
           other than italic rows among the expenses. */}
-      <SectionRule>{t('Payments.title')}</SectionRule>
-      <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
-        {isLoading || !currency ? (
-          <PaymentsLoading />
-        ) : (
-          <PaymentList
-            groupId={groupId}
-            participants={group.participants}
-            currency={currency}
-          />
-        )}
-      </CardContent>
+      {variant === 'page' ? (
+        <>
+          <SectionRule>{t('Payments.title')}</SectionRule>
+          <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
+            {isLoading || !currency ? (
+              <PaymentsLoading />
+            ) : (
+              <PaymentList
+                groupId={groupId}
+                participants={group.participants}
+                currency={currency}
+              />
+            )}
+          </CardContent>
+        </>
+      ) : (
+        <div className="h-4" />
+      )}
     </Card>
   )
 }

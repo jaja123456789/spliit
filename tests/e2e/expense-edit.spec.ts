@@ -81,9 +81,12 @@ test.describe('Expense Editing', () => {
     await saveButton.click()
     await page.waitForURL(/\/groups\/[^/]+\/expenses$/)
 
-    // Verify payer updated in list
-    const expenseCard = page.getByText('Payer Change Test').locator('..')
-    await expect(page.getByText(/Bob/)).toBeVisible()
+    // Verify payer updated in list — on the row: from \`lg\` the balances beside the list name
+    // Bob too.
+    const expenseCard = page
+      .locator('[data-testid^="expense-item-"]')
+      .filter({ hasText: 'Payer Change Test' })
+    await expect(expenseCard).toContainText('Paid by Bob')
   })
 
   test('updates expense date', async ({ page }) => {
