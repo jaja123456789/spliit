@@ -352,6 +352,17 @@ function FilterSummary({
           />
         </>
       )}
+      {filters.month && (
+        <>
+          {' · '}
+          <Link
+            href={`/groups/${groupId}/stats?month=${filters.month}`}
+            className="underline underline-offset-2 hover:text-foreground"
+          >
+            {t('statement')}
+          </Link>
+        </>
+      )}
       {data.participantShare !== undefined && data.participantShare !== 0 && (
         <>
           {' · '}

@@ -6,8 +6,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useActiveUserState } from '@/lib/hooks'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { useCurrentGroup } from '../current-group-context'
+import { monthLabel, useStatsMonth } from './stats-month'
 
 /**
  * The head of the stats sheet and the rows under it.
@@ -22,9 +23,11 @@ export function Totals() {
   const t = useTranslations('Stats.Totals')
 
   const participantId = activeUser ?? undefined
+  const [month] = useStatsMonth()
+  const locale = useLocale()
   // Not before we know who "you" are: see `useActiveUserState`.
   const { data } = trpc.groups.stats.get.useQuery(
-    { groupId, participantId },
+    { groupId, participantId, month },
     { enabled: activeUser !== undefined },
   )
   // Read the balance from the same query the Balances tab renders, rather than recomputing it.
@@ -35,14 +38,22 @@ export function Totals() {
 
   const ready = !!data && !!group
   const currency = group ? getCurrencyFromGroup(group) : null
-  const balance = participantId
-    ? balancesData?.balances[participantId]?.total
-    : undefined
+  // For a month, where you stood when it closed; otherwise where you stand now.
+  const balance = !participantId
+    ? undefined
+    : month
+    ? data?.statement?.participants.find((p) => p.id === participantId)
+        ?.closingBalance
+    : balancesData?.balances[participantId]?.total
 
   return (
     <>
       <SheetHeader
-        label={t('groupTotal')}
+        label={
+          month
+            ? t('monthTotal', { month: monthLabel(month, locale) })
+            : t('groupTotal')
+        }
         figureTestId="total-group-spendings"
         figure={
           ready && currency ? (
@@ -51,7 +62,15 @@ export function Totals() {
             <Skeleton className="h-8 w-40" />
           )
         }
-        context={ready ? t('description') : <Skeleton className="h-3.5 w-48" />}
+        context={
+          !ready ? (
+            <Skeleton className="h-3.5 w-48" />
+          ) : month ? (
+            t('monthDescription')
+          ) : (
+            t('description')
+          )
+        }
       />
       <div className="px-4 sm:px-6 pb-2">
         {!ready || !currency ? (
@@ -84,7 +103,11 @@ export function Totals() {
               {balance !== undefined && (
                 <TotalsFigure
                   label={balance < 0 ? t('youOwe') : t('yourBalance')}
-                  hint={t('balanceHint')}
+                  hint={
+                    month
+                      ? t('closingHint', { month: monthLabel(month, locale) })
+                      : t('balanceHint')
+                  }
                   amount={balance}
                   currency={currency}
                   tone="balance"

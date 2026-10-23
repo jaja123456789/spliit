@@ -65,7 +65,8 @@
       "clearAll": "Clear filters",
       "noResults": "No expense matches these filters.",
       "count": "{count, plural, one {# expense} other {# expenses}}",
-      "yourShare": "your share"
+      "yourShare": "your share",
+      "statement": "statement"
     },
     "Deleted": {
       "title": "“{title}” deleted",
@@ -557,7 +558,26 @@
       "yourShare": "Your share",
       "yourBalance": "You are owed",
       "youOwe": "You owe",
-      "balanceHint": "Includes settling up, so it matches the Balances tab."
+      "balanceHint": "Includes settling up, so it matches the Balances tab.",
+      "monthTotal": "Spent in {month}",
+      "closingHint": "At the end of {month}, settling up included.",
+      "monthDescription": "Spending in this month. Settling up is not spending, so it is left out."
+    },
+    "Month": {
+      "label": "Period",
+      "allTime": "All time"
+    },
+    "Statement": {
+      "title": "Statement · {month}",
+      "count": "{count, plural, one {# expense} other {# expenses}}, settling up not included",
+      "export": "Export CSV",
+      "person": "Person",
+      "paid": "Paid",
+      "share": "Share",
+      "net": "Net",
+      "payments": "Payments this month",
+      "noPayments": "No payments this month.",
+      "closing": "Balances at the end of {month}"
     }
   },
   "Activity": {

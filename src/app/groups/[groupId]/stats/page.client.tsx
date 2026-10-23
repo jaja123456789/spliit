@@ -1,4 +1,9 @@
 'use client'
+import { MonthlyStatementCard } from '@/app/groups/[groupId]/stats/monthly-statement'
+import {
+  MonthPicker,
+  useStatsMonth,
+} from '@/app/groups/[groupId]/stats/stats-month'
 import { Totals } from '@/app/groups/[groupId]/stats/totals'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -34,14 +39,17 @@ export function TotalsPageClient() {
   const activeUser = useActiveUserState(groupId)
 
   const participantId = activeUser ?? undefined
+  const [month] = useStatsMonth()
   // Not before we know who "you" are: see `useActiveUserState`.
   const { data } = trpc.groups.stats.get.useQuery(
-    { groupId, participantId },
+    { groupId, participantId, month },
     { enabled: activeUser !== undefined },
   )
 
   return (
     <div className="space-y-4">
+      {/* All time, or one month — and for a month, its statement. */}
+      <MonthPicker />
       {/* One sheet. `Totals` owns its own header now, so there is no CardHeader here repeating the
           tab name over a sentence explaining that a summary is a summary. */}
       <Card bleed className="pb-2">
@@ -50,6 +58,10 @@ export function TotalsPageClient() {
 
       {/* Sibling of the totals, not a child of them: these are their own cards, and nesting three
           cards inside a fourth just added a frame around a frame. */}
+      {month && data?.statement && (
+        <MonthlyStatementCard month={month} statement={data.statement} />
+      )}
+
       {!data || !group ? (
         <ChartsSkeleton />
       ) : data.categorySpending.length === 0 ? (

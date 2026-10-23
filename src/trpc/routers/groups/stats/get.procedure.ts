@@ -1,4 +1,6 @@
 import { getAllGroupExpenses, getGroup } from '@/lib/api'
+import { MONTH_PATTERN, monthRange } from '@/lib/expense-filters'
+import { buildMonthlyStatement } from '@/lib/statement'
 import { bucketSpendingOverTime } from '@/lib/stats'
 import {
   calculateShares,
@@ -14,14 +16,26 @@ export const getGroupStatsProcedure = baseProcedure
     z.object({
       groupId: z.string().min(1),
       participantId: z.string().optional(),
+      /** One month, `YYYY-MM`: every figure is that month's, and the statement comes with them. */
+      month: z.string().regex(MONTH_PATTERN).optional(),
     }),
   )
-  .query(async ({ input: { groupId, participantId } }) => {
-    const [group, expenses] = await Promise.all([
+  .query(async ({ input: { groupId, participantId, month } }) => {
+    const [group, history] = await Promise.all([
       getGroup(groupId),
       getAllGroupExpenses(groupId),
     ])
     if (!group) throw new Error(`Invalid group ID: ${groupId}`)
+
+    // The whole history is read either way: a month's closing balances need everything before it.
+    const range = month ? monthRange(month) : null
+    const expenses = range
+      ? history.filter(
+          (expense) =>
+            expense.expenseDate >= range.start &&
+            expense.expenseDate < range.end,
+        )
+      : history
 
     const totalGroupSpendings = getTotalGroupSpending(expenses)
     const totalParticipantSpendings =
@@ -110,5 +124,8 @@ export const getGroupStatsProcedure = baseProcedure
       ),
       spendingOverTime: buckets,
       timeGranularity: granularity,
+      statement: range
+        ? buildMonthlyStatement(group.participants, history, range)
+        : undefined,
     }
   })
