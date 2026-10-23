@@ -1,8 +1,19 @@
 import {
   AVATAR_HUE_COUNT,
   assignAvatarHues,
+  avatarHueDistance,
   preferredAvatarHue,
 } from './avatar-hue'
+
+/** The first pair of generated names whose preferences satisfy `test`. */
+function findPair(test: (a: number, b: number) => boolean): [string, string] {
+  const names = Array.from({ length: 400 }, (_, i) => `Person ${i}`)
+  for (const a of names)
+    for (const b of names)
+      if (a !== b && test(preferredAvatarHue(a), preferredAvatarHue(b)))
+        return [a, b]
+  throw new Error('no such pair')
+}
 
 describe('preferredAvatarHue', () => {
   it('always lands in range', () => {
@@ -60,11 +71,61 @@ describe('assignAvatarHues', () => {
       expect(hue).toBeGreaterThanOrEqual(0)
       expect(hue).toBeLessThan(AVATAR_HUE_COUNT)
     }
-    // The first eight take one plate each; the overflow falls back to its own preference, which
+    // The first seven take one plate each; the overflow falls back to its own preference, which
     // spreads. If it piled onto a single bucket this would be far more lopsided.
     const counts = new Map<number, number>()
     for (const hue of hues) counts.set(hue, (counts.get(hue) ?? 0) + 1)
     expect(Math.max(...counts.values())).toBeLessThanOrEqual(6)
+  })
+
+  it('moves the second of two look-alike preferences to a plate that looks different', () => {
+    // What every clash used to produce: the next plate on the list, which is the nearest one. In
+    // the groups this fork is used for, that put 9 of 15 groups on olive beside lime.
+    const [first, second] = findPair(
+      (a, b) => a !== b && avatarHueDistance(a, b) < 60,
+    )
+    const hues = assignAvatarHues([first, second])
+    expect(hues.get(first)).toBe(preferredAvatarHue(first))
+    expect(
+      avatarHueDistance(hues.get(first)!, hues.get(second)!),
+    ).toBeGreaterThanOrEqual(60)
+  })
+
+  it('gives the second of two identical preferences the plate furthest from the first', () => {
+    const [first, second] = findPair((a, b) => a === b)
+    const hues = assignAvatarHues([first, second])
+    const taken = hues.get(first)!
+    const furthest = Math.max(
+      ...Array.from({ length: AVATAR_HUE_COUNT }, (_, plate) =>
+        plate === taken ? 0 : avatarHueDistance(plate, taken),
+      ),
+    )
+    expect(avatarHueDistance(taken, hues.get(second)!)).toBe(furthest)
+  })
+
+  it('leaves a preference alone when it already looks different from everyone', () => {
+    const [first, second] = findPair((a, b) => avatarHueDistance(a, b) >= 60)
+    const hues = assignAvatarHues([first, second])
+    expect(hues.get(second)).toBe(preferredAvatarHue(second))
+  })
+
+  it('keeps two and three people at least 75° apart, whatever their names', () => {
+    // Exhaustively true over every combination of preferences (checked when the plates were
+    // chosen); from four people on, seven plates on a 140° arc plus sand cannot promise it.
+    for (const size of [2, 3]) {
+      for (let start = 0; start < 200; start++) {
+        const names = Array.from(
+          { length: size },
+          (_, i) => `Member ${start}-${i}`,
+        )
+        const hues = [...assignAvatarHues(names).values()]
+        for (let i = 0; i < hues.length; i++)
+          for (let j = i + 1; j < hues.length; j++)
+            expect(avatarHueDistance(hues[i], hues[j])).toBeGreaterThanOrEqual(
+              75,
+            )
+      }
+    }
   })
 
   it('collapses duplicate names to one plate', () => {

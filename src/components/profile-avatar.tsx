@@ -9,7 +9,7 @@ interface Props {
   /** Marks the active user — a ring, not a different plate. */
   isActiveUser?: boolean
   /**
-   * Which of the eight plates to wear, 0-7. Pass the value `assignAvatarHues` gave this name so
+   * Which of the seven plates to wear, 0-6. Pass the value `assignAvatarHues` gave this name so
    * that nobody in the group shares a colour; omitted, the name picks its own and may clash.
    */
   hue?: number
@@ -22,7 +22,7 @@ interface Props {
  *
  * This once hashed the name into one of seventeen Tailwind 500-weight hues — borrowed colour,
  * arbitrarily assigned, louder than the money — and then went the other way, to one neutral plate
- * for everyone with the accent reserved for you. Eight designed hues is the settlement: a group is
+ * for everyone with the accent reserved for you. Seven designed hues is the settlement: a group is
  * legible at a glance, and no hue is one of the two the app spends on money.
  *
  * You are still marked, but by a ring rather than by being the only person with a colour. That is
@@ -41,7 +41,7 @@ export function ProfileAvatar({
   size = 32,
   className,
 }: Props) {
-  // Eight tokens, not eight Tailwind colours: the plate is the only thing in the app that wears
+  // Seven tokens, not seven Tailwind colours: the plate is the only thing in the app that wears
   // them, and `bg-avatar-${n}` cannot be written as a class anyway — Tailwind reads source text,
   // so a computed name never reaches the stylesheet. The variable does the switching, which means
   // dark mode comes for free from `.dark` redefining it.
