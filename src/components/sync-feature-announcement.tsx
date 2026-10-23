@@ -1,8 +1,7 @@
 'use client'
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Cloud } from 'lucide-react'
+import { Cloud, X } from 'lucide-react'
 import { useSession } from 'next-auth/react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
@@ -53,24 +52,30 @@ export function SyncFeatureAnnouncement() {
 
   if (!isVisible) return null
 
+  // One line where it fits: the old banner put a title, a sentence and an inline link in three
+  // places, and at phone width the link broke across two lines with Dismiss beside its second half.
   return (
-    <Alert className="mb-4">
-      <Cloud className="h-4 w-4" />
-      <AlertTitle>{t('title')}</AlertTitle>
-      <AlertDescription>
-        {t('body')}{' '}
-        <Link href="/settings" className="underline">
-          {t('actions.settings')}
-        </Link>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleDismiss}
-          className="ml-2"
-        >
-          {t('actions.dismiss')}
-        </Button>
-      </AlertDescription>
-    </Alert>
+    <div
+      className="mb-4 flex items-center gap-3 rounded-lg border bg-card py-2 pl-3 pr-1 text-sm"
+      role="status"
+    >
+      <Cloud className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+      <p className="min-w-0 flex-1">
+        {t.rich('line', { strong: (chunks) => <strong>{chunks}</strong> })}
+      </p>
+      <Button asChild variant="secondary" size="sm" className="shrink-0">
+        <Link href="/settings">{t('actions.setUp')}</Link>
+      </Button>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={handleDismiss}
+        className="h-9 w-9 shrink-0"
+        aria-label={t('actions.dismiss')}
+        title={t('actions.dismiss')}
+      >
+        <X className="h-4 w-4" />
+      </Button>
+    </div>
   )
 }

@@ -214,7 +214,7 @@ function RecentGroupList_({
           data-testid="overall-balance"
         >
           <div className="text-xs text-muted-foreground">
-            {isPartial ? t('Overall.partial') : t('Overall.all')}
+            {t('Overall.all')}
           </div>
           {/* The one figure in the app not in the figure face. The amount is interpolated into a
               translated sentence ("You are owed {amount}") so that translators control the word
@@ -239,6 +239,13 @@ function RecentGroupList_({
                 })}
               </div>
             ))
+          )}
+          {isPartial && (
+            <div className="mt-1 text-xs text-subtle-foreground">
+              {t('Overall.notCounting', {
+                count: groups.length - coveredCount,
+              })}
+            </div>
           )}
         </div>
       )}

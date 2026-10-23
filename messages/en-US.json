@@ -167,7 +167,8 @@
       "description": "Someone deleted it, or the link was wrong. Nothing here can be recovered from this device."
     },
     "Overall": {
-      "all": "Across all your groups",
+      "all": "Across your groups",
+      "notCounting": "Not counting {count, plural, one {# group} other {# groups}} where you haven’t said who you are.",
       "partial": "Across the groups where you have said who you are",
       "settled": "You are settled up",
       "owedToYou": "You are owed {amount}",
@@ -528,7 +529,7 @@
     "Reimbursements": {
       "title": "To settle",
       "description": "Here are suggestions for optimized reimbursements between participants.",
-      "noImbursements": "It looks like your group doesn’t need any reimbursement 😁",
+      "noImbursements": "Nothing to settle.",
       "owes": "<strong>{from}</strong> owes <strong>{to}</strong>",
       "markAsPaid": "Mark as paid",
       "suggested": "suggested",
@@ -838,11 +839,13 @@
     }
   },
   "SyncAnnouncement": {
+    "line": "<strong>New:</strong> sync your groups across devices.",
     "title": "New: Cloud Sync",
     "body": "Sync your groups across devices.",
     "actions": {
       "settings": "Set up in Settings",
-      "dismiss": "Dismiss"
+      "dismiss": "Dismiss",
+      "setUp": "Set up"
     }
   },
   "SyncErrors": {
@@ -900,7 +903,7 @@
     "payNow": "Pay {name} now",
     "payNowHint": "Opens the app with {amount} to {name} filled in. Come back here to record it.",
     "alreadyPaid": "Already paid?",
-    "settleAll": "Settle all {count}",
+    "settleAll": "{count, plural, =2 {Settle both} other {Settle all #}}",
     "settleAllConfirmTitle": "Record {count} payments?",
     "settleAllConfirmBody": "This records every suggested payment at once, as if each had already been made. Nothing leaves the app.",
     "settleAllConfirm": "Record them",

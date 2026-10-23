@@ -35,9 +35,15 @@ export function BalancesList({
   // `Math.max()` of an empty list is -Infinity, which would turn every width into NaN.
   const totals = Object.values(balances).map((b) => Math.abs(b.total))
   const maxBalance = totals.length > 0 ? Math.max(...totals) : 0
+  // Everyone square. The bars would be empty tracks and every caption would say "settled up", and
+  // the sheet's own header has already said it once.
+  const allSettled = maxBalance < 0.01
 
   return (
-    <div className="flex flex-col gap-4" data-testid="balances-list">
+    <div
+      className={cn('flex flex-col', allSettled ? 'gap-2' : 'gap-4')}
+      data-testid="balances-list"
+    >
       {participants.map((participant) => {
         const balance = balances[participant.id]?.total ?? 0
         const isPositive = balance > 0
@@ -59,7 +65,7 @@ export function BalancesList({
               name={participant.name}
               hue={avatarHues.get(participant.name)}
               isActiveUser={isYou}
-              size={40}
+              size={allSettled ? 32 : 40}
             />
 
             <div className="flex-1 min-w-0 flex flex-col gap-1">
@@ -77,38 +83,43 @@ export function BalancesList({
                 <Money
                   currency={currency}
                   amount={balance}
-                  signed
+                  signed={!allSettled}
                   colored
-                  bold
+                  bold={!allSettled}
                   className="text-sm"
                 />
               </div>
-
-              {/* Diverging bar: direction is encoded in position as well as colour, so it still
+              {!allSettled && (
+                <>
+                  {/* Diverging bar: direction is encoded in position as well as colour, so it still
                   reads for someone who cannot separate the two hues. */}
-              <div className="relative h-1.5 w-full bg-secondary/50 rounded-full">
-                <div
-                  className="absolute inset-y-[-2px] left-1/2 w-px -translate-x-1/2 bg-border"
-                  aria-hidden="true"
-                />
-                {!isZero && (
-                  <div
-                    className={cn(
-                      'absolute inset-y-0 rounded-full transition-all duration-500 ease-out',
-                      isPositive ? 'left-1/2 bg-credit' : 'right-1/2 bg-debt',
+                  <div className="relative h-1.5 w-full bg-secondary/50 rounded-full">
+                    <div
+                      className="absolute inset-y-[-2px] left-1/2 w-px -translate-x-1/2 bg-border"
+                      aria-hidden="true"
+                    />
+                    {!isZero && (
+                      <div
+                        className={cn(
+                          'absolute inset-y-0 rounded-full transition-all duration-500 ease-out',
+                          isPositive
+                            ? 'left-1/2 bg-credit'
+                            : 'right-1/2 bg-debt',
+                        )}
+                        style={{ width: `${percentage}%` }}
+                      />
                     )}
-                    style={{ width: `${percentage}%` }}
-                  />
-                )}
-              </div>
+                  </div>
 
-              <div className="text-xs text-muted-foreground">
-                {isPositive
-                  ? t('getsBack')
-                  : isZero
-                  ? t('settledUp')
-                  : t('owes')}
-              </div>
+                  <div className="text-xs text-muted-foreground">
+                    {isPositive
+                      ? t('getsBack')
+                      : isZero
+                      ? t('settledUp')
+                      : t('owes')}
+                  </div>
+                </>
+              )}
             </div>
           </div>
         )

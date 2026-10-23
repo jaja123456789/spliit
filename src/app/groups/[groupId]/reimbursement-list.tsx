@@ -83,9 +83,6 @@ export function ReimbursementList({
                 <span className="text-subtle-foreground"> → </span>
                 {activeUserId === reimbursement.to ? tBalances('you') : toName}
               </div>
-              <div className="text-xs text-muted-foreground">
-                {t('suggested')}
-              </div>
             </div>
             <Money currency={currency} amount={reimbursement.amount} bold />
             {/* Prefills the settle sheet rather than the expense form. Same three values,
