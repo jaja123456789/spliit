@@ -38,12 +38,20 @@ const tooltipStyle = {
 /** Recharts sizes the category axis in pixels, so long names need room to avoid being clipped. */
 const NAME_AXIS_WIDTH = 96
 
+/**
+ * A horizontal bar chart is as tall as its rows. At a fixed 300px, two people's bars were drawn
+ * some 150px apart in an otherwise empty card; the bar itself is capped at 24px either way.
+ */
+const ROW_HEIGHT = 36
+const rowsHeight = (rows: number) => Math.max(rows, 2) * ROW_HEIGHT + 8
+
 function ChartCard({
   title,
   description,
   isEmpty,
   emptyLabel,
   className,
+  height = 300,
   children,
 }: {
   title: string
@@ -51,6 +59,7 @@ function ChartCard({
   isEmpty: boolean
   emptyLabel: string
   className?: string
+  height?: number
   children: React.ReactElement
 }) {
   return (
@@ -60,7 +69,7 @@ function ChartCard({
           chart. */}
       <SheetHeader label={title} context={description} />
       <CardContent className="px-2 sm:px-4">
-        <div className="h-[300px] w-full">
+        <div className="w-full" style={{ height: isEmpty ? 120 : height }}>
           {isEmpty ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
               {emptyLabel}
@@ -121,6 +130,7 @@ export function Charts({
         description={t('categoryDesc')}
         isEmpty={categoryData.length === 0}
         emptyLabel={t('noData')}
+        height={rowsHeight(categoryData.length)}
       >
         <BarChart
           data={categoryData}
@@ -165,6 +175,7 @@ export function Charts({
         description={t('participantDesc')}
         isEmpty={data.participantSpending.length === 0}
         emptyLabel={t('noData')}
+        height={rowsHeight(data.participantSpending.length)}
       >
         <BarChart
           data={data.participantSpending}

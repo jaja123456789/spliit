@@ -19,8 +19,10 @@ const Charts = dynamic(() => import('./charts').then((m) => m.Charts), {
 function ChartsSkeleton() {
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <Skeleton className="h-[404px] w-full" />
-      <Skeleton className="h-[404px] w-full" />
+      {/* The two bar charts are as tall as their rows now (see `rowsHeight`); a few rows is the
+          usual case, so their placeholders are too. The chart over time keeps its 300px. */}
+      <Skeleton className="h-[240px] w-full" />
+      <Skeleton className="h-[240px] w-full" />
       <Skeleton className="h-[404px] w-full md:col-span-2" />
     </div>
   )
