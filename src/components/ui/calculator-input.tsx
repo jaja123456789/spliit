@@ -33,6 +33,11 @@ interface CalculatorInputProps
   inputClassName?: string
   disallowEmpty?: boolean
   decimalPlaces?: number
+  /**
+   * How the value reads while the field is not being edited, e.g. with thousands separators. The
+   * raw value comes back on focus, so typing and parsing never see the formatted text.
+   */
+  formatDisplay?: (value: string) => string
 }
 
 export function CalculatorInput({
@@ -44,11 +49,13 @@ export function CalculatorInput({
   disabled,
   disallowEmpty = false,
   decimalPlaces = 2,
+  formatDisplay,
   onBlur,
   ...props
 }: CalculatorInputProps) {
   const t = useTranslations('Calculator')
   const [open, setOpen] = React.useState(false)
+  const [focused, setFocused] = React.useState(false)
   const isDesktop = useMediaQuery("(min-width: 1024px)")
   useMobilePopoverState(open, setOpen, isDesktop)
 
@@ -80,10 +87,12 @@ export function CalculatorInput({
         onValueChange("0")
       }
     }
+    setFocused(false)
     onBlur?.(e)
   }
 
   const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
+    setFocused(true)
     const target = e.currentTarget
     setTimeout(() => target.select(), 1)
     props.onFocus?.(e)
@@ -109,7 +118,11 @@ export function CalculatorInput({
         placeholder={placeholder}
         disabled={disabled}
         readOnly={isInternalReadOnly}
-        value={value}
+        value={
+          formatDisplay && !focused && String(value).trim() !== ""
+            ? formatDisplay(String(value))
+            : value
+        }
         onChange={handleInputChange}
         onBlur={handleBlur}
         onFocus={handleFocus}

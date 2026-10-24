@@ -186,6 +186,17 @@ export function PaymentForm({ group }: { group: Group }) {
                   name="paymentAmount"
                   value={amount}
                   onValueChange={setAmount}
+                  // "3266.38" read like no other figure in the app. Grouped while it is not being
+                  // edited; the raw number comes back the moment the field is focused.
+                  formatDisplay={(raw) => {
+                    const value = Number(raw)
+                    return Number.isFinite(value)
+                      ? new Intl.NumberFormat(locale, {
+                          minimumFractionDigits: currency.decimal_digits,
+                          maximumFractionDigits: currency.decimal_digits,
+                        }).format(value)
+                      : raw
+                  }}
                   className="h-11 sm:h-10 w-full border-0 bg-transparent shadow-none"
                   inputClassName="h-11 sm:h-10 w-full border-0 bg-transparent px-2.5 text-2xl sm:text-2xl font-extrabold tracking-tight tabular-nums shadow-none focus-visible:ring-0"
                 />

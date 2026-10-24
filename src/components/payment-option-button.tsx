@@ -18,9 +18,8 @@ function PaymentOptionIcon({
   className?: string
 }) {
   if (option.type === 'link') return <ExternalLink className={className} />
+  // The end of the row says what a tap does — copy — and the plate says what kind of handle it is.
   if (copied) return <Check className={className} />
-  if (option.icon === 'phone') return <Smartphone className={className} />
-  if (option.icon === 'landmark') return <Landmark className={className} />
   return <Copy className={className} />
 }
 
@@ -65,9 +64,15 @@ export function PaymentOptionButton({
         style={{ width: 22, height: 22 }}
       >
         {/* A brand's initial stands for the brand. A copy option's label is the handle itself, so
-            its first character would be a digit or a "+" — the plate stays empty and the icon at
-            the end of the row says what the row does. */}
-        {option.type === 'link' ? option.label.slice(0, 1).toUpperCase() : null}
+            its first character would be a digit or a "+": the plate shows what kind of handle it
+            is instead. It used to stay empty, which read as a missing image. */}
+        {option.type === 'link' ? (
+          option.label.slice(0, 1).toUpperCase()
+        ) : option.icon === 'phone' ? (
+          <Smartphone className="h-3 w-3" />
+        ) : option.icon === 'landmark' ? (
+          <Landmark className="h-3 w-3" />
+        ) : null}
       </span>
       {option.label}
       <PaymentOptionIcon

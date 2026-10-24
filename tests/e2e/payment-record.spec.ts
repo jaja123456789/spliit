@@ -42,6 +42,42 @@ test.describe('Recording a payment', () => {
     await expect(page.getByTestId('balance-row-Alice')).toContainText('$0.00')
   })
 
+  test('shows a large amount grouped, and edits it as a plain number', async ({
+    page,
+  }) => {
+    await page.goto('/groups')
+    const groupId = await createGroupViaAPI(page, `grouped ${randomId(4)}`, [
+      'Alice',
+      'Bob',
+    ])
+    await createExpenseViaAPI(page, groupId, {
+      title: 'Car',
+      amount: 653276, // so Bob owes Alice $3,266.38
+      payerName: 'Alice',
+    })
+
+    await page.goto(`/groups/${groupId}/balances`)
+    await page
+      .getByTestId('reimbursement-row-Bob-Alice')
+      .getByRole('link', { name: /settle/i })
+      .click()
+    await page.waitForURL(/\/payments\/create/)
+
+    // Grouped like every other amount in the app while it is only being read...
+    const amount = page.locator('input[name="paymentAmount"]')
+    await expect(amount).toHaveValue('3,266.38')
+    // ...and the plain number while it is being edited, so typing never meets a separator.
+    await amount.focus()
+    await expect(amount).toHaveValue('3266.38')
+    await amount.fill('1234.5')
+    await amount.blur()
+    await expect(amount).toHaveValue('1,234.50')
+
+    await page.getByTestId('payment-save').click()
+    await page.waitForURL(/\/balances/)
+    await expect(page.getByTestId('payments-list')).toContainText('$1,234.50')
+  })
+
   test('copies a phone number without recording the payment', async ({
     page,
     context,
@@ -71,10 +107,13 @@ test.describe('Recording a payment', () => {
       .getByRole('link', { name: /settle/i })
       .click()
     await page.waitForURL(/\/payments\/create/)
-    await page
+    const phone = page
       .getByTestId('pay-with-options')
       .getByRole('button', { name: '+1 555 0100' })
-      .click()
+    // Its plate says what kind of handle it is; the end of the row says a tap copies it.
+    await expect(phone.locator('.lucide-smartphone')).toBeVisible()
+    await expect(phone.locator('.lucide-copy')).toBeVisible()
+    await phone.click()
 
     if (canReadClipboard) {
       expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(
