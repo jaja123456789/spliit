@@ -96,8 +96,11 @@ test.describe('Filters', () => {
       localStorage.removeItem('newGroup-activeUser')
     }, groupId)
     await page.reload()
-    await page.getByRole('radio', { name: 'Alice' }).click()
-    await page.getByRole('button', { name: 'Save changes' }).click()
+    // One tap on your name chooses and closes the sheet.
+    await page
+      .getByRole('dialog', { name: 'Who are you?' })
+      .getByRole('button', { name: 'Alice' })
+      .click()
     await page.reload()
     await expect(rows(page)).toHaveCount(3)
 

@@ -26,8 +26,11 @@ test('comments on an expense: written, counted, logged, removed', async ({
 
   // Commenting as Bob.
   await page.goto(`/groups/${groupId}/expenses`)
-  await page.getByRole('radio', { name: 'Bob' }).click()
-  await page.getByRole('button', { name: 'Save changes' }).click()
+  // One tap on your name chooses and closes the sheet.
+  await page
+    .getByRole('dialog', { name: 'Who are you?' })
+    .getByRole('button', { name: 'Bob' })
+    .click()
 
   await page.getByTestId(`expense-item-${expenseId}`).click()
   await page.waitForURL(/\/edit$/)

@@ -39,8 +39,7 @@
     "ActiveUserModal": {
       "title": "Who are you?",
       "description": "Tell us which participant you are to let us customize how the information is displayed.",
-      "nobody": "I don’t want to select anyone",
-      "save": "Save changes",
+      "notNow": "Not now",
       "footer": "This setting can be changed later in the group settings."
     },
     "Groups": {

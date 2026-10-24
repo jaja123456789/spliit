@@ -36,8 +36,11 @@ test('who you are follows the account to another device', async ({
   await page1.goto(`/groups/${groupId}/expenses`)
   const question = page1.getByRole('dialog', { name: 'Who are you?' })
   await expect(question).toBeVisible()
-  await page1.getByRole('radio', { name: 'Alice' }).click()
-  await page1.getByRole('button', { name: 'Save changes' }).click()
+  // One tap on your name chooses and closes the sheet.
+  await page1
+    .getByRole('dialog', { name: 'Who are you?' })
+    .getByRole('button', { name: 'Alice' })
+    .click()
   // Straight away, without a reload: the header now has a share of yours to show.
   await expect(page1.getByTestId('expenses-group-total')).toBeVisible()
   await expect(page1.getByText('Your share')).toBeVisible()

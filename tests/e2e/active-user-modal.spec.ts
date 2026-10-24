@@ -92,11 +92,8 @@ test.describe('Active User Modal', () => {
     const dialog = page.getByRole('dialog', { name: 'Who are you?' })
     await expect(dialog).toBeVisible()
 
-    // Select Alice
-    await page.getByRole('radio', { name: 'Alice' }).click()
-
-    // Click save
-    await page.getByRole('button', { name: 'Save changes' }).click()
+    // Select Alice: one tap on the name chooses and closes the sheet
+    await dialog.getByRole('button', { name: 'Alice' }).click()
 
     // Modal should close
     await expect(dialog).not.toBeVisible()
@@ -111,9 +108,7 @@ test.describe('Active User Modal', () => {
     expect(activeUser).not.toBe('None')
   })
 
-  test('Can save modal with default "I don\'t want to select anyone" selection', async ({
-    page,
-  }) => {
+  test('Can skip the question with "Not now"', async ({ page }) => {
     await page.goto('/groups')
     const groupId = await createGroupViaAPI(
       page,
@@ -135,13 +130,13 @@ test.describe('Active User Modal', () => {
     const dialog = page.getByRole('dialog', { name: 'Who are you?' })
     await expect(dialog).toBeVisible()
 
-    // Click save without changing selection (default is "I don't want to select anyone")
-    await page.getByRole('button', { name: 'Save changes' }).click()
+    // "Not now" answers the question without picking anyone.
+    await dialog.getByRole('button', { name: 'Not now' }).click()
 
     // Modal should close
     await expect(dialog).not.toBeVisible()
 
-    // Verify localStorage was set to 'None' (the default selection)
+    // Verify localStorage was set to 'None', so the question does not come back
     const activeUser = await page.evaluate((gId) => {
       return localStorage.getItem(`${gId}-activeUser`)
     }, groupId)
@@ -172,8 +167,11 @@ test.describe('Active User Modal', () => {
     await expect(dialog).toBeVisible()
 
     // Select a user and save
-    await page.getByRole('radio', { name: 'Alice' }).click()
-    await page.getByRole('button', { name: 'Save changes' }).click()
+    // One tap on your name chooses and closes the sheet.
+    await page
+      .getByRole('dialog', { name: 'Who are you?' })
+      .getByRole('button', { name: 'Alice' })
+      .click()
 
     // Modal should close
     await expect(dialog).not.toBeVisible()

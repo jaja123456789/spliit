@@ -1,5 +1,6 @@
 'use client'
 
+import { ProfileAvatar } from '@/components/profile-avatar'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -16,14 +17,12 @@ import {
   DrawerHeader,
   DrawerTitle,
 } from '@/components/ui/drawer'
-import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import {
-  NO_ACTIVE_USER,
   hasActiveUserChoice,
   seedActiveUser,
   writeActiveUser,
 } from '@/lib/active-user'
+import { assignAvatarHues } from '@/lib/avatar-hue'
 import { useMediaQuery, useMobilePopoverState } from '@/lib/hooks'
 import { FROM_SHARE_PARAM } from '@/lib/share-target'
 import { cn } from '@/lib/utils'
@@ -32,7 +31,7 @@ import { AppRouterOutput } from '@/trpc/routers/_app'
 import { useSession } from 'next-auth/react'
 import { useTranslations } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
-import { ComponentProps, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export function ActiveUserModal({ groupId }: { groupId: string }) {
   const t = useTranslations('Expenses.ActiveUserModal')
@@ -124,59 +123,66 @@ export function ActiveUserModal({ groupId }: { groupId: string }) {
   )
 }
 
+/**
+ * One tap: your name, and the sheet closes. It used to be a list of radio buttons with "I don't
+ * want to select anyone" already chosen and a Save button under them — two steps, with the
+ * default being the answer that leaves every screen without a "you". Not choosing is still one
+ * tap away, as a plain "Not now".
+ */
 function ActiveUserForm({
   group,
   synced,
   close,
   className,
-}: ComponentProps<'form'> & {
+}: {
   group?: AppRouterOutput['groups']['get']['group']
   /** Synced to the signed-in account, which then keeps the answer for the user's other devices. */
   synced: boolean
   close: () => void
+  className?: string
 }) {
   const t = useTranslations('Expenses.ActiveUserModal')
-  const [selected, setSelected] = useState(NO_ACTIVE_USER)
   const updateMetadata = trpc.sync.updateMetadata.useMutation()
+  const avatarHues = assignAvatarHues(
+    group?.participants.map((p) => p.name) ?? [],
+  )
+
+  const choose = (participantId: string | null) => {
+    if (!group) return
+    writeActiveUser(group.id, participantId)
+    // Only a participant: the account has no way to say "nobody", and "nobody" is a choice
+    // about this device anyway. Group Settings writes the same field.
+    if (synced && participantId)
+      updateMetadata.mutate({
+        groupId: group.id,
+        activeParticipantId: participantId,
+      })
+    close()
+  }
 
   return (
-    <form
-      className={cn('grid items-start gap-4', className)}
-      onSubmit={(event) => {
-        if (!group) return
-
-        event.preventDefault()
-        const participantId = selected === NO_ACTIVE_USER ? null : selected
-        writeActiveUser(group.id, participantId)
-        // Only a participant: the account has no way to say "nobody", and "nobody" is a choice
-        // about this device anyway. Group Settings writes the same field.
-        if (synced && participantId)
-          updateMetadata.mutate({
-            groupId: group.id,
-            activeParticipantId: participantId,
-          })
-        close()
-      }}
-    >
-      <RadioGroup defaultValue={NO_ACTIVE_USER} onValueChange={setSelected}>
-        <div className="flex flex-col gap-4 my-4">
-          <div className="flex items-center space-x-2">
-            <RadioGroupItem value={NO_ACTIVE_USER} id="none" />
-            <Label htmlFor="none" className="italic font-normal flex-1">
-              {t('nobody')}
-            </Label>
-          </div>
-          {group?.participants.map((participant) => (
-            <div key={participant.id} className="flex items-center space-x-2">
-              <RadioGroupItem value={participant.id} id={participant.id} />
-              <Label htmlFor={participant.id} className="flex-1">
-                {participant.name}
-              </Label>
-            </div>
-          ))}
-        </div>
-      </RadioGroup>
-      <Button type="submit">{t('save')}</Button>
-    </form>
+    <div className={cn('grid gap-2', className)}>
+      <ul className="grid gap-1.5">
+        {group?.participants.map((participant) => (
+          <li key={participant.id}>
+            <button
+              type="button"
+              onClick={() => choose(participant.id)}
+              className="flex min-h-12 w-full items-center gap-3 rounded-lg border bg-card px-3 py-2 text-left text-base font-medium transition-colors hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <ProfileAvatar
+                name={participant.name}
+                hue={avatarHues.get(participant.name)}
+                size={32}
+              />
+              {participant.name}
+            </button>
+          </li>
+        ))}
+      </ul>
+      <Button type="button" variant="ghost" onClick={() => choose(null)}>
+        {t('notNow')}
+      </Button>
+    </div>
   )
 }
