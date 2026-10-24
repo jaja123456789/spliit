@@ -18,7 +18,7 @@ import { useState } from 'react'
 
 /**
  * Three tabs, add in the middle, and More. Add is the action the bar is for; Stats is the
- * destination opened least, so it went into More, with Information and Settings.
+ * destination opened least, so it went into More, with Settings.
  */
 const PRIMARY_VALUES = ['expenses', 'balances', 'activity']
 const PRIMARY = GROUP_TABS.filter((tab) => PRIMARY_VALUES.includes(tab.value))

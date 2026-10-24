@@ -329,6 +329,10 @@ export function GroupForm({
                         placeholder={t('InformationField.placeholder')}
                       />
                     </FormControl>
+                    {/* It has no screen of its own any more, so say where it goes. */}
+                    <FormDescription>
+                      {t('InformationField.description')}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

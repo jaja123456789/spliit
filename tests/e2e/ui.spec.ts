@@ -47,12 +47,11 @@ test('Mobile navigation uses the bottom tab bar', async ({ page }) => {
   await page.waitForURL(/\/expenses\/create$/)
 })
 
-test('Mobile folds Stats, Information and Settings into More', async ({
-  page,
-}) => {
+test('Mobile folds Stats and Settings into More', async ({ page }) => {
   // Six labels never fitted a phone: "Information" wanted 62px in a box that is 45px at 360 and
   // 57px at 430, so it was clipped on every phone made. Three tabs, add in the middle, and a More
-  // retire that; Stats is the destination opened least, so it is the one behind More.
+  // retire that; Stats is the destination opened least, so it is the one behind More. Information
+  // is not a destination any more: it is part of Balances.
   await page.setViewportSize({ width: 375, height: 667 })
 
   await page.goto('/groups')
@@ -62,7 +61,8 @@ test('Mobile folds Stats, Information and Settings into More', async ({
   ])
   await navigateToGroup(page, groupId)
 
-  // The three primary destinations are tabs; the folded three are not.
+  // The three primary destinations are tabs; Stats and Settings, behind More, are not, and
+  // Information is not anywhere.
   for (const name of ['Expenses', 'Balances', 'Activity', 'More']) {
     await expect(page.getByRole('tab', { name, exact: true })).toBeVisible()
   }

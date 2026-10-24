@@ -196,7 +196,8 @@
     },
     "InformationField": {
       "label": "Group information",
-      "placeholder": "What information is relevant to group participants?"
+      "placeholder": "What information is relevant to group participants?",
+      "description": "Shown on Balances, under “About this group”."
     },
     "CurrencyField": {
       "label": "Currency symbol",
@@ -558,7 +559,11 @@
       "none": "No payments recorded yet.",
       "more": "Only the most recent payments are shown."
     },
-    "recordPayment": "Record a payment"
+    "recordPayment": "Record a payment",
+    "About": {
+      "title": "About this group",
+      "edit": "Edit"
+    }
   },
   "Stats": {
     "title": "Stats",
@@ -635,12 +640,6 @@
       "paidBy": "Paid by",
       "paidFor": "Paid for"
     }
-  },
-  "Information": {
-    "title": "Information",
-    "description": "Use this place to add any information that can be relevant to the group participants.",
-    "empty": "No group information yet.",
-    "edit": "Edit group information"
   },
   "Settings": {
     "Appearance": {

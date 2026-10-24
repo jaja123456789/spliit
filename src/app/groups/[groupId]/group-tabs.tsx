@@ -3,7 +3,6 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   BarChart3,
   History,
-  Info,
   Receipt,
   Scale,
   Settings,
@@ -23,15 +22,17 @@ export type GroupTab = {
 }
 
 /**
- * The six places a group can be, in order. Shared with the bottom bar, which shows the first four
- * and folds the rest into "More".
+ * The five places a group can be, in order. Shared with the bottom bar, which puts three of them
+ * around add and folds the rest into "More".
+ *
+ * Information was a sixth: a whole destination for one paragraph under a generic caption. It is
+ * the "About this group" section of Balances now, and its address leads there.
  */
 export const GROUP_TABS: GroupTab[] = [
   { value: 'expenses', messageKey: 'Expenses.title', Icon: Receipt },
   { value: 'balances', messageKey: 'Balances.title', Icon: Scale },
   { value: 'stats', messageKey: 'Stats.title', Icon: BarChart3 },
   { value: 'activity', messageKey: 'Activity.title', Icon: History },
-  { value: 'information', messageKey: 'Information.title', Icon: Info },
   { value: 'edit', messageKey: 'Settings.title', Icon: Settings },
 ]
 

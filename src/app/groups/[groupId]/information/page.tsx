@@ -1,15 +1,14 @@
-import GroupInformation from '@/app/groups/[groupId]/information/group-information'
-import { Metadata } from 'next'
+import { redirect } from 'next/navigation'
 
-export const metadata: Metadata = {
-  title: 'Group Information',
-}
-
+/**
+ * Information used to be a destination of its own, for one paragraph. It is the "About this group"
+ * section of Balances now; links and bookmarks to the old address land there.
+ */
 export default async function InformationPage({
   params,
 }: {
   params: Promise<{ groupId: string }>
 }) {
   const { groupId } = await params
-  return <GroupInformation groupId={groupId} />
+  redirect(`/groups/${groupId}/balances`)
 }

@@ -129,14 +129,13 @@ export async function verifyParticipantsOnBalancesTab(
 }
 
 /**
- * Gets the current group info text from the Information tab
+ * Gets the group's information as Balances shows it, under "About this group"; null when it has
+ * none, since the section is not shown then.
  */
 export async function getGroupInfo(page: Page): Promise<string | null> {
-  const infoElement = page.locator('text=/Info/').first()
-  if (!(await infoElement.isVisible())) {
-    return null
-  }
-  return await infoElement.textContent()
+  const about = page.getByTestId('group-about')
+  if ((await about.count()) === 0) return null
+  return await about.textContent()
 }
 
 /**

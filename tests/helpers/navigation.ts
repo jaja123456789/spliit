@@ -5,7 +5,6 @@ export type GroupTab =
   | 'Balances'
   | 'Stats'
   | 'Settings'
-  | 'Information'
   | 'Activity'
 
 const TAB_URL_PATTERNS: Record<GroupTab, RegExp> = {
@@ -13,7 +12,6 @@ const TAB_URL_PATTERNS: Record<GroupTab, RegExp> = {
   Balances: /\/groups\/[^/]+\/balances$/,
   Stats: /\/groups\/[^/]+\/stats$/,
   Settings: /\/groups\/[^/]+\/edit$/,
-  Information: /\/groups\/[^/]+\/information$/,
   Activity: /\/groups\/[^/]+\/activity$/,
 }
 

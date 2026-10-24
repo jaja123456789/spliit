@@ -45,16 +45,16 @@ test.describe('Group Editing', () => {
     // Save changes
     await clickSave(page)
 
-    // Navigate to Information tab to verify changes persisted
-    await navigateToTab(page, 'Information')
+    // The information is shown on Balances, under "About this group"
+    await navigateToTab(page, 'Balances')
 
     // Verify updated name in heading
     await verifyGroupHeading(page, newGroupName)
 
     // Verify updated information text is visible
-    await expect(page.getByText(newGroupInfo, { exact: true })).toBeVisible()
+    await expect(page.getByTestId('group-about')).toHaveText(newGroupInfo)
 
-    // Verify group name is also updated in the Information section. Inside the page's main
+    // Verify group name is also updated on the page. Inside the page's main
     // content: Next's route announcer repeats the page title for screen readers, and whenever the
     // navigation lands before the new title does, it holds the group name too.
     await expect(
@@ -236,9 +236,12 @@ test.describe('Group Editing', () => {
     await groupInfoInput.fill(testInfo)
     await clickSave(page)
 
-    // Verify information appears
-    await navigateToTab(page, 'Information')
-    await expect(page.getByText(testInfo, { exact: true })).toBeVisible()
+    // Verify information appears, on Balances under "About this group"
+    await navigateToTab(page, 'Balances')
+    await expect(page.getByTestId('group-about')).toHaveText(testInfo)
+    await expect(
+      page.getByRole('heading', { name: 'About this group' }),
+    ).toBeVisible()
 
     // Now remove the information
     await navigateToTab(page, 'Settings')
@@ -246,9 +249,13 @@ test.describe('Group Editing', () => {
     await expect(groupInfoInput).toHaveValue('')
     await clickSave(page)
 
-    // Verify information is cleared
-    await navigateToTab(page, 'Information')
-    await expect(page.getByText(testInfo, { exact: true })).not.toBeVisible()
+    // Verify information is cleared, and the section goes with it
+    await navigateToTab(page, 'Balances')
+    await expect(page.getByTestId('balances-list')).toBeVisible()
+    await expect(page.getByTestId('group-about')).toHaveCount(0)
+    await expect(
+      page.getByRole('heading', { name: 'About this group' }),
+    ).toHaveCount(0)
   })
 
   test('cannot create duplicate participant names when editing', async ({

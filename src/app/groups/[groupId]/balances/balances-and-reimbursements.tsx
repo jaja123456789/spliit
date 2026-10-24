@@ -6,12 +6,14 @@ import { ReimbursementList } from '@/app/groups/[groupId]/reimbursement-list'
 import { SettleAllButton } from '@/app/groups/[groupId]/settle-all-button'
 import { Money } from '@/components/money'
 import { SheetHeader } from '@/components/sheet-header'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useActiveUser } from '@/lib/hooks'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { useTranslations } from 'next-intl'
+import Link from 'next/link'
 import { match } from 'ts-pattern'
 import { useCurrentGroup } from '../current-group-context'
 
@@ -136,6 +138,37 @@ export default function BalancesAndReimbursements({
         </div>
       )}
 
+      {/* What used to be a destination of its own, Information, for one paragraph. It is here
+          because what people put in it is mostly what they settle up with: an account number,
+          who pays the landlord. It is written in the group's settings, so a group without any
+          shows nothing here. */}
+      {variant === 'page' && group?.information && (
+        <>
+          <SectionRule
+            action={
+              <Button
+                asChild
+                variant="link"
+                size="sm"
+                className="h-auto p-0 text-sm"
+              >
+                <Link href={`/groups/${groupId}/edit`}>{t('About.edit')}</Link>
+              </Button>
+            }
+          >
+            {t('About.title')}
+          </SectionRule>
+          <CardContent className="px-4 sm:px-6 pb-0">
+            <p
+              data-testid="group-about"
+              className="whitespace-pre-wrap break-words text-sm leading-relaxed"
+            >
+              {group.information}
+            </p>
+          </CardContent>
+        </>
+      )}
+
       {/* Money that already moved. Recording a payment used to be reachable only from a suggested
           reimbursement, so a settled group offered no way to record one — which is precisely the
           moment you want to record the payment that settled it. It lives here instead, where it is
@@ -167,9 +200,16 @@ export default function BalancesAndReimbursements({
  * The rule between two parts of one sheet. Not a heading of its own card — the whole point of the
  * sheet is that these are all views of the same arithmetic.
  */
-const SectionRule = ({ children }: { children: React.ReactNode }) => (
-  <div className="px-4 sm:px-6 pt-5 pb-1">
+const SectionRule = ({
+  children,
+  action,
+}: {
+  children: React.ReactNode
+  action?: React.ReactNode
+}) => (
+  <div className="flex items-baseline justify-between gap-3 px-4 sm:px-6 pt-5 pb-1">
     <h3 className="section-label">{children}</h3>
+    {action}
   </div>
 )
 

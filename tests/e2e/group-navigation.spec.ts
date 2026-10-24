@@ -95,7 +95,7 @@ test.describe('Group Navigation', () => {
     await verifyGroupHeading(page, groupName)
   })
 
-  test('navigate to group information tab', async ({ page }) => {
+  test('the old Information address leads to Balances', async ({ page }) => {
     const groupName = `info tab ${randomId(4)}`
 
     await page.goto('/groups')
@@ -104,13 +104,10 @@ test.describe('Group Navigation', () => {
       'Bob',
       'Charlie',
     ])
-    await page.goto(`/groups/${groupId}/expenses`)
-
-    // Navigate to Information tab
-    await navigateToTab(page, 'Information')
-
-    // Verify URL changed
-    await expect(page).toHaveURL(/\/groups\/[^/]+\/information$/)
+    // Information was a tab of its own; it is part of Balances now, and links to it land there.
+    await page.goto(`/groups/${groupId}/information`)
+    await expect(page).toHaveURL(/\/groups\/[^/]+\/balances$/)
+    await expect(page.getByRole('tab', { name: 'Information' })).toHaveCount(0)
 
     // Verify group name in heading
     await verifyGroupHeading(page, groupName)
@@ -130,13 +127,12 @@ test.describe('Group Navigation', () => {
     await page.goto(`/groups/${groupId}/expenses`)
 
     const tabs: Array<{
-      name: 'Expenses' | 'Balances' | 'Stats' | 'Settings' | 'Information'
+      name: 'Expenses' | 'Balances' | 'Stats' | 'Settings'
       urlPattern: RegExp
     }> = [
       { name: 'Expenses', urlPattern: /\/expenses$/ },
       { name: 'Balances', urlPattern: /\/balances$/ },
       { name: 'Stats', urlPattern: /\/stats$/ },
-      { name: 'Information', urlPattern: /\/information$/ },
       { name: 'Settings', urlPattern: /\/edit$/ },
     ]
 
@@ -169,7 +165,6 @@ test.describe('Group Navigation', () => {
       `/groups/${groupId}/expenses`,
       `/groups/${groupId}/balances`,
       `/groups/${groupId}/stats`,
-      `/groups/${groupId}/information`,
       `/groups/${groupId}/edit`,
     ]
 
