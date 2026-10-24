@@ -19,6 +19,12 @@ type Props = {
    * works in major units throughout, because item prices are typed as decimals.
    */
   fractions?: boolean
+  /**
+   * The one figure a screen is about, in the body face. Mono puts every glyph on the same advance so
+   * a column of amounts lines up on the decimal; a lone headline has nothing to line up with, and at
+   * 30px the mono face is wide and reads as code. Rows and tables keep mono.
+   */
+  headline?: boolean
   className?: string
 }
 
@@ -46,6 +52,7 @@ export function Money({
   colored = false,
   bold = false,
   fractions = false,
+  headline = false,
   className,
 }: Props) {
   const locale = useLocale()
@@ -56,8 +63,10 @@ export function Money({
   return (
     <span
       className={cn(
-        'font-mono tabular-nums whitespace-nowrap',
-        bold ? 'font-semibold' : 'font-medium',
+        'tabular-nums whitespace-nowrap',
+        headline
+          ? 'font-sans font-extrabold tracking-tight'
+          : cn('font-mono', bold ? 'font-semibold' : 'font-medium'),
         colored && direction === 'credit' && 'text-credit',
         colored && direction === 'debt' && 'text-debt',
         colored && direction === 'settled' && 'text-subtle-foreground',

@@ -70,7 +70,7 @@ export default function BalancesAndReimbursements({
             <Money
               currency={currency}
               amount={Math.abs(yourBalance)}
-              bold
+              headline
               className={
                 isSettled
                   ? 'text-muted-foreground'

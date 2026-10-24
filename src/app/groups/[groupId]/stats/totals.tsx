@@ -57,7 +57,11 @@ export function Totals() {
         figureTestId="total-group-spendings"
         figure={
           ready && currency ? (
-            <Money currency={currency} amount={data.totalGroupSpendings} bold />
+            <Money
+              currency={currency}
+              amount={data.totalGroupSpendings}
+              headline
+            />
           ) : (
             <Skeleton className="h-8 w-40" />
           )

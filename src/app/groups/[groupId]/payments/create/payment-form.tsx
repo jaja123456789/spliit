@@ -173,7 +173,7 @@ export function PaymentForm({ group }: { group: Group }) {
             // The same amount idiom as the expense form: the currency on a plate beside the field
             // rather than inside it, so the caret never lands on the symbol.
             <div className="flex items-center gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted font-mono text-lg font-medium text-muted-foreground">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted text-lg font-semibold text-muted-foreground">
                 {currency.symbol || group.currency}
               </span>
               <div className="min-w-0 flex-1 rounded-md border border-input p-0.5 transition-colors focus-within:border-primary">
@@ -187,7 +187,7 @@ export function PaymentForm({ group }: { group: Group }) {
                   value={amount}
                   onValueChange={setAmount}
                   className="h-11 sm:h-10 w-full border-0 bg-transparent shadow-none"
-                  inputClassName="h-11 sm:h-10 w-full border-0 bg-transparent px-2.5 font-mono text-2xl sm:text-2xl font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                  inputClassName="h-11 sm:h-10 w-full border-0 bg-transparent px-2.5 text-2xl sm:text-2xl font-extrabold tracking-tight tabular-nums shadow-none focus-visible:ring-0"
                 />
               </div>
             </div>

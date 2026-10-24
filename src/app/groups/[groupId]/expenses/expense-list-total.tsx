@@ -42,7 +42,11 @@ export function ExpenseListTotal({ actions }: { actions?: ReactNode }) {
       actions={actions}
       figure={
         ready ? (
-          <Money currency={currency} amount={data.totalGroupSpendings} bold />
+          <Money
+            currency={currency}
+            amount={data.totalGroupSpendings}
+            headline
+          />
         ) : (
           <Skeleton className="h-8 w-40" />
         )
