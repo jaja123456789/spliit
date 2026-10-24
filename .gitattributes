@@ -1,0 +1,3 @@
+# Prisma checks every applied migration against a sha256 of its file. A Windows checkout with
+# core.autocrlf on would rewrite them with CRLF and change every checksum, so they stay LF.
+prisma/migrations/**/*.sql text eol=lf
