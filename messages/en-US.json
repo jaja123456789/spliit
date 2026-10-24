@@ -183,6 +183,11 @@
   },
   "GroupForm": {
     "createTitle": "New group",
+    "IconField": {
+      "label": "Icon",
+      "choose": "Choose an icon for the group",
+      "none": "No icon"
+    },
     "title": "Group information",
     "NameField": {
       "label": "Group name",

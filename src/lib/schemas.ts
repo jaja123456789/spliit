@@ -19,6 +19,8 @@ export const groupFormSchema = z
     information: z.string().optional(),
     currency: z.string().min(1, 'min1').max(5, 'max5'),
     currencyCode: z.union([z.string().length(3).nullish(), z.literal('')]), // ISO-4217 currency code
+    // One emoji. 32 UTF-16 units holds the longest joined sequences (a family is 11).
+    icon: z.string().max(32).nullish(),
     simplifyDebts: z.boolean().default(true),
     participants: z
       .array(

@@ -18,6 +18,10 @@ model Group {
   currency     String        @default("$")
   currencyCode String?
   simplifyDebts Boolean      @default(true) 
+  /// One emoji chosen for the group, shown on its plate. Null shows the name's first letter.
+  /// The column predates this field: a migration of the same name and checksum had been applied
+  /// to the production database without reaching git.
+  icon         String?
   participants Participant[]
   expenses     Expense[]
   activities   Activity[]

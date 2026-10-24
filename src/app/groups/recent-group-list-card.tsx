@@ -1,5 +1,6 @@
 'use client'
 
+import { GroupMark } from '@/components/group-mark'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -150,8 +151,16 @@ export function RecentGroupListCard({
                   event.preventDefault()
                   openGroup()
                 }}
-                className="flex-1 overflow-hidden text-ellipsis flex items-center gap-2"
+                className="flex-1 overflow-hidden text-ellipsis flex items-center gap-3"
               >
+                <GroupMark
+                  group={{
+                    id: group.id,
+                    name: groupDetail?.name ?? group.name,
+                    icon: groupDetail?.icon,
+                  }}
+                  size={36}
+                />
                 {/* The server's name once it has answered: this device's copy is whatever the
                     group was called when it was last opened here, so a rename by anyone else
                     did not show until then. */}

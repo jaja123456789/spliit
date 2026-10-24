@@ -41,6 +41,7 @@ export async function createGroup(groupFormValues: GroupFormValues) {
       information: groupFormValues.information,
       currency: groupFormValues.currency,
       currencyCode: groupFormValues.currencyCode,
+      icon: groupFormValues.icon || null,
       simplifyDebts: groupFormValues.simplifyDebts,
       participants: {
         createMany: {
@@ -719,6 +720,7 @@ export async function updateGroup(
         information: groupFormValues.information,
         currency: groupFormValues.currency,
         currencyCode: groupFormValues.currencyCode,
+        icon: groupFormValues.icon || null,
         simplifyDebts: groupFormValues.simplifyDebts,
         participants: {
           // Everyone no longer listed. A filter, not a list of rows: `deleteMany` takes a `where`.

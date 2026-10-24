@@ -4,6 +4,7 @@ import { useGroupBarSummary } from '@/app/groups/[groupId]/group-bar-summary'
 import { GroupTabBar } from '@/app/groups/[groupId]/group-tab-bar'
 import { GroupTabs } from '@/app/groups/[groupId]/group-tabs'
 import { ShareButton } from '@/app/groups/[groupId]/share-button'
+import { GroupMark } from '@/components/group-mark'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ChevronLeft, X } from 'lucide-react'
@@ -82,6 +83,7 @@ export const GroupHeader = () => {
           </Button>
         )}
 
+        {!task && group && <GroupMark group={group} size={32} />}
         <div className="min-w-0 flex-1 px-1">
           {task ? (
             <>

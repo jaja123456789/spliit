@@ -43,6 +43,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { CurrencySelector } from './currency-selector'
+import { GROUP_ICONS, GroupMark } from './group-mark'
 import { Switch } from './ui/switch'
 import { Textarea } from './ui/textarea'
 
@@ -72,6 +73,7 @@ export function GroupForm({
           information: group.information ?? '',
           currency: group.currency ?? '',
           currencyCode: group.currencyCode ?? '',
+          icon: group.icon ?? null,
           participants: group.participants.map((p) => ({
             id: p.id,
             name: p.name,
@@ -81,6 +83,7 @@ export function GroupForm({
         }
       : {
           name: '',
+          icon: null,
           information: '',
           currency: getCurrency(defaultCurrencyCode, locale as Locale).symbol,
           currencyCode: defaultCurrencyCode,
@@ -171,13 +174,78 @@ export function GroupForm({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>{t('NameField.label')}</FormLabel>
-                  <FormControl>
-                    <Input
-                      className="text-base sm:text-base"
-                      placeholder={t('NameField.placeholder')}
-                      {...field}
+                  {/* The group's plate sits beside its name, and choosing an emoji for it is a tap
+                      on the plate. */}
+                  <div className="flex items-center gap-2">
+                    <FormField
+                      control={form.control}
+                      name="icon"
+                      render={({ field: icon }) => (
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <button
+                              type="button"
+                              className="shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              aria-label={t('IconField.choose')}
+                              data-testid="group-icon-trigger"
+                            >
+                              <GroupMark
+                                group={{
+                                  id: group?.id ?? 'new',
+                                  name: form.watch('name') || '?',
+                                  icon: icon.value,
+                                }}
+                                size={44}
+                              />
+                            </button>
+                          </PopoverTrigger>
+                          <PopoverContent align="start" className="w-72">
+                            <p className="section-label mb-2">
+                              {t('IconField.label')}
+                            </p>
+                            <div className="grid grid-cols-8 gap-1">
+                              {GROUP_ICONS.map((emoji) => (
+                                <button
+                                  key={emoji}
+                                  type="button"
+                                  aria-pressed={icon.value === emoji}
+                                  onClick={() =>
+                                    icon.onChange(
+                                      icon.value === emoji ? null : emoji,
+                                    )
+                                  }
+                                  className={cn(
+                                    'grid h-8 w-8 place-items-center rounded-md text-lg hover:bg-accent',
+                                    icon.value === emoji &&
+                                      'bg-accent ring-2 ring-inset ring-foreground',
+                                  )}
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
+                            {icon.value && (
+                              <Button
+                                type="button"
+                                variant="link"
+                                className="mt-2 h-auto p-0"
+                                onClick={() => icon.onChange(null)}
+                              >
+                                {t('IconField.none')}
+                              </Button>
+                            )}
+                          </PopoverContent>
+                        </Popover>
+                      )}
                     />
-                  </FormControl>
+                    <FormControl>
+                      <Input
+                        className="text-base sm:text-base"
+                        placeholder={t('NameField.placeholder')}
+                        {...field}
+                      />
+                    </FormControl>
+                  </div>
                   <FormMessage />
                 </FormItem>
               )}
