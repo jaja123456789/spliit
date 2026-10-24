@@ -1,8 +1,7 @@
+import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
-import { env } from '@/lib/env'
 import { Github } from 'lucide-react'
 import { useTranslations } from 'next-intl'
-import Image from 'next/image'
 import Link from 'next/link'
 
 // FIX for https://github.com/vercel/next.js/issues/58615
@@ -10,7 +9,6 @@ import Link from 'next/link'
 
 export default function HomePage() {
   const t = useTranslations()
-  const basePath = env.NEXT_PUBLIC_BASE_PATH
   return (
     <>
       <main className="flex-1">
@@ -46,13 +44,7 @@ export default function HomePage() {
         <div className="flex flex-col space-y-2">
           <div className="sm:text-lg font-semibold text-base flex space-x-2 items-center">
             <Link className="flex items-center gap-2" href="/">
-              <Image
-                src={`${basePath}/logo-with-text.png`}
-                className="m-1 h-[35px] w-auto"
-                width={(35 * 522) / 180}
-                height={35}
-                alt="Spliit"
-              />
+              <Logo />
             </Link>
           </div>
           <div className="flex flex-col space-y a--no-underline-text-white">

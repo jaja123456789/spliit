@@ -1,9 +1,8 @@
 'use client'
 
-import { useEnv } from '@/components/env-provider'
+import { Logo } from '@/components/logo'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from 'next-intl'
-import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -21,7 +20,6 @@ export const isGroupPath = (pathname: string) =>
  */
 export function AppHeader() {
   const t = useTranslations('Header')
-  const { NEXT_PUBLIC_BASE_PATH: basePath } = useEnv()
   const pathname = usePathname()
   if (isGroupPath(pathname)) return null
 
@@ -29,16 +27,9 @@ export function AppHeader() {
     <>
       <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between border-b bg-background px-2">
         {/* Not a heading. Every page has its own <h1>, and the logo made it two on every screen.
-            The height is pinned rather than left to `h-auto`, which drew the logo at whatever
-            size the served image happened to be. */}
-        <Link className="flex items-center gap-2 px-1" href="/groups">
-          <Image
-            src={`${basePath}/logo-with-text.png`}
-            className="h-[32px] w-auto"
-            width={(32 * 522) / 180}
-            height={32}
-            alt="Spliit"
-          />
+            Named by its text, "Spliit". */}
+        <Link className="flex items-center px-1" href="/groups">
+          <Logo />
         </Link>
         <nav aria-label="Menu">
           <Button
