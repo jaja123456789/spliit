@@ -328,17 +328,14 @@ function GroupsPage({
   const t = useTranslations('Groups')
   return (
     <>
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+      <div className="flex items-center justify-between gap-2">
         <h1 className="font-bold text-2xl flex-1">
           <Link href="/groups">{t('myGroups')}</Link>
         </h1>
         {isRefetching && <SyncIndicator />}
-        <div className="flex gap-2">
-          <AddGroupByUrlButton />
-          <Button asChild>
-            <Link href="/groups/create">{t('create')}</Link>
-          </Button>
-        </div>
+        <Button asChild>
+          <Link href="/groups/create">{t('create')}</Link>
+        </Button>
       </div>
       {hasPendingReceipt && (
         <div className="flex items-start gap-3 rounded-lg border bg-muted/50 p-3 text-sm">
@@ -347,6 +344,7 @@ function GroupsPage({
         </div>
       )}
       <div>{children}</div>
+      <AddGroupByUrlButton />
     </>
   )
 }
