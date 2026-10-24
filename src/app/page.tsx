@@ -1,4 +1,5 @@
 import { Logo } from '@/components/logo'
+import { SkipLanding } from '@/components/skip-landing'
 import { Button } from '@/components/ui/button'
 import { Github } from 'lucide-react'
 import { useTranslations } from 'next-intl'
@@ -11,10 +12,13 @@ export default function HomePage() {
   const t = useTranslations()
   return (
     <>
+      <SkipLanding />
       <main className="flex-1">
         <section className="py-16 md:py-24 lg:py-32">
           <div className="container flex max-w-screen-md flex-col items-center gap-4 text-center">
-            <h1 className="!leading-none font-bold text-2xl sm:text-3xl md:text-4xl lg:text-5xl landing-header py-2">
+            {/* Ink, with weight for emphasis. The emphasised words were an emerald gradient: the
+                most green on any screen, on the one page with nothing to do with money. */}
+            <h1 className="!leading-none font-bold tracking-tight text-2xl sm:text-3xl md:text-4xl lg:text-5xl py-2 [&_strong]:font-extrabold">
               {t.rich('Homepage.title', {
                 strong: (chunks) => <strong>{chunks}</strong>,
               })}

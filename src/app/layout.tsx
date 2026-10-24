@@ -11,6 +11,7 @@ import { ThemeProvider } from '@/components/theme-provider'
 import { Toaster } from '@/components/ui/toaster'
 import { GroupsProvider } from '@/contexts'
 import { env } from '@/lib/env'
+import { skipLandingScript } from '@/lib/skip-landing'
 import { TRPCProvider } from '@/trpc/client'
 import type { Metadata, Viewport } from 'next'
 import { NextIntlClientProvider, useTranslations } from 'next-intl'
@@ -167,6 +168,10 @@ export default async function RootLayout({
           value as --card, so the ground had to be faked with a tinted muted. It is its own token
           in both themes now. */}
       <body className="min-h-[100dvh] flex flex-col items-stretch bg-background">
+        {/* First, so a returning visitor leaves "/" before the front page paints. */}
+        <script
+          dangerouslySetInnerHTML={{ __html: skipLandingScript(basePath) }}
+        />
         <NextIntlClientProvider messages={messages}>
           <ThemeProvider
             attribute="class"

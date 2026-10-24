@@ -2,7 +2,21 @@ import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { createGroupViaAPI } from '../helpers/batch-api'
 
-test.describe('The groups home', () => {
+test.describe('The front page and the groups home', () => {
+  test('a first visit sees the front page; a returning one goes to its groups', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await expect(page).toHaveURL(/\/$/)
+    await expect(page.getByRole('link', { name: 'Go to groups' })).toBeVisible()
+
+    // Having a group makes this browser a returning one.
+    await createGroupViaAPI(page, `returning ${randomId(4)}`, ['Alice', 'Bob'])
+    await page.goto('/')
+    await expect(page).toHaveURL(/\/groups$/)
+    await expect(page.getByRole('heading', { name: 'My groups' })).toBeVisible()
+  })
+
   test('adds a group by its link, from under the list', async ({ page }) => {
     await page.goto('/groups')
     const name = `by link ${randomId(4)}`
