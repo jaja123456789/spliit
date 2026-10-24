@@ -1,5 +1,6 @@
 import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
+import { navigateToExpenseCreate } from '../helpers'
 import { createGroupViaAPI } from '../helpers/batch-api'
 
 test('Theme selection persists after reload', async ({ page }) => {
@@ -37,11 +38,8 @@ test('Expense displays with selected category', async ({ page }) => {
 
   await page.goto(`/groups/${groupId}/expenses`)
 
-  // Navigate to create expense page
-  const createExpenseLink = page.getByRole('link', { name: 'Create expense' })
-  await expect(createExpenseLink).toBeVisible()
-  await createExpenseLink.click()
-  await page.waitForURL(/\/groups\/[^/]+\/expenses\/create$/)
+  // Navigate to create expense page. The group is empty, so this is the empty state's link.
+  await navigateToExpenseCreate(page)
 
   // Fill expense details
   // By name, not by label text: this broke when the label became "Description".
@@ -97,11 +95,8 @@ test('Default category is General', async ({ page }) => {
 
   await page.goto(`/groups/${groupId}/expenses`)
 
-  // Navigate to create expense page
-  const createExpenseLink = page.getByRole('link', { name: 'Create expense' })
-  await expect(createExpenseLink).toBeVisible()
-  await createExpenseLink.click()
-  await page.waitForURL(/\/groups\/[^/]+\/expenses\/create$/)
+  // Navigate to create expense page. The group is empty, so this is the empty state's link.
+  await navigateToExpenseCreate(page)
 
   // Verify the category defaults to "General"
   const categoryTrigger = page.getByTestId('category-trigger')

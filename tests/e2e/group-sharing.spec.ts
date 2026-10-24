@@ -137,9 +137,10 @@ test.describe('Group Sharing', () => {
     await expect(page.getByRole('tab', { name: 'Expenses' })).toBeVisible()
     await expect(page.getByRole('tab', { name: 'Balances' })).toBeVisible()
 
-    // Verify participants are accessible
-    const createExpenseLink = page.getByRole('link', { name: 'Create expense' })
-    await expect(createExpenseLink).toBeVisible()
+    // Verify an expense can be added. The group is empty, which offers the first one.
+    await expect(
+      page.getByRole('link', { name: 'Create the first one' }),
+    ).toBeVisible()
   })
 
   test('share button is accessible on group page', async ({ page }) => {
