@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { SearchBar } from '@/components/ui/search-bar'
 import { Skeleton } from '@/components/ui/skeleton'
 import { NEW_GROUP_ACTIVE_USER_KEY, writeActiveUser } from '@/lib/active-user'
+import { assignAvatarHues } from '@/lib/avatar-hue'
 import { ExpenseFilters, hasActiveFilters } from '@/lib/expense-filters'
 import { useActiveUserState } from '@/lib/hooks'
 import { useOutbox } from '@/lib/outbox'
@@ -145,6 +146,10 @@ const ExpenseListForSearch = ({
   enableReceiptExtract: boolean
 }) => {
   const { group } = useCurrentGroup()
+  const avatarHues = useMemo(
+    () => assignAvatarHues(group?.participants.map((p) => p.name) ?? []),
+    [group?.participants],
+  )
   const locale = useLocale()
 
   const t = useTranslations('Expenses')
@@ -305,6 +310,7 @@ const ExpenseListForSearch = ({
                 currency={currency}
                 groupId={groupId}
                 participantCount={group.participants.length}
+                avatarHues={avatarHues}
               />
             ))}
           </section>

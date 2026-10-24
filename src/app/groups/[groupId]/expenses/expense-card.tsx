@@ -2,6 +2,8 @@
 // No category glyph on the row. It repeated the same icon down the whole list — a group's expenses
 // cluster in two or three categories — and cost 26px of every row's width to say something the
 // title already said. The category is still chosen and shown on the expense itself.
+// The row leads with who paid instead: that changes from row to row, and a person's plate is the
+// same colour on every screen, so a long list can be read by person at a glance.
 import { DocumentsCount } from '@/app/groups/[groupId]/expenses/documents-count'
 import {
   ExpenseRowMenu,
@@ -9,6 +11,7 @@ import {
   useLongPress,
 } from '@/app/groups/[groupId]/expenses/expense-row-actions'
 import { Money } from '@/components/money'
+import { ProfileAvatar } from '@/components/profile-avatar'
 import { Locale } from '@/i18n/request'
 import { getGroupExpenses } from '@/lib/api'
 import { getBalances } from '@/lib/balances'
@@ -28,6 +31,19 @@ type Expense = Awaited<ReturnType<typeof getGroupExpenses>>[number]
  */
 const SHORT_SENTENCE_LOCALES = new Set(['en-US'])
 
+/**
+ * Whether the row's avatar already says who paid, so the line under the title need not: English,
+ * one payer, and an expense rather than income. "Paid by Alex" then moves into text only a screen
+ * reader hears — the plate is decorative and hidden from it.
+ */
+function payerShownByAvatar(expense: Expense, locale: string) {
+  return (
+    SHORT_SENTENCE_LOCALES.has(locale) &&
+    expense.paidBy.length === 1 &&
+    expense.amount > 0
+  )
+}
+
 function Participants({
   expense,
   participantCount,
@@ -38,6 +54,7 @@ function Participants({
   const t = useTranslations('ExpenseCard')
   const locale = useLocale()
   const key = expense.amount > 0 ? 'paidBy' : 'receivedBy'
+  const hidePayer = payerShownByAvatar(expense, locale)
 
   // Handle multiple payers display
   let payerName = ''
@@ -61,13 +78,14 @@ function Participants({
   // a current member.
   const forEveryone = expense.paidFor.length === participantCount
   if (forEveryone && SHORT_SENTENCE_LOCALES.has(locale)) {
-    return (
-      <>
-        {t.rich(key === 'paidBy' ? 'paidByOnly' : 'receivedByOnly', {
-          strong,
-          paidBy: payerName,
-        })}
-      </>
+    const sentence = t.rich(
+      key === 'paidBy' ? 'paidByOnly' : 'receivedByOnly',
+      { strong, paidBy: payerName },
+    )
+    return hidePayer ? (
+      <span className="sr-only">{sentence}</span>
+    ) : (
+      <>{sentence}</>
     )
   }
 
@@ -82,6 +100,16 @@ function Participants({
         </Fragment>
       ))
     )
+  if (hidePayer) {
+    return (
+      <>
+        <span className="sr-only">
+          {t.rich('paidByOnly', { strong, paidBy: payerName })}{' '}
+        </span>
+        {t.rich('forOnly', { strong, paidFor: () => paidFor })}
+      </>
+    )
+  }
   const participants = t.rich(key, {
     strong,
     paidBy: payerName,
@@ -151,6 +179,8 @@ type Props = {
   currency: Currency
   groupId: string
   participantCount: number
+  /** The group's plates, settled once for the whole list by `assignAvatarHues`. */
+  avatarHues?: Map<string, number>
 }
 
 export function ExpenseCard({
@@ -159,6 +189,7 @@ export function ExpenseCard({
   currency,
   groupId,
   participantCount,
+  avatarHues,
 }: Props) {
   const locale = useLocale()
   const tComments = useTranslations('ExpenseComments')
@@ -209,6 +240,28 @@ export function ExpenseCard({
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
         )}
       >
+        <div className="shrink-0 self-center">
+          {isPayment ? (
+            <span
+              aria-hidden
+              className="grid h-8 w-8 place-items-center rounded-full bg-muted text-subtle-foreground"
+            >
+              <ArrowLeftRight className="h-4 w-4" />
+            </span>
+          ) : (
+            expense.paidBy[0] && (
+              <ProfileAvatar
+                name={expense.paidBy[0].participant.name}
+                hue={avatarHues?.get(expense.paidBy[0].participant.name)}
+                isActiveUser={
+                  !!activeUserId &&
+                  expense.paidBy[0].participant.id === activeUserId
+                }
+                size={32}
+              />
+            )
+          )}
+        </div>
         <div className="flex-1 min-w-0">
           <div className="flex justify-between items-baseline gap-3">
             <div className="flex items-baseline gap-2 min-w-0">
@@ -216,12 +269,6 @@ export function ExpenseCard({
                 className="flex min-w-0 items-center gap-1.5 font-medium text-base"
                 data-testid="expense-title"
               >
-                {isPayment && (
-                  <ArrowLeftRight
-                    aria-hidden
-                    className="h-3.5 w-3.5 shrink-0 text-subtle-foreground"
-                  />
-                )}
                 <span className="truncate">
                   {isPayment ? (
                     <PaymentLine
@@ -282,7 +329,10 @@ export function ExpenseCard({
                 )
               ) : (
                 <>
-                  <span aria-hidden> · </span>
+                  {!(
+                    payerShownByAvatar(expense, locale) &&
+                    expense.paidFor.length === participantCount
+                  ) && <span aria-hidden> · </span>}
                   <Participants
                     expense={expense}
                     participantCount={participantCount}

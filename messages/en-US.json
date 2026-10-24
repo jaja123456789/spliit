@@ -79,6 +79,7 @@
   "ExpenseCard": {
     "paidBy": "Paid by <strong>{paidBy}</strong> for <paidFor></paidFor>",
     "paidByOnly": "Paid by <strong>{paidBy}</strong>",
+    "forOnly": "for <paidFor></paidFor>",
     "paymentBetween": "{from} paid {to}",
     "paymentByYou": "You paid {to}",
     "paymentToYou": "{from} paid you",
