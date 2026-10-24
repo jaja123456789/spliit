@@ -44,15 +44,17 @@ test.describe('The group bar', () => {
     await createExpensesViaAPI(page, groupId, 15, ['Alice', 'Bob'])
 
     await page.goto(`/groups/${groupId}/expenses`)
-    await expect(page.getByTestId('expenses-group-total')).toBeVisible()
+    await expect(page.getByTestId('expenses-group-total')).toContainText('$')
+    // Scrolling before the rows are in would scroll a page too short to move.
+    await expect(page.locator('[data-testid^="expense-item-"]')).toHaveCount(16)
     await expect(page.getByTestId('group-bar-summary')).toHaveCount(0)
 
-    await page.mouse.wheel(0, 900)
+    await page.evaluate(() => window.scrollTo(0, 900))
     await expect(page.getByTestId('group-bar-summary')).toContainText(
       'Group total',
     )
 
-    await page.mouse.wheel(0, -2000)
+    await page.evaluate(() => window.scrollTo(0, 0))
     await expect(page.getByTestId('group-bar-summary')).toHaveCount(0)
   })
 })

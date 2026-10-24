@@ -10,15 +10,26 @@ import {
 } from '@/components/ui/drawer'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import { ChevronRight, MoreHorizontal } from 'lucide-react'
+import { ChevronRight, MoreHorizontal, Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-/** Four tabs and a More: the fifth slot is what stops "Information" having to fit. */
-const PRIMARY = GROUP_TABS.slice(0, 4)
-const OVERFLOW = GROUP_TABS.slice(4)
+/**
+ * Three tabs, add in the middle, and More. Add is the action the bar is for; Stats is the
+ * destination opened least, so it went into More, with Information and Settings.
+ */
+const PRIMARY_VALUES = ['expenses', 'balances', 'activity']
+const PRIMARY = GROUP_TABS.filter((tab) => PRIMARY_VALUES.includes(tab.value))
+const OVERFLOW = GROUP_TABS.filter((tab) => !PRIMARY_VALUES.includes(tab.value))
+/** Their columns in the bar's five, the middle one being add's. */
+const COLUMN: Record<string, string> = {
+  expenses: 'col-start-1',
+  balances: 'col-start-2',
+  activity: 'col-start-4',
+  more: 'col-start-5',
+}
 
 /**
  * Whether the bar belongs on this screen.
@@ -76,30 +87,50 @@ export function GroupTabBar({ groupId }: { groupId: string }) {
         // element whose only child is fixed to the viewport.
         className="contents sm:hidden"
       >
-        <TabsList
+        {/* Solid, not 80% with a blur: the list showed through behind the 11px labels. */}
+        <div
           className={cn(
-            'fixed inset-x-0 bottom-0 z-40 grid h-auto grid-cols-5 rounded-none border-t p-0',
-            'bg-background/95 supports-[backdrop-filter]:bg-background/80 backdrop-blur',
+            'fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-background',
             // The home indicator on a modern iPhone sits over the bottom ~34px. Nothing else in
             // the app reads the safe area yet; a bar pinned to the bottom edge is the first thing
             // that has to.
             'pb-[env(safe-area-inset-bottom)]',
           )}
         >
-          {PRIMARY.map(({ value, messageKey, Icon }) => (
+          {/* `contents`, so the tabs are cells of the bar's grid while the tablist stays one
+              element holding only tabs. Add sits between them as a link, not a tab: it starts
+              something rather than going somewhere. */}
+          <TabsList className="contents">
+            {PRIMARY.map(({ value, messageKey, Icon }) => (
+              <TabBarTrigger
+                key={value}
+                value={value}
+                label={t(messageKey as never)}
+                Icon={Icon}
+                className={COLUMN[value]}
+              />
+            ))}
             <TabBarTrigger
-              key={value}
-              value={value}
-              label={t(messageKey as never)}
-              Icon={Icon}
+              value="more"
+              label={t('Common.more')}
+              Icon={MoreHorizontal}
+              className={COLUMN.more}
             />
-          ))}
-          <TabBarTrigger
-            value="more"
-            label={t('Common.more')}
-            Icon={MoreHorizontal}
-          />
-        </TabsList>
+          </TabsList>
+          {/* The add button used to float over the list's right edge, which is where the amounts
+              are: at rest it hid one row's figures, and every row's on the way past. In the bar it
+              covers nothing. One tap to the form; scanning a receipt is the form's first row. */}
+          <Link
+            href={`/groups/${groupId}/expenses/create`}
+            aria-label={t('Expenses.create')}
+            title={t('Expenses.create')}
+            className="col-start-3 row-start-1 grid place-items-center py-1.5"
+          >
+            <span className="grid h-11 w-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-sm transition-transform active:scale-95">
+              <Plus className="h-6 w-6" aria-hidden={true} />
+            </span>
+          </Link>
+        </div>
       </Tabs>
 
       <Drawer open={open} onOpenChange={setOpen}>
@@ -138,10 +169,12 @@ const TabBarTrigger = ({
   value,
   label,
   Icon,
+  className,
 }: {
   value: string
   label: string
   Icon: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>
+  className?: string
 }) => (
   <TabsTrigger
     value={value}
@@ -149,8 +182,9 @@ const TabBarTrigger = ({
     // muted track and wrong for a bar that is the ground. Here the accent on the glyph and the
     // label carries it, the way a tab bar has always done it.
     className={cn(
-      'flex-col gap-1 rounded-none px-1 py-2 min-w-0 h-full',
+      'row-start-1 flex-col gap-1 rounded-none px-1 py-2 min-w-0 h-full',
       'data-[state=active]:bg-transparent data-[state=active]:font-semibold data-[state=active]:text-foreground data-[state=active]:shadow-none',
+      className,
     )}
   >
     <Icon className="h-5 w-5 shrink-0" aria-hidden={true} />

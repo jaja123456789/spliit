@@ -22,8 +22,12 @@ const JPEG = Buffer.from(
 )
 
 async function openScannerWithAPage(page: import('@playwright/test').Page) {
+  // The summary card's scan button on a wide screen; on a phone, where add lives in the tab bar,
+  // the empty group's own "Scan a receipt" prompt. Both open the same scanner.
   await page
     .getByRole('button', { name: /create expense from receipt/i })
+    .or(page.getByRole('button', { name: /^scan a receipt$/i }))
+    .first()
     .click()
   const cameraInput = page.locator('input[type="file"]').first()
   await cameraInput.setInputFiles({

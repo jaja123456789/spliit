@@ -37,18 +37,22 @@ test('Mobile navigation uses the bottom tab bar', async ({ page }) => {
   await expect(mobileExpenseAmount).toBeVisible()
 
   // Verify tabs are still accessible in mobile view
-  const statsTab = page.getByRole('tab', { name: 'Stats' })
-  await expect(statsTab).toBeVisible()
-  await statsTab.click()
+  const activityTab = page.getByRole('tab', { name: 'Activity' })
+  await expect(activityTab).toBeVisible()
+  await activityTab.click()
+  await page.waitForURL(/\/activity$/)
 
-  // Verify we navigated to Stats
-  await page.waitForURL(/\/stats$/)
-  await expect(page.getByRole('heading', { name: 'Group total' })).toBeVisible()
+  // Add is the middle of the bar, one tap to the form. It used to float over the amounts.
+  await page.getByRole('link', { name: 'Create expense' }).click()
+  await page.waitForURL(/\/expenses\/create$/)
 })
 
-test('Mobile folds the last two tabs into More', async ({ page }) => {
+test('Mobile folds Stats, Information and Settings into More', async ({
+  page,
+}) => {
   // Six labels never fitted a phone: "Information" wanted 62px in a box that is 45px at 360 and
-  // 57px at 430, so it was clipped on every phone made. Four tabs and a More retires that.
+  // 57px at 430, so it was clipped on every phone made. Three tabs, add in the middle, and a More
+  // retire that; Stats is the destination opened least, so it is the one behind More.
   await page.setViewportSize({ width: 375, height: 667 })
 
   await page.goto('/groups')
@@ -58,20 +62,21 @@ test('Mobile folds the last two tabs into More', async ({ page }) => {
   ])
   await navigateToGroup(page, groupId)
 
-  // The four primary destinations are tabs; the folded two are not.
-  for (const name of ['Expenses', 'Balances', 'Stats', 'Activity', 'More']) {
+  // The three primary destinations are tabs; the folded three are not.
+  for (const name of ['Expenses', 'Balances', 'Activity', 'More']) {
     await expect(page.getByRole('tab', { name, exact: true })).toBeVisible()
   }
-  for (const name of ['Information', 'Settings']) {
+  for (const name of ['Stats', 'Information', 'Settings']) {
     await expect(page.getByRole('tab', { name, exact: true })).toHaveCount(0)
   }
 
   // They are still reachable, one tap further in.
   await page.getByRole('tab', { name: 'More' }).click()
-  const information = page.getByRole('link', { name: 'Information' })
-  await expect(information).toBeVisible()
-  await information.click()
-  await page.waitForURL(/\/information$/)
+  const stats = page.getByRole('link', { name: 'Stats' })
+  await expect(stats).toBeVisible()
+  await stats.click()
+  await page.waitForURL(/\/stats$/)
+  await expect(page.getByRole('heading', { name: 'Group total' })).toBeVisible()
 
   // And the bar says where you are, which is the whole point of an overflow having a state.
   await expect(page.getByRole('tab', { name: 'More' })).toHaveAttribute(
