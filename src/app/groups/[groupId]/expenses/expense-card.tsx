@@ -18,7 +18,7 @@ import { getBalances } from '@/lib/balances'
 import { Currency, getCurrency } from '@/lib/currency'
 import { useActiveUser } from '@/lib/hooks'
 import { cn, toDateInputValue } from '@/lib/utils'
-import { ArrowLeftRight, MessageSquare } from 'lucide-react'
+import { ArrowLeftRight, MessageSquare, Repeat } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { Fragment, ReactNode, useState } from 'react'
@@ -193,6 +193,7 @@ export function ExpenseCard({
 }: Props) {
   const locale = useLocale()
   const tComments = useTranslations('ExpenseComments')
+  const tCard = useTranslations('ExpenseCard')
   const activeUserId = useActiveUser(groupId)
   const [sheetOpen, setSheetOpen] = useState(false)
   const longPress = useLongPress(() => setSheetOpen(true))
@@ -281,6 +282,18 @@ export function ExpenseCard({
                 </span>
               </div>
               <div className="flex shrink-0 items-center gap-2 text-xs text-subtle-foreground">
+                {expense.recurrenceRule &&
+                  expense.recurrenceRule !== 'NONE' && (
+                    // Rent, internet, a subscription: written by the schedule, not by someone.
+                    <span
+                      className="flex items-center"
+                      data-testid="expense-recurring"
+                      title={tCard('recurring')}
+                    >
+                      <Repeat className="h-3.5 w-3.5" aria-hidden />
+                      <span className="sr-only">{tCard('recurring')}</span>
+                    </span>
+                  )}
                 <DocumentsCount count={expense._count.documents} />
                 {expense._count.comments > 0 && (
                   <span

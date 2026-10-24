@@ -170,14 +170,14 @@ test.describe('Expense List Pagination', () => {
 
     await navigateToGroup(page, groupId)
 
-    // Should show empty state or "create first" message
-    // The sheet header stays when the list is empty, so an empty group still reports its total.
-    await expect(
-      page.getByRole('heading', { name: 'Group total' }),
-    ).toBeVisible()
     // An empty group leads with inviting the others rather than with a sentence about the absence
     // of expenses; adding the first one is still offered, just not first.
     await expect(page.getByText('Nothing here yet')).toBeVisible()
+    // Nor does it report money it has not got: no $0.00 total above that, and nothing to export.
+    await expect(
+      page.getByRole('heading', { name: 'Group total' }),
+    ).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Export' })).toHaveCount(0)
     await expect(
       page.getByRole('button', { name: /invite the others/i }),
     ).toBeVisible()

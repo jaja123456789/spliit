@@ -33,7 +33,7 @@ import { keepPreviousData } from '@tanstack/react-query'
 import { ScanLine } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { ReactNode, forwardRef, useEffect, useMemo } from 'react'
+import { ReactNode, forwardRef, useEffect, useMemo, useState } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useDebounce } from 'use-debounce'
 import { useCurrentGroup } from '../current-group-context'
@@ -76,6 +76,10 @@ export function ExpenseList({
   const [search] = useDebounce(filters.search ?? '', 300)
 
   const participants = group?.participants
+  // A group with nothing in it shows €0.00 and an export button above "Nothing here yet" — a figure
+  // and an action about nothing. The list knows when that is the case; a search that found nothing
+  // is not it.
+  const [isEmptyGroup, setIsEmptyGroup] = useState(false)
 
   useEffect(() => {
     if (!participants) return
@@ -97,7 +101,7 @@ export function ExpenseList({
 
   return (
     <>
-      <ExpenseListTotal actions={actions} />
+      {!isEmptyGroup && <ExpenseListTotal actions={actions} />}
       {/* The search box and filters are rendered by the list, not above it: a group with nothing
           in it should not offer to search it. Passed down rather than hoisted so that a search
           returning no results still keeps them — otherwise the controls would vanish under the
@@ -105,6 +109,7 @@ export function ExpenseList({
       <ExpenseListForSearch
         groupId={groupId}
         enableReceiptExtract={enableReceiptExtract}
+        onEmptyChange={setIsEmptyGroup}
         filters={{
           search: search.trim() || undefined,
           paidBy: filters.paidBy,
@@ -138,12 +143,14 @@ const ExpenseListForSearch = ({
   onClearFilters,
   searchBar,
   enableReceiptExtract,
+  onEmptyChange,
 }: {
   groupId: string
   filters: ExpenseFilters
   onClearFilters: () => void
   searchBar: ReactNode
   enableReceiptExtract: boolean
+  onEmptyChange?: (empty: boolean) => void
 }) => {
   const { group } = useCurrentGroup()
   const avatarHues = useMemo(
@@ -189,6 +196,19 @@ const ExpenseListForSearch = ({
     () => (expenses ? groupByMonth(expenses) : []),
     [expenses],
   )
+  const { data: monthTotals } = trpc.groups.expenses.monthTotals.useQuery(
+    { groupId, ...filters },
+    { placeholderData: keepPreviousData },
+  )
+  const isEmptyGroup =
+    !isLoading &&
+    !!expenses &&
+    expenses.length === 0 &&
+    pending.length === 0 &&
+    !filtered
+  useEffect(() => {
+    onEmptyChange?.(isEmptyGroup)
+  }, [isEmptyGroup, onEmptyChange])
 
   if (isLoading)
     return (
@@ -226,7 +246,7 @@ const ExpenseListForSearch = ({
   // what it offers — rather than a sentence about the absence of expenses under a search box that
   // has nothing to search. Adding an expense stays available; it is just not the first move.
   // Not when one is waiting to be sent: that group is not empty, it is offline.
-  if (expenses.length === 0 && pending.length === 0)
+  if (isEmptyGroup)
     return (
       <div className="px-4 sm:px-6 py-10 text-center">
         <p className="text-base font-medium">{tEmpty('title')}</p>
@@ -295,12 +315,23 @@ const ExpenseListForSearch = ({
               data-testid="expense-month"
               className="section-label px-4 sm:px-6 pt-4 pb-1.5 sticky top-14 z-10 bg-card"
             >
-              <time dateTime={month}>
-                {formatDateOnly(new Date(`${month}-01`), locale, {
-                  month: 'long',
-                  year: month.startsWith(thisYear) ? undefined : 'numeric',
-                })}
-              </time>
+              <span className="flex items-baseline justify-between gap-3">
+                <time dateTime={month}>
+                  {formatDateOnly(new Date(`${month}-01`), locale, {
+                    month: 'long',
+                    year: month.startsWith(thisYear) ? undefined : 'numeric',
+                  })}
+                </time>
+                {/* What the month came to: the question a household asks of a month, which the
+                    rows could not answer because they arrive twenty at a time. */}
+                {monthTotals?.months[month] !== undefined && (
+                  <Money
+                    currency={currency}
+                    amount={monthTotals.months[month]}
+                    className="text-xs text-muted-foreground"
+                  />
+                )}
+              </span>
             </h3>
             {expenses.map((expense) => (
               <ExpenseCard

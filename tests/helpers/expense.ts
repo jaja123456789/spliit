@@ -30,10 +30,13 @@ export interface CreateExpenseOptions {
  * Navigates to the expense creation page
  */
 export async function navigateToExpenseCreate(page: Page): Promise<void> {
-  // The button is an icon button with title "Create expense"
-  const createExpenseButton = page.getByRole('link', {
-    name: /create expense/i,
-  })
+  // The header's icon button titled "Create expense" — or, in a group with nothing in it yet, which
+  // has no header, the empty state's "Create the first one". The header is on screen while the list
+  // loads and goes when it turns out to be empty; a click that loses it is retried on the other.
+  const createExpenseButton = page
+    .getByRole('link', { name: /create expense/i })
+    .or(page.getByRole('link', { name: 'Create the first one' }))
+    .first()
   await createExpenseButton.waitFor({ state: 'visible' })
 
   await createExpenseButton.click()
