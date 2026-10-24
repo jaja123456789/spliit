@@ -1,15 +1,13 @@
 import { ApplePwaSplash } from '@/app/apple-pwa-splash'
+import { AppHeader } from '@/components/app-header'
 import { AuthProvider } from '@/components/auth-provider'
 import { EnvProvider } from '@/components/env-provider'
-import { LocaleSwitcher } from '@/components/locale-switcher'
 import { OfflineBanner } from '@/components/offline-banner'
 import { OutboxFlusher } from '@/components/outbox-flusher'
 import { ProgressBar } from '@/components/progress-bar'
 import { ServiceWorkerRegistration } from '@/components/service-worker-registration'
 import { ThemeColor } from '@/components/theme-color'
 import { ThemeProvider } from '@/components/theme-provider'
-import { ThemeToggle } from '@/components/theme-toggle'
-import { Button } from '@/components/ui/button'
 import { Toaster } from '@/components/ui/toaster'
 import { GroupsProvider } from '@/contexts'
 import { env } from '@/lib/env'
@@ -18,8 +16,6 @@ import type { Metadata, Viewport } from 'next'
 import { NextIntlClientProvider, useTranslations } from 'next-intl'
 import { getLocale, getMessages } from 'next-intl/server'
 import { IBM_Plex_Mono, Nunito_Sans } from 'next/font/google'
-import Image from 'next/image'
-import Link from 'next/link'
 import { Suspense } from 'react'
 import './globals.css'
 
@@ -121,70 +117,23 @@ export const viewport: Viewport = {
 
 function Content({ children }: { children: React.ReactNode }) {
   const t = useTranslations()
-  const basePath = env.NEXT_PUBLIC_BASE_PATH
   return (
     <TRPCProvider>
       <AuthProvider>
         <GroupsProvider>
-          {/* First in the tab order, visible only when focused: past the header's four links. */}
+          {/* First in the tab order, visible only when focused: past the bar's own links. */}
           <a
             href="#main-content"
             className="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-[60] focus:rounded-md focus:bg-background focus:px-3 focus:py-2 focus:text-sm focus:ring-2 focus:ring-ring"
           >
             {t('Header.skipToContent')}
           </a>
-          <header className="fixed top-0 left-0 right-0 h-16 flex justify-between bg-background/60 supports-[backdrop-filter]:bg-background/50 p-2 border-b backdrop-blur-sm z-50">
-            {/* Not a heading. Every page has its own <h1> — the group's name, the page's title —
-                and the logo made it two on every screen. The height is pinned rather than left to
-                `h-auto`, which drew the logo at whatever size the served image happened to be. */}
-            <Link
-              className="flex items-center gap-2 hover:scale-105 transition-transform"
-              href="/"
-            >
-              <Image
-                src={`${basePath}/logo-with-text.png`}
-                className="m-1 h-[35px] w-auto"
-                width={(35 * 522) / 180}
-                height={35}
-                alt="Spliit"
-              />
-            </Link>
-            <div role="navigation" aria-label="Menu" className="flex">
-              <ul className="flex items-center text-sm">
-                <li>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    asChild
-                    className="-my-3 min-h-[44px] text-foreground sm:min-h-0"
-                  >
-                    <Link href="/groups">{t('Header.groups')}</Link>
-                  </Button>
-                </li>
-                <li>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    asChild
-                    className="-my-3 min-h-[44px] text-foreground sm:min-h-0"
-                  >
-                    <Link href="/settings">{t('Header.settings')}</Link>
-                  </Button>
-                </li>
-                <li>
-                  <LocaleSwitcher />
-                </li>
-                <li>
-                  <ThemeToggle />
-                </li>
-              </ul>
-            </div>
-          </header>
+          <AppHeader />
 
           <div
             id="main-content"
             tabIndex={-1}
-            className="pt-16 flex-1 flex flex-col outline-none"
+            className="flex-1 flex flex-col outline-none"
           >
             <OfflineBanner />
             {children}

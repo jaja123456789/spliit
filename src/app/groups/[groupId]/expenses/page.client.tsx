@@ -79,7 +79,7 @@ export default function GroupExpensesPageClient({
         </Card>
         <aside
           aria-label={t('balancesPanel')}
-          className="hidden lg:block lg:sticky lg:top-20 lg:max-h-[calc(100dvh-6rem)] lg:overflow-y-auto"
+          className="hidden lg:block lg:sticky lg:top-[4.5rem] lg:max-h-[calc(100dvh-5.5rem)] lg:overflow-y-auto"
         >
           {/* Mounted on wide screens only: a phone would fetch balances it never shows. */}
           {isWide && <BalancesAndReimbursements variant="panel" />}

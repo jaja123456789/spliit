@@ -104,8 +104,8 @@ test('Desktop view displays full layout', async ({ page }) => {
   // Verify main content is visible
   await expect(page.getByRole('main')).toBeVisible()
 
-  // Verify navigation header is visible
-  await expect(page.getByRole('navigation', { name: 'Menu' })).toBeVisible()
+  // Verify the group's bar is visible: its way back to the group list, and the group's name.
+  await expect(page.getByRole('link', { name: 'Groups' })).toBeVisible()
 
   // Verify all tabs are visible without scrolling
   await expect(page.getByRole('tab', { name: 'Expenses' })).toBeVisible()
@@ -124,10 +124,11 @@ test('Desktop view displays full layout', async ({ page }) => {
     .filter({ hasText: '$100.00' })
   await expect(desktopExpenseAmount).toBeVisible()
 
-  // Scoped to the row: the filter above the list is called "Paid by" too.
-  await expect(
-    page.locator('[data-testid^="expense-item-"]').getByText('Paid by'),
-  ).toBeVisible()
+  // Who paid is the row's leading plate now; the words "Paid by Alice" stay in the row for screen
+  // readers, since the plate is decorative.
+  await expect(page.locator('[data-testid^="expense-item-"]')).toContainText(
+    'Paid by Alice',
+  )
 })
 
 test('Date format changes with locale selection', async ({ page }) => {

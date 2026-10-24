@@ -54,6 +54,11 @@ export async function switchLocale(
   page: Page,
   localeName: string,
 ): Promise<void> {
+  // Language lives in Settings now, not in a menu in every screen's header. Set it there and come
+  // back to where the test was.
+  const returnTo = page.url()
+  await page.goto('/settings')
+
   // Click the current locale button to open menu
   const localeButton = page
     .getByRole('button')
@@ -64,6 +69,8 @@ export async function switchLocale(
   const localeOption = page.getByRole('menuitem', { name: localeName })
   await localeOption.click()
   await expect(localeButton).toHaveText(localeName)
+
+  await page.goto(returnTo)
 }
 
 /**

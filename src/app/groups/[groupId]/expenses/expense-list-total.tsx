@@ -1,12 +1,13 @@
 'use client'
 
+import { useCollapseIntoGroupBar } from '@/app/groups/[groupId]/group-bar-summary'
 import { Money } from '@/components/money'
 import { SheetHeader } from '@/components/sheet-header'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useActiveUserState } from '@/lib/hooks'
-import { getCurrencyFromGroup } from '@/lib/utils'
+import { formatCurrency, getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
-import { useTranslations } from 'next-intl'
+import { useLocale, useTranslations } from 'next-intl'
 import { ReactNode } from 'react'
 import { useCurrentGroup } from '../current-group-context'
 
@@ -34,39 +35,61 @@ export function ExpenseListTotal({ actions }: { actions?: ReactNode }) {
 
   const currency = group ? getCurrencyFromGroup(group) : null
   const ready = !!currency && !!data
+  const locale = useLocale()
+  const summary = useCollapseIntoGroupBar<HTMLDivElement>(
+    ready
+      ? [
+          `${t('group')} ${formatCurrency(
+            currency,
+            data.totalGroupSpendings,
+            locale,
+          )}`,
+          data.totalParticipantShare !== undefined &&
+            `${t('yourShare')} ${formatCurrency(
+              currency,
+              data.totalParticipantShare,
+              locale,
+            )}`,
+        ]
+          .filter(Boolean)
+          .join(' · ')
+      : null,
+  )
 
   return (
-    <SheetHeader
-      label={t('group')}
-      figureTestId="expenses-group-total"
-      actions={actions}
-      figure={
-        ready ? (
-          <Money
-            currency={currency}
-            amount={data.totalGroupSpendings}
-            headline
-          />
-        ) : (
-          <Skeleton className="h-8 w-40" />
-        )
-      }
-      context={
-        ready ? (
-          data.totalParticipantShare !== undefined && (
-            <>
-              {t('yourShare')}{' '}
-              <Money
-                currency={currency}
-                amount={data.totalParticipantShare}
-                className="text-foreground"
-              />
-            </>
+    <div ref={summary}>
+      <SheetHeader
+        label={t('group')}
+        figureTestId="expenses-group-total"
+        actions={actions}
+        figure={
+          ready ? (
+            <Money
+              currency={currency}
+              amount={data.totalGroupSpendings}
+              headline
+            />
+          ) : (
+            <Skeleton className="h-8 w-40" />
           )
-        ) : (
-          <Skeleton className="h-3.5 w-32" />
-        )
-      }
-    />
+        }
+        context={
+          ready ? (
+            data.totalParticipantShare !== undefined && (
+              <>
+                {t('yourShare')}{' '}
+                <Money
+                  currency={currency}
+                  amount={data.totalParticipantShare}
+                  className="text-foreground"
+                />
+              </>
+            )
+          ) : (
+            <Skeleton className="h-3.5 w-32" />
+          )
+        }
+      />
+    </div>
   )
 }

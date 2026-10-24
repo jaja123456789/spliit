@@ -9,18 +9,15 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Locale, localeLabels } from '@/i18n/request'
 import { setUserLocale } from '@/lib/locale'
+import { cn } from '@/lib/utils'
 import { useLocale } from 'next-intl'
 
-export function LocaleSwitcher() {
+export function LocaleSwitcher({ className }: { className?: string }) {
   const locale = useLocale() as Locale
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="-my-3 min-h-[44px] text-foreground sm:min-h-0"
-        >
+        <Button variant="outline" size="sm" className={cn('h-9', className)}>
           <span>{localeLabels[locale]}</span>
         </Button>
       </DropdownMenuTrigger>

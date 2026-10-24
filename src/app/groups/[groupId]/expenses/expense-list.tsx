@@ -293,7 +293,7 @@ const ExpenseListForSearch = ({
             <h3
               id={`month-${month}`}
               data-testid="expense-month"
-              className="section-label px-4 sm:px-6 pt-4 pb-1.5 sticky top-16 z-10 bg-card"
+              className="section-label px-4 sm:px-6 pt-4 pb-1.5 sticky top-14 z-10 bg-card"
             >
               <time dateTime={month}>
                 {formatDateOnly(new Date(`${month}-01`), locale, {

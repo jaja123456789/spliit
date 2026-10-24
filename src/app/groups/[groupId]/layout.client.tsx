@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { PropsWithChildren } from 'react'
 import { CurrentGroupProvider } from './current-group-context'
+import { GroupBarSummaryProvider } from './group-bar-summary'
 import { GroupHeader } from './group-header'
 import { SaveGroupLocally } from './save-recent-group'
 
@@ -40,19 +41,23 @@ export function GroupLayoutClient({
   if (isLoading) {
     return (
       <CurrentGroupProvider {...props}>
-        <GroupHeader />
-        {children}
-        <TabBarClearance />
+        <GroupBarSummaryProvider>
+          <GroupHeader />
+          {children}
+          <TabBarClearance />
+        </GroupBarSummaryProvider>
       </CurrentGroupProvider>
     )
   }
 
   return (
     <CurrentGroupProvider {...props}>
-      <GroupHeader />
-      {children}
-      <TabBarClearance />
-      <SaveGroupLocally />
+      <GroupBarSummaryProvider>
+        <GroupHeader />
+        {children}
+        <TabBarClearance />
+        <SaveGroupLocally />
+      </GroupBarSummaryProvider>
     </CurrentGroupProvider>
   )
 }

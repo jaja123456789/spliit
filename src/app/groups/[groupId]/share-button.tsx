@@ -21,9 +21,11 @@ type Props = {
    * an unlabelled icon is a poor thing to lead with.
    */
   label?: string
+  /** For the group's bar: a borderless 44px icon among the bar's other controls. */
+  quiet?: boolean
 }
 
-export function ShareButton({ group, label }: Props) {
+export function ShareButton({ group, label, quiet = false }: Props) {
   const t = useTranslations('Share')
   const baseUrl = useBaseUrl()
   const url = baseUrl && `${baseUrl}/groups/${group.id}/expenses?ref=share`
@@ -37,10 +39,10 @@ export function ShareButton({ group, label }: Props) {
           // screen reader and to anything else looking for one of them.
           title={label ?? t('title')}
           size={label ? 'default' : 'icon'}
-          variant={label ? 'default' : 'outline'}
-          className="flex-shrink-0"
+          variant={label ? 'default' : quiet ? 'ghost' : 'outline'}
+          className={quiet ? 'h-11 w-11 flex-shrink-0' : 'flex-shrink-0'}
         >
-          <Share className="w-4 h-4" />
+          <Share className={quiet ? 'h-5 w-5' : 'w-4 h-4'} />
           {label && <span className="ml-2">{label}</span>}
         </Button>
       </PopoverTrigger>

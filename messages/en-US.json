@@ -7,6 +7,11 @@
       "github": "GitHub"
     }
   },
+  "GroupBar": {
+    "newExpense": "New expense",
+    "editExpense": "Edit expense",
+    "close": "Close"
+  },
   "Header": {
     "groups": "Groups",
     "settings": "Settings",
@@ -633,6 +638,14 @@
     "edit": "Edit group information"
   },
   "Settings": {
+    "Appearance": {
+      "title": "Appearance",
+      "theme": "Theme",
+      "language": "Language",
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System"
+    },
     "title": "Settings",
     "sections": {
       "account": "Account",

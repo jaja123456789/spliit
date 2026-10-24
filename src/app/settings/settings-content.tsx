@@ -1,6 +1,8 @@
 'use client'
 
+import { LocaleSwitcher } from '@/components/locale-switcher'
 import { PushNotificationToggle } from '@/components/push-notification-toggle'
+import { ThemeChoice } from '@/components/theme-toggle'
 import {
   Card,
   CardContent,
@@ -42,6 +44,25 @@ export function SettingsContent({ vapidKey }: { vapidKey?: string }) {
         <Settings2 className="w-8 h-8" />
         <h1 className="text-3xl font-bold">{t('title')}</h1>
       </div>
+
+      {/* Moved here from the header of every screen, where they were changed about once. */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('Appearance.title')}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="text-sm font-medium">{t('Appearance.theme')}</span>
+            <ThemeChoice />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <span className="text-sm font-medium">
+              {t('Appearance.language')}
+            </span>
+            <LocaleSwitcher />
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

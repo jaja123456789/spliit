@@ -168,7 +168,7 @@ export function PaymentForm({ group }: { group: Group }) {
     <form onSubmit={onSubmit}>
       <Card bleed className="mb-4">
         <SheetHeader
-          label={isPrefilled ? t('settleTitle') : t('title')}
+          label={t('amount')}
           figure={
             // The same amount idiom as the expense form: the currency on a plate beside the field
             // rather than inside it, so the caret never lands on the symbol.

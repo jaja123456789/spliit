@@ -125,7 +125,7 @@ export function ActivityList() {
               // A section rule, in the same mono caps as the ones on Expenses. It was
               // `bg-white dark:bg-[#1b1917]` — a hard-coded pair that froze the old dark card
               // colour into the markup. A sticky header has to match whatever it scrolls over.
-              className="section-label py-1.5 sticky top-16 bg-card"
+              className="section-label py-1.5 sticky top-14 bg-card"
             >
               {t(`Groups.${dateGroup}`)}
             </div>

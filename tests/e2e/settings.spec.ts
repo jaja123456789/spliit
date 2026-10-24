@@ -3,17 +3,15 @@ import { expect, test } from '@playwright/test'
 import { createGroupViaAPI } from '../helpers/batch-api'
 
 test('Theme selection persists after reload', async ({ page }) => {
-  await page.goto('/groups')
+  // Theme lives in Settings now, as three buttons, rather than in a menu in every screen's header.
+  await page.goto('/settings')
 
-  // Open theme toggle menu
-  const themeToggle = page.getByRole('button', { name: 'Toggle theme' })
-  await expect(themeToggle).toBeVisible()
-  await themeToggle.click()
-
-  // Select Dark theme
-  const darkOption = page.getByRole('menuitem', { name: 'Dark' })
-  await expect(darkOption).toBeVisible()
-  await darkOption.click()
+  const dark = page
+    .getByRole('group', { name: 'Theme' })
+    .getByRole('button', { name: 'Dark' })
+  await expect(dark).toBeVisible()
+  await dark.click()
+  await expect(dark).toHaveAttribute('aria-pressed', 'true')
 
   // Verify dark theme is applied (body or html should have dark class/attribute)
   const html = page.locator('html')
@@ -24,6 +22,7 @@ test('Theme selection persists after reload', async ({ page }) => {
 
   // Verify dark theme persisted after reload
   await expect(html).toHaveAttribute('class', /dark/)
+  await expect(dark).toHaveAttribute('aria-pressed', 'true')
 })
 
 test('Expense displays with selected category', async ({ page }) => {
