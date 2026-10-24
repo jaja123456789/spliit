@@ -265,4 +265,25 @@ describe('groupFormSchema', () => {
     // Note: Business logic should enforce 2+ participants
     // This test documents current schema behavior
   })
+
+  it('takes any single emoji as the icon, and nothing else', () => {
+    const withIcon = (icon: string | null) =>
+      groupFormSchema.safeParse({
+        name: 'Flat',
+        currency: '€',
+        currencyCode: 'EUR',
+        participants: [{ name: 'Alice' }],
+        icon,
+      })
+
+    expect(withIcon('🦩').success).toBe(true) // not one of the quick picks
+    expect(withIcon('🇲🇹').success).toBe(true)
+    expect(withIcon(null).success).toBe(true)
+    expect(withIcon('').success).toBe(true)
+
+    const text = withIcon('hello')
+    expect(text.success).toBe(false)
+    expect(text.error?.issues[0]?.message).toBe('iconNotEmoji')
+    expect(withIcon('🏠🏡').success).toBe(false)
+  })
 })

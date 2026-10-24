@@ -43,7 +43,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { useFieldArray, useForm } from 'react-hook-form'
 import { CurrencySelector } from './currency-selector'
-import { GROUP_ICONS, GroupMark } from './group-mark'
+import { GroupIconPicker } from './group-icon-picker'
 import { Switch } from './ui/switch'
 import { Textarea } from './ui/textarea'
 
@@ -181,61 +181,14 @@ export function GroupForm({
                       control={form.control}
                       name="icon"
                       render={({ field: icon }) => (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <button
-                              type="button"
-                              className="shrink-0 rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                              aria-label={t('IconField.choose')}
-                              data-testid="group-icon-trigger"
-                            >
-                              <GroupMark
-                                group={{
-                                  id: group?.id ?? 'new',
-                                  name: form.watch('name') || '?',
-                                  icon: icon.value,
-                                }}
-                                size={44}
-                              />
-                            </button>
-                          </PopoverTrigger>
-                          <PopoverContent align="start" className="w-72">
-                            <p className="section-label mb-2">
-                              {t('IconField.label')}
-                            </p>
-                            <div className="grid grid-cols-8 gap-1">
-                              {GROUP_ICONS.map((emoji) => (
-                                <button
-                                  key={emoji}
-                                  type="button"
-                                  aria-pressed={icon.value === emoji}
-                                  onClick={() =>
-                                    icon.onChange(
-                                      icon.value === emoji ? null : emoji,
-                                    )
-                                  }
-                                  className={cn(
-                                    'grid h-8 w-8 place-items-center rounded-md text-lg hover:bg-accent',
-                                    icon.value === emoji &&
-                                      'bg-accent ring-2 ring-inset ring-foreground',
-                                  )}
-                                >
-                                  {emoji}
-                                </button>
-                              ))}
-                            </div>
-                            {icon.value && (
-                              <Button
-                                type="button"
-                                variant="link"
-                                className="mt-2 h-auto p-0"
-                                onClick={() => icon.onChange(null)}
-                              >
-                                {t('IconField.none')}
-                              </Button>
-                            )}
-                          </PopoverContent>
-                        </Popover>
+                        <GroupIconPicker
+                          group={{
+                            id: group?.id ?? 'new',
+                            name: form.watch('name') || '?',
+                          }}
+                          value={icon.value}
+                          onChange={icon.onChange}
+                        />
                       )}
                     />
                     <FormControl>

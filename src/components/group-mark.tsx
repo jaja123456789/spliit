@@ -4,9 +4,8 @@ import { AVATAR_HUE_COUNT, preferredAvatarHue } from '@/lib/avatar-hue'
 import { cn } from '@/lib/utils'
 
 /**
- * The emoji a group can wear, offered in its settings. A short list rather than the whole keyboard:
- * enough to tell a flat from a trip from a team at a glance, and every one of them renders the same
- * on every platform the app runs on.
+ * The quick picks for a group's emoji, offered first in its settings: enough to tell a flat from a
+ * trip from a team at a glance. Any other emoji can be typed from the device's own keyboard.
  */
 export const GROUP_ICONS = [
   '🏠',

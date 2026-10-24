@@ -186,6 +186,9 @@
     "IconField": {
       "label": "Icon",
       "choose": "Choose an icon for the group",
+      "custom": "Or any emoji",
+      "customPlaceholder": "Type one from your emoji keyboard",
+      "notEmoji": "Only an emoji can go here.",
       "none": "No icon"
     },
     "title": "Group information",
@@ -747,6 +750,7 @@
     "max5": "Enter at most five characters.",
     "max50": "Enter at most 50 characters.",
     "duplicateParticipantName": "Another participant already has this name.",
+    "iconNotEmoji": "The group's icon must be a single emoji.",
     "titleRequired": "Please enter a title.",
     "invalidNumber": "Invalid number.",
     "amountRequired": "You must enter an amount.",
