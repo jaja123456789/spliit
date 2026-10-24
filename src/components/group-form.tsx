@@ -419,7 +419,7 @@ export function GroupForm({
                                 <div className="grid gap-4">
                                   {/* Payment Apps Section */}
                                   <div className="space-y-2">
-                                    <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                    <h5 className="section-label">
                                       Payment Apps
                                     </h5>
                                     {[
@@ -460,7 +460,7 @@ export function GroupForm({
 
                                   {/* Manual Section */}
                                   <div className="space-y-2 pt-2 border-t">
-                                    <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                    <h5 className="section-label">
                                       Manual Details
                                     </h5>
 

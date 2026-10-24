@@ -326,8 +326,6 @@ const PickRow = ({
 
 const SectionRule = ({ children }: { children: ReactNode }) => (
   <div className="px-4 pt-5 pb-2 sm:px-6">
-    <h3 className="font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
-      {children}
-    </h3>
+    <h3 className="section-label">{children}</h3>
   </div>
 )

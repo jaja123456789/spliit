@@ -110,9 +110,7 @@ export function MonthlyStatementCard({
           </tbody>
         </table>
 
-        <h3 className="pb-2 pt-6 font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
-          {t('payments')}
-        </h3>
+        <h3 className="section-label pb-2 pt-6">{t('payments')}</h3>
         {statement.payments.length === 0 ? (
           <p className="text-sm text-muted-foreground">{t('noPayments')}</p>
         ) : (
@@ -140,7 +138,7 @@ export function MonthlyStatementCard({
           </ul>
         )}
 
-        <h3 className="pb-3 pt-6 font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
+        <h3 className="section-label pb-3 pt-6">
           {t('closing', { month: label })}
         </h3>
         <BalancesList

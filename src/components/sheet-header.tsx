@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils'
 import { ReactNode } from 'react'
 
 type Props = {
-  /** Caps label. Names what the figure is, and doubles as the sheet's heading. */
+  /** The label. Names what the figure is, and doubles as the sheet's heading. */
   label: ReactNode
   /**
    * The one number this screen is about. Pass a skeleton while it loads rather than nothing — the
@@ -19,7 +19,7 @@ type Props = {
 }
 
 /**
- * The head of a sheet: a caps label, one figure, one line of context.
+ * The head of a sheet: a label, one figure, one line of context.
  *
  * It replaces `CardHeader` + `CardTitle` + `CardDescription`, which spent the most valuable space
  * on the screen on a title repeating the tab you just pressed and a sentence explaining what the
@@ -46,15 +46,12 @@ export function SheetHeader({
       )}
     >
       <div className="min-w-0 flex-1">
-        <h2 className="font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
-          {label}
-        </h2>
+        <h2 className="section-label">{label}</h2>
         {/* Arbitrary values because 38px and 21px are not scale steps, not because numeric ones
             fail: `tailwind.config.js` now points `minHeight` at the spacing scale, so `min-h-11`
             does mean 2.75rem. These two are the measured line boxes of a one-line figure and a
-            one-line context in this face — both a little over their nominal line-heights, because
-            the mono metrics exceed them. `min-` rather than a fixed height so a longer locale can
-            wrap. */}
+            one-line context — both a little over their nominal line-heights, because the face's
+            metrics exceed them. `min-` rather than a fixed height so a longer locale can wrap. */}
         {figure !== undefined && (
           <div
             data-testid={figureTestId}

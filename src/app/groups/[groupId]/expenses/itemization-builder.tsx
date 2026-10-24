@@ -929,9 +929,7 @@ function ParticipantChooser({
   return (
     <div className="space-y-1">
       <div className="flex justify-between items-center px-2 pb-2 mb-1">
-        <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
-          {t('splitAmong')}
-        </span>
+        <span className="section-label">{t('splitAmong')}</span>
         <Button
           variant="ghost"
           size="sm"

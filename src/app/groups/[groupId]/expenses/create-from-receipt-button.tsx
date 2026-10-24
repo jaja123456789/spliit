@@ -705,16 +705,14 @@ function ReceiptDialogContent({
 
             <div className="col-span-1 sm:col-span-2 space-y-3">
               <div>
-                <strong className="text-xs uppercase text-muted-foreground tracking-wider block mb-1">
-                  Merchant
-                </strong>
+                <strong className="section-label block mb-1">Merchant</strong>
                 <div className="text-lg font-medium">
                   {receiptInfo.title ?? <Unknown />}
                 </div>
               </div>
 
               <div>
-                <strong className="text-xs uppercase text-muted-foreground tracking-wider block mb-1">
+                <strong className="section-label block mb-1">
                   Total Amount
                 </strong>
                 <div className="text-2xl font-bold text-foreground">
@@ -740,9 +738,7 @@ function ReceiptDialogContent({
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <strong className="text-xs uppercase text-muted-foreground tracking-wider block mb-1">
-                    Date
-                  </strong>
+                  <strong className="section-label block mb-1">Date</strong>
                   <div>
                     {receiptInfo.date ? (
                       formatDate(
@@ -756,7 +752,7 @@ function ReceiptDialogContent({
                   </div>
                 </div>
                 <div>
-                  <strong className="text-xs uppercase text-muted-foreground tracking-wider block mb-1">
+                  <strong className="section-label block mb-1">
                     {t('fieldCategory')}
                   </strong>
                   <div>
@@ -778,7 +774,7 @@ function ReceiptDialogContent({
               </div>
 
               <div>
-                <strong className="text-xs uppercase text-muted-foreground tracking-wider block mb-1">
+                <strong className="section-label block mb-1">
                   {t('fieldItems')}
                 </strong>
                 {receiptInfo.items?.length ? (

@@ -32,7 +32,7 @@ export function PendingExpenses({
     <section aria-labelledby="pending-expenses">
       <h3
         id="pending-expenses"
-        className="text-subtle-foreground text-xs font-mono uppercase tracking-[0.14em] px-4 sm:px-6 pt-4 pb-1.5"
+        className="section-label px-4 sm:px-6 pt-4 pb-1.5"
       >
         {t('pendingTitle')}
       </h3>

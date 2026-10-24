@@ -64,9 +64,7 @@ export function ExpenseComments({
   return (
     <Card bleed className="mt-4" data-testid="expense-comments">
       <CardContent className="flex flex-col gap-4 pt-6">
-        <h2 className="font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
-          {t('title')}
-        </h2>
+        <h2 className="section-label">{t('title')}</h2>
         {data && comments.length === 0 && (
           <p className="text-sm text-muted-foreground">{t('empty')}</p>
         )}

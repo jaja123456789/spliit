@@ -169,9 +169,7 @@ export default function BalancesAndReimbursements({
  */
 const SectionRule = ({ children }: { children: React.ReactNode }) => (
   <div className="px-4 sm:px-6 pt-5 pb-1">
-    <h3 className="font-mono text-xs uppercase tracking-[0.14em] text-subtle-foreground">
-      {children}
-    </h3>
+    <h3 className="section-label">{children}</h3>
   </div>
 )
 

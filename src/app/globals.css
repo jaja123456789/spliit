@@ -179,6 +179,16 @@
   }
 }
 
+@layer components {
+  /* One voice for every section label: sentence case, the body face, the secondary ink. It
+     replaces three that had grown up side by side — letter-spaced monospace capitals ("GROUP
+     TOTAL", "PAY ALEX NOW"), 24px sentence-case card titles, and the small form labels — and the
+     first of those belonged to a ledger, not to an app set in a rounded humanist face. */
+  .section-label {
+    @apply text-sm font-semibold text-muted-foreground;
+  }
+}
+
 .landing-header {
   @apply bg-gradient-to-br from-emerald-800 to-emerald-600 dark:from-emerald-300 dark:to-emerald-600 bg-clip-text;
 }
