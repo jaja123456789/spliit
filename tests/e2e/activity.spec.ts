@@ -228,3 +228,44 @@ test('Log pagination', async ({ page }) => {
     await expect(page.getByText(`Expense “Expense ${i}” created`)).toBeVisible()
   }
 })
+
+test('an entry shows who did it and how much', async ({ page }) => {
+  await page.goto('/groups')
+  const groupId = await createGroupViaAPI(page, `faces ${randomId(4)}`, [
+    'Alice',
+    'Bob',
+  ])
+  const dinnerId = await createExpenseViaAPI(page, groupId, {
+    title: 'Dinner',
+    amount: 4800,
+    payerName: 'Alice',
+  })
+  await createExpenseViaAPI(page, groupId, {
+    title: 'Settling up',
+    amount: 2400,
+    payerName: 'Bob',
+    isReimbursement: true,
+    excludeParticipants: ['Bob'],
+  })
+  await navigateToGroup(page, groupId)
+  await navigateToTab(page, 'Activity')
+
+  // The expense: its amount at the end, its author's plate in front.
+  const dinner = page
+    .locator('[data-testid^="activity-item-"]')
+    .filter({ hasText: 'Dinner' })
+  await expect(dinner).toHaveAttribute(
+    'href',
+    new RegExp(`/expenses/${dinnerId}/edit$`),
+  )
+  await expect(dinner.getByTestId('activity-amount')).toHaveText('$48.00')
+  await expect(dinner).toContainText('AL')
+
+  // The payment: both people in the sentence, the amount beside it rather than inside it.
+  const payment = page
+    .locator('[data-testid^="activity-item-"]')
+    .filter({ hasText: 'paid' })
+  await expect(payment).toContainText('Bob paid Alice.')
+  await expect(payment.getByTestId('activity-amount')).toHaveText('$24.00')
+  await expect(payment.locator('.lucide-arrow-left-right')).toHaveCount(1)
+})

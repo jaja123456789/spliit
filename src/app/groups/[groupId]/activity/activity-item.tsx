@@ -1,14 +1,15 @@
 'use client'
 import { useRestoreExpense } from '@/app/groups/[groupId]/expenses/use-delete-expense'
 import { Money } from '@/components/money'
+import { ProfileAvatar } from '@/components/profile-avatar'
 import { Button } from '@/components/ui/button'
 import { ActivityChange, decodeActivityData } from '@/lib/activity-changes'
 import { Currency } from '@/lib/currency'
 import { useActiveUser } from '@/lib/hooks'
-import { DateTimeStyle, cn, formatCurrency, formatDate } from '@/lib/utils'
+import { DateTimeStyle, cn, formatDate } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
 import { ActivityType, Participant } from '@prisma/client'
-import { ChevronRight } from 'lucide-react'
+import { ArrowLeftRight, ChevronRight, Repeat, UserRound } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useState } from 'react'
@@ -22,6 +23,8 @@ type Props = {
   participant?: Participant
   /** The group's people, to name both ends of a payment. */
   participants?: Participant[]
+  /** The plates `assignAvatarHues` gave the group's names, so a face here matches the list's. */
+  avatarHues?: Map<string, number>
   dateStyle: DateTimeStyle
   currency?: Currency
 }
@@ -30,10 +33,8 @@ function useSummary(
   activity: Activity,
   participantName?: string,
   participants?: Participant[],
-  currency?: Currency,
 ) {
   const t = useTranslations('Activity')
-  const locale = useLocale()
   const participant = participantName ?? t('someone')
   const {
     title: expense,
@@ -52,15 +53,10 @@ function useSummary(
 
   // A payment is not an expense somebody created; it is money that moved. "Expense "Payment"
   // created by Robin" said neither who received it nor how much.
-  const payment = activity.expense?.isReimbursement ? activity.expense : null
+  const payment = isPaymentRecorded(activity) ? activity.expense : null
   const nameOf = (id?: string) =>
     participants?.find((p) => p.id === id)?.name ?? t('someone')
-  if (
-    payment &&
-    activity.activityType == ActivityType.CREATE_EXPENSE &&
-    occurrences === undefined &&
-    !restored
-  ) {
+  if (payment) {
     return (
       <>
         {t.rich('paymentRecorded', {
@@ -68,9 +64,6 @@ function useSummary(
           recipient: payment.paidFor
             .map((p) => nameOf(p.participantId))
             .join(', '),
-          amount: currency
-            ? formatCurrency(currency, payment.amount, locale)
-            : '',
           strong: (chunks) => <strong>{chunks}</strong>,
         })}
       </>
@@ -98,11 +91,26 @@ function useSummary(
   }
 }
 
+/** A payment's own line, rather than "Expense "Payment" created": only when one is first recorded. */
+function isPaymentRecorded(activity: Activity) {
+  const { occurrences, restored } = decodeActivityData(activity.data)
+  return (
+    !!activity.expense?.isReimbursement &&
+    activity.activityType == ActivityType.CREATE_EXPENSE &&
+    occurrences === undefined &&
+    !restored
+  )
+}
+
+const MARK =
+  'grid h-8 w-8 place-items-center rounded-full bg-muted text-subtle-foreground'
+
 export function ActivityItem({
   groupId,
   activity,
   participant,
   participants,
+  avatarHues,
   dateStyle,
   currency,
 }: Props) {
@@ -114,18 +122,47 @@ export function ActivityItem({
   const [restoring, setRestoring] = useState(false)
 
   const expenseExists = activity.expense !== undefined
-  const summary = useSummary(
-    activity,
-    participant?.name,
-    participants,
-    currency,
+  const summary = useSummary(activity, participant?.name, participants)
+  const { changes, deleted, comment, occurrences } = decodeActivityData(
+    activity.data,
   )
-  const { changes, deleted, comment } = decodeActivityData(activity.data)
+  const isDeletion = activity.activityType === ActivityType.DELETE_EXPENSE
   // A deletion that kept a copy of the expense, which is not back yet.
-  const restorable =
-    activity.activityType === ActivityType.DELETE_EXPENSE &&
-    !!deleted &&
-    !expenseExists
+  const restorable = isDeletion && !!deleted && !expenseExists
+
+  // What the row is about, in money: the expense as it stands now or, for a deletion, as it stood
+  // when it went. A comment and a change of settings are not about an amount.
+  const amount = isDeletion
+    ? deleted?.amount
+    : activity.activityType === ActivityType.COMMENT_EXPENSE ||
+      activity.activityType === ActivityType.UPDATE_GROUP
+    ? undefined
+    : activity.expense?.amount
+
+  // Who did it, as the expense list shows who paid: a face where there is a person, a mark where
+  // there is not. A payment leads with the ⇄ its row has in the list — its sentence already names
+  // both people, and the face of whoever typed it in would read as one of them. Catching up a
+  // recurring expense was the schedule's doing.
+  const lead = isPaymentRecorded(activity) ? (
+    <span aria-hidden className={MARK}>
+      <ArrowLeftRight className="h-4 w-4" />
+    </span>
+  ) : occurrences !== undefined ? (
+    <span aria-hidden className={MARK}>
+      <Repeat className="h-4 w-4" />
+    </span>
+  ) : participant ? (
+    <ProfileAvatar
+      name={participant.name}
+      hue={avatarHues?.get(participant.name)}
+      isActiveUser={!!activeUser && participant.id === activeUser}
+      size={32}
+    />
+  ) : (
+    <span aria-hidden className={MARK}>
+      <UserRound className="h-4 w-4" />
+    </span>
+  )
 
   // Amounts are stored in minor units; everything else is already display text.
   const renderValue = (change: ActivityChange, value: string) =>
@@ -135,33 +172,32 @@ export function ActivityItem({
       value
     )
 
+  // `-mx-2 px-2`: the face lines up with the date rules above it, and the hover still reaches past
+  // the text on both sides.
   const rowClassName = cn(
-    'flex justify-between sm:rounded-lg px-2 sm:pr-1 sm:pl-2 py-2 text-sm hover:bg-accent gap-1 items-stretch',
+    '-mx-2 flex items-start gap-3 sm:rounded-lg px-2 py-2.5 text-sm hover:bg-accent',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary',
   )
   const testId = `activity-item-${activity.id}`
 
   const content = (
     <>
-      <div className="flex flex-col justify-between items-start">
-        {dateStyle !== undefined && (
-          <div className="mt-1 text-xs/5 text-muted-foreground">
-            {formatDate(activity.time, locale, { dateStyle })}
-          </div>
-        )}
-        <div className="my-1 text-xs/5 text-muted-foreground">
+      <div className="shrink-0">{lead}</div>
+      <div className="min-w-0 flex-1">
+        <div className="leading-snug">{summary}</div>
+        <div className="mt-0.5 text-xs text-muted-foreground">
+          {dateStyle !== undefined && (
+            <>{formatDate(activity.time, locale, { dateStyle })} · </>
+          )}
           {formatDate(activity.time, locale, { timeStyle: 'short' })}
         </div>
-      </div>
-      <div className="flex-1">
-        <div className="m-1">{summary}</div>
         {comment && (
-          <p className="m-1 mt-0 line-clamp-3 whitespace-pre-wrap text-xs text-muted-foreground">
+          <p className="mt-1 line-clamp-3 whitespace-pre-wrap text-xs text-muted-foreground">
             &ldquo;{comment}&rdquo;
           </p>
         )}
         {changes.length > 0 && (
-          <ul className="m-1 mt-0 flex flex-col gap-0.5 text-xs text-muted-foreground">
+          <ul className="mt-1 flex flex-col gap-0.5 text-xs text-muted-foreground">
             {changes.map((change, index) => (
               <li key={index}>
                 {t(change.field)}{' '}
@@ -176,30 +212,51 @@ export function ActivityItem({
           </ul>
         )}
       </div>
+      {((amount !== undefined && currency) || restorable) && (
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          {amount !== undefined && currency && (
+            <span
+              data-testid="activity-amount"
+              // Struck through once deleted: it no longer counts, as in the list of changes.
+              className={cn(
+                'leading-snug',
+                isDeletion && 'text-muted-foreground line-through',
+              )}
+            >
+              {/* A catch-up adds several at once; the figure is each one, not their sum. */}
+              {occurrences !== undefined && occurrences > 1 && (
+                <span className="text-xs text-muted-foreground">
+                  {occurrences} ×{' '}
+                </span>
+              )}
+              <Money currency={currency} amount={amount} />
+            </span>
+          )}
+          {restorable && (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={restoring}
+              onClick={async () => {
+                setRestoring(true)
+                await restore({
+                  activityId: activity.id,
+                  title: deleted.title,
+                  participantId: activeUser ?? undefined,
+                })
+                setRestoring(false)
+              }}
+            >
+              {tActivity('restore')}
+            </Button>
+          )}
+        </div>
+      )}
       {expenseExists && (
         <ChevronRight
           aria-hidden
-          className="self-center hidden sm:block w-4 h-4 text-subtle-foreground"
+          className="self-center hidden sm:block w-4 h-4 shrink-0 text-subtle-foreground"
         />
-      )}
-      {restorable && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="self-center shrink-0"
-          disabled={restoring}
-          onClick={async () => {
-            setRestoring(true)
-            await restore({
-              activityId: activity.id,
-              title: deleted.title,
-              participantId: activeUser ?? undefined,
-            })
-            setRestoring(false)
-          }}
-        >
-          {tActivity('restore')}
-        </Button>
       )}
     </>
   )

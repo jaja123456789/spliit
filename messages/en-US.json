@@ -613,7 +613,7 @@
     "expenseDeleted": "Expense <em>{expense}</em> deleted by <strong>{participant}</strong>.",
     "expenseRestored": "Expense <em>{expense}</em> restored by <strong>{participant}</strong>.",
     "expenseCommented": "<strong>{participant}</strong> commented on <em>{expense}</em>.",
-    "paymentRecorded": "<strong>{payer}</strong> paid <strong>{recipient}</strong> {amount}.",
+    "paymentRecorded": "<strong>{payer}</strong> paid <strong>{recipient}</strong>.",
     "restore": "Restore",
     "recurringCreated": "{count, plural, one {An occurrence} other {# occurrences}} of recurring expense <em>{expense}</em> added automatically.",
     "Groups": {

@@ -4,11 +4,12 @@ import {
   ActivityItem,
 } from '@/app/groups/[groupId]/activity/activity-item'
 import { Skeleton } from '@/components/ui/skeleton'
+import { assignAvatarHues } from '@/lib/avatar-hue'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import dayjs, { type Dayjs } from 'dayjs'
 import { useTranslations } from 'next-intl'
-import { forwardRef, useEffect } from 'react'
+import { forwardRef, useEffect, useMemo } from 'react'
 import { useInView } from 'react-intersection-observer'
 import { useCurrentGroup } from '../current-group-context'
 
@@ -70,13 +71,13 @@ const ActivitiesLoading = forwardRef<HTMLDivElement>((_, ref) => {
       {Array(5)
         .fill(undefined)
         .map((_, index) => (
-          <div key={index} className="flex gap-2 p-2">
-            <div className="flex-0">
+          <div key={index} className="flex items-start gap-3 py-2.5">
+            <Skeleton className="h-8 w-8 shrink-0 rounded-full" />
+            <div className="flex-1 space-y-1.5">
+              <Skeleton className="h-3.5 w-48" />
               <Skeleton className="h-3 w-12" />
             </div>
-            <div className="flex-1">
-              <Skeleton className="h-3 w-48" />
-            </div>
+            <Skeleton className="h-3.5 w-14" />
           </div>
         ))}
     </div>
@@ -104,6 +105,11 @@ export function ActivityList() {
   useEffect(() => {
     if (inView && hasMore && !isLoading) fetchNextPage()
   }, [fetchNextPage, hasMore, inView, isLoading])
+  // The same plates as the expense list, so a person wears one colour on both screens.
+  const avatarHues = useMemo(
+    () => assignAvatarHues(group?.participants.map((p) => p.name) ?? []),
+    [group?.participants],
+  )
 
   if (isLoading || !activities || !group) return <ActivitiesLoading />
 
@@ -143,6 +149,7 @@ export function ActivityList() {
                   activity={activity}
                   participant={participant}
                   participants={group.participants}
+                  avatarHues={avatarHues}
                   dateStyle={dateStyle}
                   currency={group ? getCurrencyFromGroup(group) : undefined}
                 />
