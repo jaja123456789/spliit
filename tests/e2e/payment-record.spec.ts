@@ -1,7 +1,11 @@
 import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
 import { navigateToTab } from '../helpers'
-import { createExpenseViaAPI, createGroupViaAPI } from '../helpers/batch-api'
+import {
+  createExpenseViaAPI,
+  createExpensesViaAPI,
+  createGroupViaAPI,
+} from '../helpers/batch-api'
 
 test.describe('Recording a payment', () => {
   test('settles a debt from the suggested reimbursement', async ({ page }) => {
@@ -188,6 +192,41 @@ test.describe('Recording a payment', () => {
     await page.getByRole('link', { name: /record a payment/i }).click()
     await page.waitForURL(/\/payments\/create/)
     await expect(page.getByTestId('payment-from')).toBeVisible()
+  })
+
+  test('offers to record a payment above the ones already recorded', async ({
+    page,
+  }) => {
+    // It used to be the last line under the list, so a group with a page of payments had to be
+    // scrolled to the bottom before anything new could be recorded.
+    await page.goto('/groups')
+    const groupId = await createGroupViaAPI(page, `many ${randomId(4)}`, [
+      'Alice',
+      'Bob',
+    ])
+    await createExpensesViaAPI(
+      page,
+      groupId,
+      Array.from({ length: 10 }, (_, i) => ({
+        title: `Payment ${i + 1}`,
+        amount: 1000,
+        payerName: 'Bob',
+        isReimbursement: true,
+        excludeParticipants: ['Bob'],
+      })),
+    )
+
+    await page.goto(`/groups/${groupId}/balances`)
+    const rows = page.locator('[data-testid^="payment-row-"]')
+    await expect(rows).toHaveCount(10)
+
+    const record = page.getByTestId('record-payment')
+    const recordBox = await record.boundingBox()
+    const firstRowBox = await rows.first().boundingBox()
+    expect(recordBox!.y).toBeLessThan(firstRowBox!.y)
+
+    await record.click()
+    await page.waitForURL(/\/payments\/create/)
   })
 
   test('settles every suggestion at once', async ({ page }) => {

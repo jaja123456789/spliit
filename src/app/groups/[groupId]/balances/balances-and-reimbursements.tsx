@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useActiveUser } from '@/lib/hooks'
 import { getCurrencyFromGroup } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
+import { Plus } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { match } from 'ts-pattern'
@@ -176,7 +177,28 @@ export default function BalancesAndReimbursements({
           other than italic rows among the expenses. */}
       {variant === 'page' ? (
         <>
-          <SectionRule>{t('Payments.title')}</SectionRule>
+          {/* In the section's heading, not under its rows: under up to ten payments, it took a
+              scroll to the bottom of the page to record a new one. */}
+          <SectionRule
+            action={
+              <Button
+                asChild
+                variant="link"
+                size="sm"
+                className="h-auto gap-1.5 p-0 text-sm"
+              >
+                <Link
+                  href={`/groups/${groupId}/payments/create`}
+                  data-testid="record-payment"
+                >
+                  <Plus className="h-4 w-4" />
+                  {t('recordPayment')}
+                </Link>
+              </Button>
+            }
+          >
+            {t('Payments.title')}
+          </SectionRule>
           <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
             {isLoading || !currency ? (
               <PaymentsLoading />

@@ -8,7 +8,6 @@ import { Currency } from '@/lib/currency'
 import { useActiveUser } from '@/lib/hooks'
 import { trpc } from '@/trpc/client'
 import { Participant } from '@prisma/client'
-import { Plus } from 'lucide-react'
 import { useFormatter, useTranslations } from 'next-intl'
 import Link from 'next/link'
 
@@ -47,22 +46,11 @@ export function PaymentList({ groupId, participants, currency }: Props) {
   // preference, which is the right answer: it is not one of the group's people.
   const avatarHues = assignAvatarHues(participants.map((p) => p.name))
 
-  const recordRow = (
-    <Link
-      href={`/groups/${groupId}/payments/create`}
-      className="flex items-center gap-2 py-3 text-sm font-medium text-foreground hover:underline"
-      data-testid="record-payment"
-    >
-      <Plus className="h-4 w-4" />
-      {tBalances('recordPayment')}
-    </Link>
-  )
-
+  // "Record a payment" is in the section's heading, beside "Payments", rather than under the rows.
   if (isLoading) {
     return (
       <div data-testid="payments-list">
         <PaymentsLoading />
-        {recordRow}
       </div>
     )
   }
@@ -133,7 +121,6 @@ export function PaymentList({ groupId, participants, currency }: Props) {
       {data?.hasMore && (
         <p className="pt-3 text-xs text-subtle-foreground">{t('more')}</p>
       )}
-      {recordRow}
     </div>
   )
 }
