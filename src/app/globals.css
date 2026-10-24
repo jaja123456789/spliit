@@ -83,29 +83,32 @@
        Tailwind 500-weight hues hashed off the name, encoding nothing — and then it was nothing at
        all, one neutral plate for everyone with colour reserved for you. A handful of chosen hues is
        the middle: enough to tell a group apart at a glance.
-       The eight before these were spaced in HSL, which is not how eyes space colour. Hues 48 and 78
-       came out olive and lime, the greens the money colour is meant to keep to itself, and they
-       were neighbours on the list, so every clash between two names landed on both: 21 of the 39
-       people in the groups this fork is used for wore one of them. These seven are picked in OKLCH
-       at one lightness and one chroma, so only the hue changes: sand, then sky round to rose.
-       Nothing sits in 115-200° (green, teal) or within 27° of --debt, --credit or --star.
-       Pale plate, dark mark; the pairing inverts in dark. Ratios are mark-on-plate; the worst of
-       the fourteen pairs is 5.69:1, though the mark is decorative and aria-hidden (the name is
-       always beside it). Derived and measured by scripts/avatar-hues.js. */
-    --avatar-1: 40 57% 80.5%; /* sand */
-    --avatar-1-foreground: 43 78% 22.1%; /* 5.77 */
-    --avatar-2: 200 79% 83.9%; /* sky */
-    --avatar-2-foreground: 196 85% 24.6%; /* 5.69 */
-    --avatar-3: 216 95% 88%; /* blue */
-    --avatar-3-foreground: 216 43% 34.2%; /* 5.78 */
-    --avatar-4: 241 87% 91.1%; /* periwinkle */
-    --avatar-4-foreground: 245 26% 38.2%; /* 5.83 */
-    --avatar-5: 279 59% 88.2%; /* lavender */
-    --avatar-5-foreground: 280 26% 34.6%; /* 5.87 */
-    --avatar-6: 325 63% 87.7%; /* pink */
-    --avatar-6-foreground: 321 29% 33.4%; /* 5.88 */
-    --avatar-7: 353 84% 88.9%; /* rose */
-    --avatar-7-foreground: 349 33% 34.6%; /* 5.87 */
+       An earlier eight were spaced in HSL, which is not how eyes space colour: hues 48 and 78 came
+       out olive and lime, the greens the money colour is meant to keep to itself. These seven are
+       picked in OKLCH at one lightness, each hue at the most chroma it can reach there: teal, then
+       sky round to rose. The set before them also shared one chroma, so the hue with the least to
+       give set it for all seven; its sand, dark enough for dark mode, was brown, and every plate in
+       dark mode came out a dyed shadow. Nothing sits in 115-195° (green) or within 27° of --debt,
+       --credit or --star, which leaves no warm plate: a yellow or orange dark enough to carry white
+       is brown, and the oranges between --debt and --star are theirs.
+       Solid plate, white mark, the same in both themes: a saturated plate reads on white and on the
+       dark sheet alike. Ratios are mark-on-plate; the worst is 3.79:1, which is enough for a mark
+       that is decorative and aria-hidden (the name is always beside it). Derived and measured by
+       scripts/avatar-hues.js. */
+    --avatar-1: 183 63% 36.2%; /* teal */
+    --avatar-1-foreground: 0 0% 100%; /* 3.79 */
+    --avatar-2: 197 69% 42%; /* sky */
+    --avatar-2-foreground: 0 0% 100%; /* 3.87 */
+    --avatar-3: 215 86% 54.9%; /* blue */
+    --avatar-3-foreground: 0 0% 100%; /* 4.04 */
+    --avatar-4: 249 76% 66.1%; /* periwinkle */
+    --avatar-4-foreground: 0 0% 100%; /* 4.23 */
+    --avatar-5: 281 55% 56.9%; /* violet */
+    --avatar-5-foreground: 0 0% 100%; /* 4.35 */
+    --avatar-6: 318 54% 52.7%; /* magenta */
+    --avatar-6-foreground: 0 0% 100%; /* 4.37 */
+    --avatar-7: 345 66% 54.6%; /* rose */
+    --avatar-7-foreground: 0 0% 100%; /* 4.37 */
   }
 
   /* Designed rather than inverted. The previous dark theme was a warm brown-black (#0C0A09) with a
@@ -151,22 +154,7 @@
     --credit: 158 48% 66%; /* 10.49 · 9.52 · 8.42, and 7.77 at worst on bg-credit/10 */
     --debt: 22 72% 64%; /* 7.67 · 6.96 · 6.16, and 5.91 at worst on bg-debt/10 */
     --star: 43 96% 56%;
-    /* Same seven hues, the plate and the mark swapped over: a pale plate that reads as a tinted
-       chip on white is a lamp on a dark sheet. Again one lightness and one chroma for all seven. */
-    --avatar-1: 43 83% 15.9%;
-    --avatar-1-foreground: 40 57% 76.2%; /* 7.40 */
-    --avatar-2: 196 89% 18%;
-    --avatar-2-foreground: 200 80% 80.2%; /* 7.33 */
-    --avatar-3: 216 45% 25.2%;
-    --avatar-3-foreground: 216 95% 85.4%; /* 7.42 */
-    --avatar-4: 245 27% 28.3%;
-    --avatar-4-foreground: 241 88% 89.2%; /* 7.42 */
-    --avatar-5: 280 27% 25.5%;
-    --avatar-5-foreground: 279 59% 85.6%; /* 7.43 */
-    --avatar-6: 321 31% 24.6%;
-    --avatar-6-foreground: 324 63% 84.9%; /* 7.43 */
-    --avatar-7: 349 35% 25.5%;
-    --avatar-7-foreground: 352 83% 86.4%; /* 7.44 */
+    /* The participant plates are not redefined: they are the same solid plates in both themes. */
   }
 }
 

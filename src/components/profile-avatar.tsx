@@ -29,9 +29,9 @@ interface Props {
  * what lets a hue mean one person everywhere: under the old rule you wore the accent in your own
  * rows and your real colour in everyone else's, so the same person had two plates on one screen.
  *
- * The plate keeps a hairline so it holds its shape on the sunken and tinted surfaces it lands on
- * (the selected rows in the expense form are `bg-accent`, within a few percent of the palest plate).
- * It is decorative: every call site renders the participant's name beside it, so it is hidden from
+ * The plates are solid colour, so they hold their shape on every surface without a hairline; the
+ * pale plates before them needed one on the tinted rows of the expense form. The mark is
+ * decorative: every call site renders the participant's name beside it, so it is hidden from
  * assistive technology rather than read out twice.
  */
 export function ProfileAvatar({
@@ -65,9 +65,7 @@ export function ProfileAvatar({
         // Inset both ways, so marking you costs no layout: an offset ring would need clear space
         // the 26px chips in a two-column grid do not have. Ink, not the accent: green is kept for
         // the filled action and for money, and an ink ring reads on every plate in both themes.
-        isActiveUser
-          ? 'ring-2 ring-inset ring-foreground'
-          : 'ring-1 ring-inset ring-border',
+        isActiveUser && 'ring-2 ring-inset ring-foreground',
         className,
       )}
       style={{

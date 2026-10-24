@@ -19,7 +19,7 @@
  * plates look; the colours are the tokens. Index n is `--avatar-(n+1)`. Keep in step with
  * `scripts/avatar-hues.js`.
  */
-export const AVATAR_HUES = [85, 230, 258, 286, 314, 342, 10] as const
+export const AVATAR_HUES = [200, 230, 258, 286, 314, 342, 10] as const
 
 export const AVATAR_HUE_COUNT = AVATAR_HUES.length
 

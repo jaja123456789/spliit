@@ -1,9 +1,11 @@
 // Derive the avatar plates and measure them the way globals.css annotates its tokens.
 //
-// The plates are chosen in OKLCH, not HSL: HSL hue is not how eyes space colour, and the previous
-// set (spaced 26° apart in HSL) produced an olive and a lime at hues 48 and 78, the greens the money
-// colour is meant to keep to itself. Here every plate shares one lightness and one chroma, the
-// largest chroma all of them can reach inside sRGB, so only the hue changes from plate to plate.
+// The plates are chosen in OKLCH, not HSL: HSL hue is not how eyes space colour, and an earlier set
+// (spaced 26° apart in HSL) produced an olive and a lime at hues 48 and 78, the greens the money
+// colour is meant to keep to itself. Every plate shares one lightness; each takes as much chroma as
+// its own hue can reach there. The set before this one shared a single chroma too, and the hue with
+// the least to give set it for all seven: in dark mode that was the sand, a dark yellow is brown,
+// so every plate came out a dyed shadow.
 //
 //   node scripts/avatar-hues.js     prints the HSL triplets for globals.css and every ratio
 
@@ -81,63 +83,43 @@ const dist = (a, b) => {
 }
 
 // ---- the plates ----
-// Sand, then sky round to rose. Nothing in 115-200° (green and teal) and nothing within 26° of the
-// money and star tokens. Keep in step with AVATAR_HUES in src/lib/avatar-hue.ts.
-const HUES = [85, 230, 258, 286, 314, 342, 10]
+// Teal, then sky round to rose: solid colour under a white mark, the same plate in both themes.
+// Nothing in 115-195° (green) and nothing within 27° of the money and star tokens. That leaves no
+// warm plate: a yellow or an orange dark enough to carry white is brown, and the oranges between
+// --debt and --star are theirs. Keep in step with AVATAR_HUES in src/lib/avatar-hue.ts.
+const HUES = [200, 230, 258, 286, 314, 342, 10]
 const RESERVED = {
   credit: fromHsl([162, 88, 24]),
   debt: fromHsl([16, 88, 39.5]),
   star: fromHsl([32, 95, 44]),
 }
-const LIGHTNESS = {
-  lightPlate: 0.885,
-  lightMark: 0.43,
-  darkPlate: 0.35,
-  darkMark: 0.86,
-}
-const CHROMA_CAP = { lightMark: 0.11, darkMark: 0.09 }
-const chroma = Object.fromEntries(
-  Object.entries(LIGHTNESS).map(([role, L]) => {
-    const shared = Math.min(...HUES.map((h) => maxChroma(L, h))) * 0.96
-    return [role, Math.min(shared, CHROMA_CAP[role] ?? Infinity)]
-  }),
-)
+const LIGHTNESS = 0.6
+const CHROMA = { share: 0.92, cap: 0.19 }
+const WHITE = [1, 1, 1]
 
 const LIGHT_SHEET = fromHsl([0, 0, 100])
 const DARK_SHEET = fromHsl([30, 4, 11])
 const rows = HUES.map((h, index) => {
-  const colour = (role) =>
-    toHsl(
-      oklchToLinearRgb(LIGHTNESS[role], chroma[role], h).map((v) =>
-        gamma(Math.max(0, Math.min(1, v))),
-      ),
-    )
-  const t = Object.fromEntries(
-    Object.keys(LIGHTNESS).map((role) => [role, colour(role)]),
+  const C = Math.min(maxChroma(LIGHTNESS, h) * CHROMA.share, CHROMA.cap)
+  const plate = toHsl(
+    oklchToLinearRgb(LIGHTNESS, C, h).map((v) =>
+      gamma(Math.max(0, Math.min(1, v))),
+    ),
   )
   return {
     token: `--avatar-${index + 1}`,
     hue: h,
-    light: `${t.lightPlate[0]} ${t.lightPlate[1]}% ${t.lightPlate[2]}%`,
-    lightMark: `${t.lightMark[0]} ${t.lightMark[1]}% ${t.lightMark[2]}%`,
-    'mark/plate L': ratio(fromHsl(t.lightMark), fromHsl(t.lightPlate)).toFixed(
-      2,
-    ),
-    'plate/sheet L': ratio(fromHsl(t.lightPlate), LIGHT_SHEET).toFixed(2),
-    dark: `${t.darkPlate[0]} ${t.darkPlate[1]}% ${t.darkPlate[2]}%`,
-    darkMark: `${t.darkMark[0]} ${t.darkMark[1]}% ${t.darkMark[2]}%`,
-    'mark/plate D': ratio(fromHsl(t.darkMark), fromHsl(t.darkPlate)).toFixed(2),
-    'plate/sheet D': ratio(fromHsl(t.darkPlate), DARK_SHEET).toFixed(2),
+    plate: `${plate[0]} ${plate[1]}% ${plate[2]}%`,
+    'mark/plate': ratio(WHITE, fromHsl(plate)).toFixed(2),
+    'plate/sheet L': ratio(fromHsl(plate), LIGHT_SHEET).toFixed(2),
+    'plate/sheet D': ratio(fromHsl(plate), DARK_SHEET).toFixed(2),
   }
 })
 console.table(rows)
 
-const worst = (key) => Math.min(...rows.map((r) => Number(r[key])))
 console.log(
-  'worst mark/plate  light',
-  worst('mark/plate L'),
-  ' dark',
-  worst('mark/plate D'),
+  'worst mark/plate',
+  Math.min(...rows.map((r) => Number(r['mark/plate']))),
 )
 const reservedHues = Object.fromEntries(
   Object.entries(RESERVED).map(([k, rgb]) => [k, Math.round(hueOf(rgb))]),

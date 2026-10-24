@@ -1,6 +1,5 @@
 'use client'
 
-import { AVATAR_HUE_COUNT, preferredAvatarHue } from '@/lib/avatar-hue'
 import { cn } from '@/lib/utils'
 
 /**
@@ -35,11 +34,12 @@ export const GROUP_ICONS = [
 ] as const
 
 /**
- * A group's plate: its emoji, or the first letter of its name, on one of the participant plates.
+ * A group's mark: its emoji on its own, or the first letter of its name on a neutral tile.
  *
- * The home screen was a column of identical white cards told apart only by reading them. The colour
- * comes from the group's id, so a group keeps it on every device and through a rename; the plates
- * are the people's plates, which are already measured for contrast in both themes and hold no green.
+ * The home screen was a column of identical white cards told apart only by reading them. The mark
+ * once sat on one of the participant plates, picked by the group's id; but those colours mean
+ * people, and a group wearing one said it belonged with whoever shared it. An emoji brings its own
+ * colour, so it stands bare, in the same square, so the names beside it still line up.
  */
 export function GroupMark({
   group,
@@ -50,22 +50,20 @@ export function GroupMark({
   size?: number
   className?: string
 }) {
-  const plate = (preferredAvatarHue(group.id) % AVATAR_HUE_COUNT) + 1
   const letter = Array.from(group.name.trim())[0]?.toUpperCase() ?? '?'
   return (
     <span
       aria-hidden="true"
       className={cn(
         'grid shrink-0 place-items-center rounded-xl font-semibold leading-none',
+        !group.icon && 'bg-muted text-muted-foreground',
         className,
       )}
       style={{
         width: size,
         height: size,
-        backgroundColor: `hsl(var(--avatar-${plate}))`,
-        color: `hsl(var(--avatar-${plate}-foreground))`,
         fontSize: group.icon
-          ? Math.round(size * 0.55)
+          ? Math.round(size * 0.7)
           : Math.max(12, Math.round(size * 0.42)),
       }}
     >

@@ -109,10 +109,14 @@ describe('assignAvatarHues', () => {
     expect(hues.get(second)).toBe(preferredAvatarHue(second))
   })
 
-  it('keeps two and three people at least 75° apart, whatever their names', () => {
+  it('keeps two people at least 80° apart and three at least 55°, whatever their names', () => {
     // Exhaustively true over every combination of preferences (checked when the plates were
-    // chosen); from four people on, seven plates on a 140° arc plus sand cannot promise it.
-    for (const size of [2, 3]) {
+    // chosen: 84° and 56° at worst); from four people on, seven plates on a 170° arc cannot
+    // promise more than their own spacing.
+    for (const [size, apart] of [
+      [2, 80],
+      [3, 55],
+    ]) {
       for (let start = 0; start < 200; start++) {
         const names = Array.from(
           { length: size },
@@ -122,7 +126,7 @@ describe('assignAvatarHues', () => {
         for (let i = 0; i < hues.length; i++)
           for (let j = i + 1; j < hues.length; j++)
             expect(avatarHueDistance(hues[i], hues[j])).toBeGreaterThanOrEqual(
-              75,
+              apart,
             )
       }
     }
