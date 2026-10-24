@@ -1,7 +1,33 @@
 import { randomId } from '@/lib/utils'
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 import sharp from 'sharp'
 import { createGroupViaAPI } from '../helpers/batch-api'
+
+/** Standing in for the share sheet: a multipart form post, as the OS makes it. */
+async function shareToApp(page: Page, photo: Buffer) {
+  await page.evaluate(() => {
+    const form = document.createElement('form')
+    form.id = 'share-form'
+    form.method = 'POST'
+    form.enctype = 'multipart/form-data'
+    form.action = '/api/share-target'
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.name = 'file'
+    input.id = 'share-file'
+    form.appendChild(input)
+    document.body.appendChild(form)
+  })
+  await page.setInputFiles('#share-file', {
+    name: 'receipt.jpg',
+    mimeType: 'image/jpeg',
+    buffer: photo,
+  })
+  await page.evaluate(() =>
+    (document.getElementById('share-form') as HTMLFormElement).submit(),
+  )
+  await page.waitForURL(/\/groups$/)
+}
 
 /**
  * Sharing an image to Spliit from the OS share sheet.
@@ -29,36 +55,41 @@ test.describe('Share target', () => {
       .toBuffer()
     expect(photo.length).toBeGreaterThan(4_000_000)
 
-    // Standing in for the share sheet: a multipart form post, as the OS makes it.
-    await page.evaluate(() => {
-      const form = document.createElement('form')
-      form.id = 'share-form'
-      form.method = 'POST'
-      form.enctype = 'multipart/form-data'
-      form.action = '/api/share-target'
-      const input = document.createElement('input')
-      input.type = 'file'
-      input.name = 'file'
-      input.id = 'share-file'
-      form.appendChild(input)
-      document.body.appendChild(form)
-    })
-    await page.setInputFiles('#share-file', {
-      name: 'receipt.jpg',
-      mimeType: 'image/jpeg',
-      buffer: photo,
-    })
-    await page.evaluate(() =>
-      (document.getElementById('share-form') as HTMLFormElement).submit(),
-    )
+    await shareToApp(page, photo)
 
-    await page.waitForURL(/\/groups$/)
     await expect(page.getByText(/Receipt received/)).toBeVisible()
     const stored = await page.evaluate(() =>
       sessionStorage.getItem('pending-share-receipt'),
     )
     expect(stored?.startsWith('data:image/jpeg;base64,')).toBe(true)
     expect(stored!.length).toBeLessThan(2_500_000)
+  })
+
+  test('a group with nothing in it yet opens the scanner on the photo', async ({
+    page,
+  }) => {
+    // The list header holds the scan button that picks a shared photo up, and an empty group does
+    // not show that header. Unmounting it once the list came back empty closed the scanner, with
+    // the photo already taken out of storage.
+    await page.goto('/groups')
+    const name = `Share empty ${randomId(4)}`
+    await createGroupViaAPI(page, name, ['Alice', 'Bob'])
+    const photo = await sharp({
+      create: { width: 800, height: 600, channels: 3, background: '#808080' },
+    })
+      .jpeg()
+      .toBuffer()
+
+    await shareToApp(page, photo)
+    await page.getByText(name).click()
+    await page.waitForURL(/\/expenses\?fromShare=true$/)
+
+    const scanner = page.getByRole('dialog', { name: 'Create from receipt' })
+    await expect(scanner).toBeVisible()
+    // Still open once the list has said the group is empty, and holding the photo.
+    await expect(page.getByText('Nothing here yet')).toBeVisible()
+    await expect(scanner).toBeVisible()
+    await expect(scanner.getByTitle('Remove page 1')).toBeVisible()
   })
 
   test('anything but an image is turned away', async ({ request }) => {

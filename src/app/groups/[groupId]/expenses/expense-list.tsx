@@ -101,7 +101,10 @@ export function ExpenseList({
 
   return (
     <>
-      {!isEmptyGroup && <ExpenseListTotal actions={actions} />}
+      {/* Hidden, not unmounted: its scan button is the one that picks up a receipt shared to
+          the app. Unmounted once the list came back empty, it closed the scanner it had just
+          opened, with the photo already taken out of storage. */}
+      <ExpenseListTotal actions={actions} hidden={isEmptyGroup} />
       {/* The search box and filters are rendered by the list, not above it: a group with nothing
           in it should not offer to search it. Passed down rather than hoisted so that a search
           returning no results still keeps them — otherwise the controls would vanish under the

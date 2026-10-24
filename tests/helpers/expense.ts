@@ -27,17 +27,32 @@ export interface CreateExpenseOptions {
 }
 
 /**
+ * Waits for the expense list to have answered: its rows, or the empty state.
+ *
+ * Until then the list's header is on screen with its add and scan buttons, and a group with
+ * nothing in it then hides that header (it stays mounted, so it is hidden, not detached). A button
+ * found before the list answers is one Playwright goes on waiting for, invisible, until timeout.
+ */
+export async function waitForExpenseList(page: Page): Promise<void> {
+  await page
+    .locator('[data-testid^="expense-item-"]')
+    .or(page.getByText('Nothing here yet'))
+    .first()
+    .waitFor({ state: 'visible' })
+}
+
+/**
  * Navigates to the expense creation page
  */
 export async function navigateToExpenseCreate(page: Page): Promise<void> {
-  // The header's icon button titled "Create expense" — or, in a group with nothing in it yet, which
-  // has no header, the empty state's "Create the first one". The header is on screen while the list
-  // loads and goes when it turns out to be empty; a click that loses it is retried on the other.
+  // The header's icon button titled "Create expense", or the tab bar's on a phone. In a group with
+  // nothing in it yet, whose header is hidden, it is the empty state's "Create the first one".
+  await waitForExpenseList(page)
   const createExpenseButton = page
     .getByRole('link', { name: /create expense/i })
     .or(page.getByRole('link', { name: 'Create the first one' }))
+    .filter({ visible: true })
     .first()
-  await createExpenseButton.waitFor({ state: 'visible' })
 
   await createExpenseButton.click()
   await page.waitForURL(/\/groups\/[^/]+\/expenses\/create/)

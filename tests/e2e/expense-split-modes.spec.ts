@@ -1,6 +1,10 @@
 import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
-import { navigateToGroup, navigateToTab } from '../helpers'
+import {
+  navigateToExpenseCreate,
+  navigateToGroup,
+  navigateToTab,
+} from '../helpers'
 import { createGroupViaAPI } from '../helpers/batch-api'
 import { AMOUNT_INPUT } from '../helpers/expense'
 
@@ -20,11 +24,7 @@ test('Create expense - evenly split (most common flow)', async ({ page }) => {
   await page.goto(`/groups/${groupId}/expenses`)
 
   // Step 2: Navigate to expense creation by clicking the link
-  const createLink = page
-    .getByRole('link', { name: /create expense|create the first/i })
-    .first()
-  await createLink.waitFor({ state: 'visible' })
-  await createLink.click()
+  await navigateToExpenseCreate(page)
 
   // Wait for navigation to expense creation page
   await page.waitForURL(/\/groups\/[^/]+\/expenses\/create/)
@@ -110,11 +110,7 @@ test('Create expense - by shares split mode', async ({ page }) => {
   await page.goto(`/groups/${groupId}/expenses`)
 
   // Step 2: Navigate to expense creation
-  const createLink = page
-    .getByRole('link', { name: /create expense|create the first/i })
-    .first()
-  await createLink.waitFor({ state: 'visible' })
-  await createLink.click()
+  await navigateToExpenseCreate(page)
 
   // Wait for navigation to expense creation page
   await page.waitForURL(/\/groups\/[^/]+\/expenses\/create/)
@@ -207,11 +203,7 @@ test('Create expense - by percentage split mode', async ({ page }) => {
   await page.goto(`/groups/${groupId}/expenses`)
 
   // Step 2: Navigate to expense creation
-  const createLink = page
-    .getByRole('link', { name: /create expense|create the first/i })
-    .first()
-  await createLink.waitFor({ state: 'visible' })
-  await createLink.click()
+  await navigateToExpenseCreate(page)
 
   // Wait for navigation to expense creation page
   await page.waitForURL(/\/groups\/[^/]+\/expenses\/create/)
@@ -304,11 +296,7 @@ test('Create expense - by amount split mode', async ({ page }) => {
   await page.goto(`/groups/${groupId}/expenses`)
 
   // Step 2: Navigate to expense creation
-  const createLink = page
-    .getByRole('link', { name: /create expense|create the first/i })
-    .first()
-  await createLink.waitFor({ state: 'visible' })
-  await createLink.click()
+  await navigateToExpenseCreate(page)
 
   await page.waitForURL(/\/groups\/[^/]+\/expenses\/create/)
 

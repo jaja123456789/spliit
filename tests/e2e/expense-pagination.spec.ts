@@ -178,6 +178,10 @@ test.describe('Expense List Pagination', () => {
       page.getByRole('heading', { name: 'Group total' }),
     ).toHaveCount(0)
     await expect(page.getByRole('button', { name: 'Export' })).toHaveCount(0)
+    // Nor in the group's bar: the hidden header must not read as one scrolled out of view. The
+    // bar is told by an IntersectionObserver, so give it a moment to have been wrong.
+    await page.waitForTimeout(500)
+    await expect(page.getByTestId('group-bar-summary')).toHaveCount(0)
     await expect(
       page.getByRole('button', { name: /invite the others/i }),
     ).toBeVisible()

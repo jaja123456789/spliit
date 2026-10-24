@@ -1,6 +1,6 @@
 import { randomId } from '@/lib/utils'
 import { expect, test } from '@playwright/test'
-import { navigateToGroup } from '../helpers'
+import { navigateToGroup, waitForExpenseList } from '../helpers'
 import { createGroupViaAPI } from '../helpers/batch-api'
 
 /**
@@ -23,10 +23,13 @@ const JPEG = Buffer.from(
 
 async function openScannerWithAPage(page: import('@playwright/test').Page) {
   // The summary card's scan button on a wide screen; on a phone, where add lives in the tab bar,
-  // the empty group's own "Scan a receipt" prompt. Both open the same scanner.
+  // and in a group with nothing in it, whose card is hidden, the empty group's own "Scan a
+  // receipt" prompt. Both open the same scanner.
+  await waitForExpenseList(page)
   await page
     .getByRole('button', { name: /create expense from receipt/i })
     .or(page.getByRole('button', { name: /^scan a receipt$/i }))
+    .filter({ visible: true })
     .first()
     .click()
   const cameraInput = page.locator('input[type="file"]').first()

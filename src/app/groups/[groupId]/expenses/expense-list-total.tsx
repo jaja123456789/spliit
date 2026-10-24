@@ -22,8 +22,18 @@ import { useCurrentGroup } from '../current-group-context'
  * The list itself is paginated, so summing the rows on screen would quietly report the first page
  * as the whole group. These come from the same stats query the Stats tab uses, which is also why
  * the two agree.
+ *
+ * @param hidden for a group with nothing in it, where the figure and the export would be about
+ * nothing. It stays mounted: its scan button picks up a receipt shared to the app. And it says
+ * nothing to the group's bar, which would otherwise take a hidden header for a scrolled-away one.
  */
-export function ExpenseListTotal({ actions }: { actions?: ReactNode }) {
+export function ExpenseListTotal({
+  actions,
+  hidden = false,
+}: {
+  actions?: ReactNode
+  hidden?: boolean
+}) {
   const { groupId, group } = useCurrentGroup()
   const activeUser = useActiveUserState(groupId)
   const t = useTranslations('Expenses.Totals')
@@ -37,7 +47,7 @@ export function ExpenseListTotal({ actions }: { actions?: ReactNode }) {
   const ready = !!currency && !!data
   const locale = useLocale()
   const summary = useCollapseIntoGroupBar<HTMLDivElement>(
-    ready
+    ready && !hidden
       ? [
           `${t('group')} ${formatCurrency(
             currency,
@@ -57,7 +67,7 @@ export function ExpenseListTotal({ actions }: { actions?: ReactNode }) {
   )
 
   return (
-    <div ref={summary}>
+    <div ref={summary} hidden={hidden}>
       <SheetHeader
         label={t('group')}
         figureTestId="expenses-group-total"
