@@ -14,7 +14,10 @@ test.describe('Smaller fixes', () => {
     ])
     const response = await page.goto('/groups')
     expect(response?.status()).toBe(200)
-    await expect(page.getByRole('link', { name: 'Create' })).toBeVisible()
+    // Exact: an empty list also offers "Create one", which a substring match finds as well.
+    await expect(
+      page.getByRole('link', { name: 'Create', exact: true }),
+    ).toBeVisible()
   })
 
   test('a payment you made says "You", and an old one says its year', async ({
