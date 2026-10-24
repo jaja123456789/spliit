@@ -37,7 +37,7 @@ import { GroupFormValues, groupFormSchema } from '@/lib/schemas'
 import { cn } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { CreditCard, Save, Smartphone, Trash2 } from 'lucide-react'
+import { CreditCard, Smartphone, Trash2 } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
@@ -618,7 +618,7 @@ export function GroupForm({
             loadingContent={t(group ? 'Settings.saving' : 'Settings.creating')}
             onClick={updateActiveUser}
           >
-            <Save className="w-4 h-4 mr-2" />{' '}
+            {/* The label alone, as on the expense form's. */}
             {t(group ? 'Settings.save' : 'Settings.create')}
           </SubmitButton>
           {!group && (

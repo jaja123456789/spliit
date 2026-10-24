@@ -5,7 +5,7 @@ import { SubmitButton } from '@/components/submit-button'
 import { Button } from '@/components/ui/button'
 import { ExpenseFormValues } from '@/lib/schemas'
 import { AppRouterOutput } from '@/trpc/routers/_app'
-import { Copy, Save } from 'lucide-react'
+import { Copy } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { UseFormReturn } from 'react-hook-form'
@@ -34,7 +34,8 @@ export function SubmitBar({
           className="h-11 flex-1 sm:h-10 sm:flex-none"
           loadingContent={t(isCreate ? 'creating' : 'saving')}
         >
-          <Save className="w-4 h-4 mr-2" />
+          {/* The label alone: a floppy disk said "save" to nobody under thirty, and beside
+              "Create" it said nothing at all. */}
           {t(isCreate ? 'create' : 'save')}
         </SubmitButton>
         {duplicateHref && (
