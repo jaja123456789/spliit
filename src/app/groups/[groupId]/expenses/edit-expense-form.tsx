@@ -1,6 +1,9 @@
 'use client'
+import { Button } from '@/components/ui/button'
 import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { trpc } from '@/trpc/client'
+import { useTranslations } from 'next-intl'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ExpenseComments } from './expense-comments'
 import { ExpenseForm } from './expense-form'
@@ -21,11 +24,16 @@ export function EditExpenseForm({
   const { data: categoriesData } = trpc.categories.list.useQuery()
   const categories = categoriesData?.categories
 
-  const { data: expenseData } = trpc.groups.expenses.get.useQuery({
-    groupId,
-    expenseId,
-  })
+  const { data: expenseData, error: expenseError } =
+    trpc.groups.expenses.get.useQuery(
+      { groupId, expenseId },
+      // Not found is an answer, not a hiccup: retrying it only delays saying so.
+      {
+        retry: (count, error) => error.data?.code !== 'NOT_FOUND' && count < 3,
+      },
+    )
   const expense = expenseData?.expense
+  const t = useTranslations('ExpenseForm.NotFound')
 
   const { mutateAsync: updateExpenseMutateAsync } =
     trpc.groups.expenses.update.useMutation()
@@ -33,6 +41,23 @@ export function EditExpenseForm({
 
   const utils = trpc.useUtils()
   const router = useRouter()
+
+  // Deleted by someone else, or a stale link from a notification or the activity feed. This used to
+  // render nothing at all, under the header, for good.
+  if (expenseError?.data?.code === 'NOT_FOUND') {
+    return (
+      <div
+        className="mx-auto max-w-md px-4 py-16 text-center"
+        data-testid="expense-not-found"
+      >
+        <h1 className="text-xl font-semibold tracking-tight">{t('title')}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{t('description')}</p>
+        <Button asChild className="mt-6">
+          <Link href={`/groups/${groupId}/expenses`}>{t('link')}</Link>
+        </Button>
+      </div>
+    )
+  }
 
   if (!group || !categories || !expense) return null
 

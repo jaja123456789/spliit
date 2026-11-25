@@ -1,5 +1,6 @@
 import { deleteGroup, getGroup } from '@/lib/api'
 import { baseProcedure } from '@/trpc/init'
+import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 export const deleteGroupProcedure = baseProcedure
@@ -16,9 +17,16 @@ export const deleteGroupProcedure = baseProcedure
   )
   .mutation(async ({ input: { groupId, confirmationName } }) => {
     const group = await getGroup(groupId)
-    if (!group) throw new Error(`Invalid group ID: ${groupId}`)
+    if (!group)
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: `Invalid group ID: ${groupId}`,
+      })
     if (group.name.trim() !== confirmationName.trim()) {
-      throw new Error('The typed name does not match this group')
+      throw new TRPCError({
+        code: 'BAD_REQUEST',
+        message: 'The typed name does not match this group',
+      })
     }
 
     await deleteGroup(groupId)

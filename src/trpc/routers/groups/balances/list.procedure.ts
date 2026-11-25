@@ -6,6 +6,7 @@ import {
   getSuggestedReimbursements,
 } from '@/lib/balances'
 import { baseProcedure } from '@/trpc/init'
+import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 export const listGroupBalancesProcedure = baseProcedure
@@ -13,7 +14,8 @@ export const listGroupBalancesProcedure = baseProcedure
   .query(async ({ input: { groupId } }) => {
     // 1. Fetch group to check simplifyDebts setting
     const group = await getGroup(groupId)
-    if (!group) throw new Error('Group not found')
+    if (!group)
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Group not found' })
 
     const expenses = await getAllGroupExpenses(groupId)
     const balances = getBalances(expenses)

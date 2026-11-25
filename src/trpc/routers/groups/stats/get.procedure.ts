@@ -9,6 +9,7 @@ import {
   getTotalGroupSpending,
 } from '@/lib/totals'
 import { baseProcedure } from '@/trpc/init'
+import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 export const getGroupStatsProcedure = baseProcedure
@@ -25,7 +26,11 @@ export const getGroupStatsProcedure = baseProcedure
       getGroup(groupId),
       getAllGroupExpenses(groupId),
     ])
-    if (!group) throw new Error(`Invalid group ID: ${groupId}`)
+    if (!group)
+      throw new TRPCError({
+        code: 'NOT_FOUND',
+        message: `Invalid group ID: ${groupId}`,
+      })
 
     // The whole history is read either way: a month's closing balances need everything before it.
     const range = month ? monthRange(month) : null
