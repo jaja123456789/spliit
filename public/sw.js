@@ -25,8 +25,14 @@ const BASE = new URL(self.registration.scope).pathname
 /** Group data only. Sign-in, sync, push and MCP answer per user, and must never be replayed. */
 const CACHED_PROCEDURE = /^(groups|categories)\./
 
-const STATIC_FILE =
-  /^\/(_next\/static\/|_next\/image|logo\/|logo-with-text\.png|android-chrome-|manifest\.webmanifest|favicon)/
+// Named by their content: a new build gives a changed file a new name, so a saved copy never goes
+// stale.
+const HASHED_FILE = /^\/_next\/static\//
+// Same name across deployments: icons, the logo, the manifest. Saved for offline use, but checked
+// for a newer copy each time — served cache-first like the hashed files, a regenerated icon or a
+// changed manifest never reached a device that already had the old one.
+const NAMED_FILE =
+  /^\/(_next\/image|logo\/|logo-with-text\.png|android-chrome-|manifest\.webmanifest|favicon)/
 
 self.addEventListener('install', () => {
   self.skipWaiting()
@@ -55,8 +61,10 @@ self.addEventListener('fetch', (event) => {
   }
   const path = url.pathname.slice(BASE.length - 1)
 
-  if (STATIC_FILE.test(path)) {
+  if (HASHED_FILE.test(path)) {
     event.respondWith(cacheFirst(event, STATIC_CACHE))
+  } else if (NAMED_FILE.test(path)) {
+    event.respondWith(staleWhileRevalidate(event, STATIC_CACHE))
   } else if (path.startsWith('/api/trpc/')) {
     const procedure = path.slice('/api/trpc/'.length)
     if (CACHED_PROCEDURE.test(procedure)) {
@@ -75,6 +83,30 @@ async function cacheFirst(event, cacheName) {
   const cached = await cache.match(event.request)
   if (cached) return cached
   const response = await fetch(event.request)
+  if (response.ok)
+    event.waitUntil(save(cache, cacheName, event.request, response))
+  return response
+}
+
+/**
+ * The saved copy at once, if there is one, while the network's answer replaces it for next time;
+ * the network's answer otherwise. For files that keep their name when their content changes.
+ */
+async function staleWhileRevalidate(event, cacheName) {
+  const cache = await caches.open(cacheName)
+  const cached = await cache.match(event.request)
+  const network = fetch(event.request)
+  if (cached) {
+    event.waitUntil(
+      network
+        .then((response) =>
+          response.ok ? save(cache, cacheName, event.request, response) : null,
+        )
+        .catch(() => {}),
+    )
+    return cached
+  }
+  const response = await network
   if (response.ok)
     event.waitUntil(save(cache, cacheName, event.request, response))
   return response
