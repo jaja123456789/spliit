@@ -699,6 +699,12 @@ export async function updateExpense(
   })
 }
 
+export class GroupUpdateError extends Error {
+  constructor(readonly reason: 'participantHasExpenses') {
+    super(`Cannot update group: ${reason}`)
+  }
+}
+
 export async function updateGroup(
   groupId: string,
   groupFormValues: GroupFormValues,
@@ -712,6 +718,27 @@ export async function updateGroup(
     .filter((id): id is string => !!id)
 
   return prisma.$transaction(async (tx) => {
+    // Whoever is left out of the form is deleted, and their paid-by and share rows go with them
+    // (the relations cascade) — an expense would keep its amount with nobody paying it. The form
+    // only offers to remove people with no expenses, but a form loaded before someone was added
+    // elsewhere, or saved twice after adding someone, leaves people out without anyone asking. So
+    // the rule is the server's: nobody who appears in an expense is removed.
+    const removedIds = existingGroup.participants
+      .map((p) => p.id)
+      .filter((id) => !participantIdsToKeep.includes(id))
+    if (removedIds.length > 0) {
+      const [paid, shared] = await Promise.all([
+        tx.expensePaidBy.count({
+          where: { participantId: { in: removedIds } },
+        }),
+        tx.expensePaidFor.count({
+          where: { participantId: { in: removedIds } },
+        }),
+      ])
+      if (paid + shared > 0)
+        throw new GroupUpdateError('participantHasExpenses')
+    }
+
     await logActivity(groupId, ActivityType.UPDATE_GROUP, { participantId }, tx)
     return tx.group.update({
       where: { id: groupId },

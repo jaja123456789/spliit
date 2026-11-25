@@ -183,6 +183,10 @@
   },
   "GroupForm": {
     "createTitle": "New group",
+    "SaveErrors": {
+      "participantHasExpenses": "Someone you left out is in an expense, so they can't be removed. The people in this group may have changed elsewhere: reload the page and try again.",
+      "generic": "The group could not be saved. Try again."
+    },
     "IconField": {
       "label": "Icon",
       "choose": "Choose an icon for the group",

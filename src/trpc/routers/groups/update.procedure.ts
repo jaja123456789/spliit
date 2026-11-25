@@ -1,6 +1,7 @@
-import { updateGroup } from '@/lib/api'
+import { GroupUpdateError, updateGroup } from '@/lib/api'
 import { groupFormSchema } from '@/lib/schemas'
 import { baseProcedure } from '@/trpc/init'
+import { TRPCError } from '@trpc/server'
 import { z } from 'zod'
 
 export const updateGroupProcedure = baseProcedure
@@ -12,5 +13,12 @@ export const updateGroupProcedure = baseProcedure
     }),
   )
   .mutation(async ({ input: { groupId, groupFormValues, participantId } }) => {
-    await updateGroup(groupId, groupFormValues, participantId)
+    try {
+      await updateGroup(groupId, groupFormValues, participantId)
+    } catch (error) {
+      if (error instanceof GroupUpdateError) {
+        throw new TRPCError({ code: 'CONFLICT', message: error.reason })
+      }
+      throw error
+    }
   })
