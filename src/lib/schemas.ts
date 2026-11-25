@@ -16,7 +16,7 @@ const paymentProfileSchema = z
 
 export const groupFormSchema = z
   .object({
-    name: z.string().min(2, 'min2').max(50, 'max50'),
+    name: z.string().trim().min(2, 'min2').max(50, 'max50'),
     information: z.string().optional(),
     currency: z.string().min(1, 'min1').max(5, 'max5'),
     currencyCode: z.union([z.string().length(3).nullish(), z.literal('')]), // ISO-4217 currency code
@@ -31,7 +31,7 @@ export const groupFormSchema = z
       .array(
         z.object({
           id: z.string().optional(),
-          name: z.string().min(2, 'min2').max(50, 'max50'),
+          name: z.string().trim().min(2, 'min2').max(50, 'max50'),
           paymentProfile: paymentProfileSchema,
         }),
       )
@@ -82,7 +82,11 @@ const expenseItemSchema = z.object({
 export const expenseFormSchema = z
   .object({
     expenseDate: z.coerce.date(),
-    title: z.string({ required_error: 'titleRequired' }).min(2, 'min2'),
+    title: z
+      .string({ required_error: 'titleRequired' })
+      // Trimmed first: three spaces used to pass a two-character minimum and save a blank row.
+      .trim()
+      .min(2, 'min2'),
     category: z.coerce.number().default(0),
     // amount is purely optional/derived. We ignore input.
     amount: z.number().optional(),

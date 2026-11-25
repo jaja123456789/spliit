@@ -263,7 +263,18 @@ test.describe('Expense Form Validation', () => {
     // Try to submit
     await page.locator('button[type="submit"]').click()
 
-    // Should still be on create page (whitespace-only title should be invalid)
+    // Refused, and said so. Checking the address straight after the click used to pass while the
+    // save was still on its way: every run of this test saved an expense titled "   ".
+    await expect(page.getByText('Enter at least two characters.')).toBeVisible()
+    await page.waitForTimeout(1000)
     await expect(page).toHaveURL(/\/groups\/[^/]+\/expenses\/create/)
+    const saved = await page.evaluate(async (id) => {
+      const input = encodeURIComponent(
+        JSON.stringify({ json: { groupId: id, limit: 5 } }),
+      )
+      const res = await fetch(`/api/trpc/groups.expenses.list?input=${input}`)
+      return (await res.json()).result.data.json.expenses.length
+    }, groupId)
+    expect(saved).toBe(0)
   })
 })
