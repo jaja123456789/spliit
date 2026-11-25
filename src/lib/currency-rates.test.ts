@@ -4,6 +4,7 @@ import {
   getExchangeRate,
   isExchangeRateNeeded,
 } from './currency-rates'
+import { todayAsDateOnly } from './utils'
 
 // These lock in the URL and the guard that used to live inside `useCurrencyRate`, so the browser
 // and the server keep asking for the same rate.
@@ -23,7 +24,20 @@ describe('exchangeRateUrl', () => {
   })
 
   it('uses today’s date rather than “latest” for today', () => {
-    expect(exchangeRateUrl(new Date(), 'USD')).not.toContain('latest')
+    expect(exchangeRateUrl(todayAsDateOnly(), 'USD')).not.toContain('latest')
+  })
+
+  // An expense date is a day stored as its UTC midnight, read here through its UTC parts. Formatted
+  // in local time it was the day before for everyone west of UTC (checked in a separate process:
+  // jest cannot switch the zone of the one it runs in).
+  it('asks for the expense’s own day, not the local reading of it', () => {
+    expect(
+      exchangeRateUrl(
+        new Date('2026-11-20T00:00:00.000Z'),
+        'USD',
+        new Date('2026-11-25T12:00:00.000Z'),
+      ),
+    ).toBe('https://api.frankfurter.dev/v1/2026-11-20?base=USD')
   })
 })
 

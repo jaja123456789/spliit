@@ -14,11 +14,16 @@ export interface FrankfurterAPIResponse {
  * Frankfurter answers 404 for dates it has no rates for, which includes any date in the future,
  * so ask for the most recent ones instead.
  */
-export function exchangeRateUrl(date: Date, baseCurrency: string) {
-  const day = dayjs(date)
-  const dateSegment = day.isAfter(dayjs(), 'day')
-    ? 'latest'
-    : day.format('YYYY-MM-DD')
+export function exchangeRateUrl(
+  date: Date,
+  baseCurrency: string,
+  now: Date = new Date(),
+) {
+  // The expense date is a day stored as its UTC midnight, so its day is read in UTC; read in local
+  // time, everyone west of UTC asked for the day before. Today is the reader's own day.
+  const day = date.toISOString().slice(0, 10)
+  const today = dayjs(now).format('YYYY-MM-DD')
+  const dateSegment = day > today ? 'latest' : day
   return `${FRANKFURTER_API_URL}/${dateSegment}?base=${baseCurrency}`
 }
 

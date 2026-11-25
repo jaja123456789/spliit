@@ -466,6 +466,33 @@ describe('addExpense', () => {
     ).rejects.toThrow(/non-zero/)
   })
 
+  // Every expense date is a day stored as its UTC midnight. Parsed as local midnight, a server east
+  // of UTC (this machine is UTC+1) stored "2026-03-04" as the 3rd.
+  it('stores the day it was given, whatever the server’s time zone', async () => {
+    grantAccess()
+    await addExpense(user, {
+      groupId: 'g1',
+      title: 'Lunch',
+      amount: 5,
+      date: '2026-03-04',
+    })
+    expect(api.createExpense.mock.calls[0][0].expenseDate).toEqual(
+      new Date('2026-03-04T00:00:00.000Z'),
+    )
+  })
+
+  it('rejects a day that does not exist', async () => {
+    grantAccess()
+    await expect(
+      addExpense(user, {
+        groupId: 'g1',
+        title: 'x',
+        amount: 5,
+        date: '2026-02-30',
+      }),
+    ).rejects.toThrow(/not a valid date/)
+  })
+
   it('rejects a malformed date', async () => {
     grantAccess()
     await expect(

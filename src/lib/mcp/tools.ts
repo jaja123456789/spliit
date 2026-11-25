@@ -21,6 +21,8 @@ import {
   formatAmountAsDecimal,
   getCurrencyFromGroup,
   normalizeString,
+  toDateInputValue,
+  todayAsDateOnly,
 } from '@/lib/utils'
 import { RecurrenceRule, SplitMode } from '@prisma/client'
 import dayjs from 'dayjs'
@@ -133,7 +135,7 @@ export async function listExpenses(
     expenses: expenses.map((expense) => ({
       id: expense.id,
       title: expense.title,
-      date: dayjs(expense.expenseDate).format('YYYY-MM-DD'),
+      date: toDateInputValue(expense.expenseDate),
       amount: Number(formatAmountAsDecimal(expense.amount, currency)),
       // Present when the expense was entered in a different currency than the group's.
       originalAmount: expense.originalAmount
@@ -254,8 +256,16 @@ export async function addExpense(user: McpUser, input: AddExpenseInput) {
   if (input.date && !/^\d{4}-\d{2}-\d{2}$/.test(input.date)) {
     throw new McpToolError(`date "${input.date}" must be in YYYY-MM-DD format.`)
   }
-  const expenseDate = input.date ? dayjs(input.date) : dayjs()
-  if (!expenseDate.isValid()) {
+  // A date-only value, as the app stores every expense date: that day's UTC midnight. Through dayjs
+  // it was local midnight, so a server east of UTC stored "2026-11-25" as the 24th.
+  const expenseDate = input.date
+    ? new Date(`${input.date}T00:00:00.000Z`)
+    : todayAsDateOnly()
+  if (
+    isNaN(expenseDate.getTime()) ||
+    toDateInputValue(expenseDate) !==
+      (input.date ?? toDateInputValue(expenseDate))
+  ) {
     throw new McpToolError(`date "${input.date}" is not a valid date.`)
   }
 
@@ -314,7 +324,7 @@ export async function addExpense(user: McpUser, input: AddExpenseInput) {
     } else {
       try {
         rate = await getExchangeRate(
-          expenseDate.toDate(),
+          expenseDate,
           expenseCurrency.code,
           groupCurrency.code,
         )
@@ -446,7 +456,7 @@ export async function addExpense(user: McpUser, input: AddExpenseInput) {
 
   // --- Build the same value object the form submits -----------------------------------------
   const values: ExpenseFormValues = {
-    expenseDate: expenseDate.startOf('day').toDate(),
+    expenseDate,
     title: input.title,
     category: 0,
     amount: finalAmount,
@@ -488,7 +498,7 @@ export async function addExpense(user: McpUser, input: AddExpenseInput) {
     created: true as const,
     expenseId: expense.id,
     title: expense.title,
-    date: dayjs(expense.expenseDate).format('YYYY-MM-DD'),
+    date: toDateInputValue(expense.expenseDate),
     amount: amountAsDecimal(expense.amount, groupCurrency),
     currency: groupCurrency.code || group.currency,
     ...(conversionRequired

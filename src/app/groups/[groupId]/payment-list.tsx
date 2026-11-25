@@ -70,7 +70,11 @@ export function PaymentList({ groupId, participants, currency }: Props) {
           const toName = nameOf(payment.to)
           const readsAsDirection = payment.isSimple && fromName && toName
           // A payment from another year read only "Dec 1" — which, in October, reads as coming up.
+          // A payment's date is a day, stored as that day's UTC midnight, so it is read in UTC. In
+          // the provider's zone — the server's — it showed the day before wherever that is west of
+          // UTC, and a 1 January payment as "Dec 31" without a year.
           const date = format.dateTime(payment.expenseDate, {
+            timeZone: 'UTC',
             day: 'numeric',
             month: 'short',
             ...(payment.expenseDate.getUTCFullYear() !== thisYear && {
