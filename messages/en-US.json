@@ -267,6 +267,7 @@
     }
   },
   "ExpenseForm": {
+    "saveFailed": "The expense could not be saved. Check it and try again.",
     "Income": {
       "create": "Create income",
       "edit": "Edit income",
@@ -768,7 +769,8 @@
     "amountSum": "Sum of amounts must equal the expense amount.",
     "percentageSum": "Sum of percentages must equal 100.",
     "itemTotalMismatch": "Sum of item prices must match expense total.",
-    "checkInputs": "Some lines need attention — the ones marked below."
+    "checkInputs": "Some lines need attention — the ones marked below.",
+    "documentsInvalid": "An attached image could not be read. Remove it and attach it again."
   },
   "Categories": {
     "search": "Search category...",

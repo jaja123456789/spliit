@@ -309,6 +309,9 @@ function ReceiptDialogContent({
     ;(async () => {
       try {
         const file = await dataUrlToFile(initialImageDataUrl)
+        // Measured like a picked photo: a document is stored with its size, and one without it
+        // (0×0) failed the expense's validation with nothing on screen to say so.
+        const dims = await getImageData(file).catch(() => undefined)
         if (cancelled) return
         setDraftImages((prev) =>
           prev.length > 0
@@ -317,8 +320,8 @@ function ReceiptDialogContent({
                 {
                   blobUrl: URL.createObjectURL(file),
                   file,
-                  width: undefined,
-                  height: undefined,
+                  width: dims?.width,
+                  height: dims?.height,
                 },
               ],
         )
@@ -361,19 +364,23 @@ function ReceiptDialogContent({
       const analysisPromise = extractExpenseInformationFromImage(base64Images)
 
       // 3. Start Uploads
-      const uploadPromises = (canKeepPhotos ? draftImages : []).map((img) =>
-        uploadToS3(img.file)
-          .then((res) => ({
-            url: res.url,
-            width: img.width ?? 0,
-            height: img.height ?? 0,
-            id: crypto.randomUUID(),
-          }))
-          .catch((err) => {
-            console.warn('Upload failed', err)
-            return null
-          }),
-      )
+      // Only photos whose size is known: a document is stored with it, and the expense refuses
+      // one without. Unmeasurable photos are still read; they just are not kept.
+      const uploadPromises = (canKeepPhotos ? draftImages : [])
+        .filter((img) => !!img.width && !!img.height)
+        .map((img) =>
+          uploadToS3(img.file)
+            .then((res) => ({
+              url: res.url,
+              width: img.width ?? 0,
+              height: img.height ?? 0,
+              id: crypto.randomUUID(),
+            }))
+            .catch((err) => {
+              console.warn('Upload failed', err)
+              return null
+            }),
+        )
 
       // Each upload catches its own failure, so this never rejects — which is what lets the
       // uploaded documents survive an extraction that does. Awaiting them inside `Promise.all`

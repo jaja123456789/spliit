@@ -42,6 +42,7 @@ import {
   persistDefaultSplittingOptions,
 } from './expense-form-sections/helpers'
 import { MoreOptions } from './expense-form-sections/more-options'
+import { OffscreenErrors } from './expense-form-sections/offscreen-errors'
 import { PayersAndDate } from './expense-form-sections/payers-and-date'
 import { RecentShortcuts } from './expense-form-sections/recent-shortcuts'
 import {
@@ -671,7 +672,24 @@ export function ExpenseForm({
     // 1. Reset manual edits so we get a fresh distribution (optional, but usually desired on mode switch)
     setManuallyEditedParticipants(new Set())
 
-    // 2. Perform distribution if switching TO By Amount immediately
+    // 2. Evenly has no per-person value to show, so whatever the custom rows last held would ride
+    // along unseen: "0.00" from By amount before an amount was typed, or a 0 typed in a row,
+    // failed `noZeroShares` with the rows that would say so hidden — Create did nothing at all.
+    // Evenly means one share each, so that is what it gets.
+    if (newMode === 'EVENLY') {
+      form.setValue(
+        'paidFor',
+        form
+          .getValues('paidFor')
+          .map((p) => ({
+            ...p,
+            shares: '1' as any,
+            originalAmount: undefined,
+          })),
+      )
+    }
+
+    // 3. Perform distribution if switching TO By Amount immediately
     if (newMode === 'BY_AMOUNT') {
       const paidFor = form.getValues('paidFor')
       const newPaidFor = recalculateByAmount(totalAmount, paidFor, new Set())
@@ -764,7 +782,15 @@ export function ExpenseForm({
     }
 
     // Only after a successful save: a draft that outlives its expense would haunt the next one.
-    await onSubmit(values, activeUserId ?? undefined)
+    try {
+      await onSubmit(values, activeUserId ?? undefined)
+    } catch (error) {
+      // The server refused it. Left to `handleSubmit`, the rejection went nowhere: the button
+      // came back and nothing said why. What it refused is in the server's log; here, say so.
+      console.error('Could not save the expense', error)
+      form.setError('root', { type: 'server', message: t('saveFailed') })
+      return
+    }
     clearExpenseDraft(draftScope)
   }
 
@@ -931,9 +957,21 @@ export function ExpenseForm({
           onSelect={selectSplitControl}
         />
 
+        {/* What stops a save, when the field it is about is not on screen: the split's own
+            message renders only beside the custom rows, the lines' only in By item, and the
+            documents have none. A Create that did nothing, silently, was the result. */}
+        <OffscreenErrors
+          errors={form.formState.errors}
+          showPaidFor={splitControl !== 'OTHER'}
+          showItems={!isItemized}
+        />
+
         {/* Global Error Fallback */}
         {form.formState.errors.root && (
-          <div className="mt-4 text-sm font-medium text-destructive">
+          <div
+            role="alert"
+            className="mt-4 text-sm font-medium text-destructive"
+          >
             {form.formState.errors.root.message}
           </div>
         )}
