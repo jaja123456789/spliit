@@ -147,3 +147,26 @@ test.describe('Decimal commas', () => {
     ).toBeVisible()
   })
 })
+
+/**
+ * By exact amount spreads what is left over the rows nobody typed. The spare cent used to be able
+ * to land on a typed row and vanish: €10.01 with the middle row typed as 3.00 filled the others with
+ * 3.50 + 3.50, €10.00, and the form would not save.
+ */
+test('by exact amount keeps the spare cent', async ({ page }) => {
+  const groupId = await openForm(page, 'BY_AMOUNT cent')
+  await page.locator(AMOUNT_INPUT).fill('10.01')
+  const rows = await pickMode(page, 'BY_AMOUNT')
+  await rows.nth(1).fill('3.00')
+  await rows.nth(1).blur()
+  const values = await Promise.all(
+    [0, 1, 2].map((i) => rows.nth(i).inputValue()),
+  )
+  expect(values[1]).toBe('3.00')
+  expect([values[0], values[2]].sort()).toEqual(['3.50', '3.51'])
+  await create(page)
+  expect(await shares(page, groupId)).toEqual({
+    amount: 1001,
+    shares: [300, 350, 351],
+  })
+})

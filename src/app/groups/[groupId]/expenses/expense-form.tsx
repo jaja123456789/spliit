@@ -40,6 +40,7 @@ import {
   getDefaultSplittingOptions,
   getOriginalTotalInMinorUnits,
   persistDefaultSplittingOptions,
+  redistributeByAmount,
 } from './expense-form-sections/helpers'
 import { MoreOptions } from './expense-form-sections/more-options'
 import { OffscreenErrors } from './expense-form-sections/offscreen-errors'
@@ -394,71 +395,13 @@ export function ExpenseForm({
       currentTotal: number,
       currentPaidFor: ExpenseFormValues['paidFor'],
       editedSet: Set<string>,
-    ) => {
-      let remainingAmount = currentTotal
-      let newPaidFor = [...currentPaidFor]
-
-      // 1. Subtract locked amounts
-      newPaidFor = newPaidFor.map((participant) => {
-        if (editedSet.has(participant.participant)) {
-          const participantShare = Number(participant.shares) || 0
-          remainingAmount -= participantShare
-        }
-        return participant
-      })
-
-      // 2. Distribute remainder among unlocked participants
-      const uneditedParticipants = newPaidFor.filter(
-        (p) => !editedSet.has(p.participant),
-      )
-      const count = uneditedParticipants.length
-
-      if (count > 0) {
-        // Calculate precision factor (e.g. 100 for 2 decimals)
-        const precision = Math.pow(10, expenseCurrency.decimal_digits)
-
-        // Convert remaining amount to integer units to handle distribution cleanly
-        // We use round to avoid floating point artifacts before distribution
-        let remainingUnits = Math.round(remainingAmount * precision)
-
-        // Base share per person (integer division)
-        // Math.trunc works better for potential negative numbers (income)
-        const baseShareUnits = Math.trunc(remainingUnits / count)
-
-        // Remainder units to distribute
-        let remainderUnits = remainingUnits - baseShareUnits * count
-
-        let seed = Math.abs(Math.round(currentTotal * 100))
-
-        newPaidFor = newPaidFor.map((participant, idx) => {
-          if (!editedSet.has(participant.participant)) {
-            let currentUnits = baseShareUnits
-
-            // Distribute remainder pseudo-randomly but deterministically based on input
-            // This prevents the "cursor jumping" or values changing while typing
-            // but satisfies the "random participant" requirement visually.
-            const isTarget = (seed + idx) % count < Math.abs(remainderUnits)
-
-            if (isTarget) {
-              if (remainderUnits > 0) {
-                currentUnits += 1
-              } else {
-                currentUnits -= 1
-              }
-            }
-            return {
-              ...participant,
-              shares: (currentUnits / precision).toFixed(
-                expenseCurrency.decimal_digits,
-              ) as any,
-            }
-          }
-          return participant
-        })
-      }
-
-      return newPaidFor
-    },
+    ) =>
+      redistributeByAmount(
+        currentTotal,
+        currentPaidFor,
+        editedSet,
+        expenseCurrency.decimal_digits,
+      ) as ExpenseFormValues['paidFor'],
     [expenseCurrency.decimal_digits],
   )
 

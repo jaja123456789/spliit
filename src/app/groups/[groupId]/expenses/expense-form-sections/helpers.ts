@@ -160,3 +160,50 @@ export function formatDate(date?: Date) {
   if (!date || isNaN(date as any)) date = todayAsDateOnly()
   return toDateInputValue(date)
 }
+
+/**
+ * By exact amount: what is left of the total after the rows someone typed, spread over the rows
+ * nobody has touched, in whole minor units so the split always adds up to the total.
+ *
+ * The spare units go to a seeded selection of the untouched rows — stable while typing, so a
+ * figure does not hop from row to row with every keystroke. The selection used to count *every*
+ * row, typed ones included, so it could land a spare cent on a typed row (where it was dropped) or
+ * miss — €10.01 three ways with the middle row typed as 3.00 came out 3.50 + 3.00 + 3.50, €10.00,
+ * which the form then refused to save.
+ */
+export function redistributeByAmount<
+  P extends { participant: string; shares: unknown },
+>(
+  total: number,
+  paidFor: P[],
+  edited: Set<string>,
+  decimalDigits: number,
+): P[] {
+  const precision = Math.pow(10, decimalDigits)
+  const toUnits = (value: unknown) =>
+    Math.round((Number(value) || 0) * precision)
+  const untouched = paidFor.filter((p) => !edited.has(p.participant))
+  const count = untouched.length
+  if (count === 0) return [...paidFor]
+
+  // Whole units throughout: 10.01 − 3.00 in floating point is 7.009999…
+  const remainingUnits =
+    toUnits(total) -
+    paidFor
+      .filter((p) => edited.has(p.participant))
+      .reduce((sum, p) => sum + toUnits(p.shares), 0)
+  // Truncation, not floor, so an income (negative) splits symmetrically.
+  const baseUnits = Math.trunc(remainingUnits / count)
+  const spareUnits = remainingUnits - baseUnits * count
+  const seed = Math.abs(toUnits(total))
+
+  let position = 0
+  return paidFor.map((p) => {
+    if (edited.has(p.participant)) return p
+    // `position` counts untouched rows only, so (seed + position) % count visits each of
+    // 0…count−1 exactly once and exactly |spareUnits| rows get a unit.
+    const takesSpare = (seed + position++) % count < Math.abs(spareUnits)
+    const units = baseUnits + (takesSpare ? Math.sign(spareUnits) : 0)
+    return { ...p, shares: (units / precision).toFixed(decimalDigits) }
+  })
+}
