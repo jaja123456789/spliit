@@ -38,7 +38,7 @@ export async function sendPushNotificationToGroup(
 
   // 2. Aggregate subscriptions
   const subscriptions = syncedGroups
-    .filter((sg) => sg.activeParticipantId != excludeParticipantId) // Don't notify the person who did the action
+    .filter((sg) => shouldNotify(sg.activeParticipantId, excludeParticipantId))
     .map((sg) => sg.profile.user)
     .flatMap((user) => user.pushSubscriptions)
 
@@ -79,4 +79,19 @@ export async function sendPushNotificationToGroup(
   })
 
   await Promise.all(notifications)
+}
+
+/**
+ * Whether someone who follows a group hears about a change in it: everyone except the person who
+ * made it. With nobody known to have made it, everyone. The check was `!=`, and `null != undefined`
+ * is false, so a change with no actor was hidden from everyone who had not said who they are.
+ */
+export function shouldNotify(
+  activeParticipantId: string | null,
+  actorParticipantId: string | undefined,
+) {
+  return (
+    actorParticipantId === undefined ||
+    activeParticipantId !== actorParticipantId
+  )
 }

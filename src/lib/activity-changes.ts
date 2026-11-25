@@ -174,7 +174,9 @@ type ExpenseSide = {
 
 const formatDay = (date: Date) => date.toISOString().slice(0, 10)
 
-const payerList = (payers: string[]) => payers.join(', ') || '—'
+// Sorted, like the people splitting below: payers come back from the database in no particular
+// order, and the same payers listed the other way round were logged as a change.
+const payerList = (payers: string[]) => [...payers].sort().join(', ') || '—'
 
 /**
  * Amounts stay in minor units so the renderer can format them in the group's currency; everything
