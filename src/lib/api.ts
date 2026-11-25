@@ -17,6 +17,7 @@ import {
 } from '@/lib/expense-filters'
 import { prisma } from '@/lib/prisma'
 import { ExpenseFormValues, GroupFormValues } from '@/lib/schemas'
+import { toStoredAmounts } from '@/lib/stored-amounts'
 import {
   ActivityType,
   Expense,
@@ -102,11 +103,14 @@ export async function createExpense(
       throw new InvalidInputError(`Invalid participant ID: ${participant}`)
   }
 
+  // Every set of parts adding up to the amount exactly, in whole minor units.
+  const stored = toStoredAmounts(expenseFormValues, groupCurrency)
+
   const itemData =
-    expenseFormValues.items?.map((item) => ({
+    expenseFormValues.items?.map((item, index) => ({
       id: randomId(),
       name: item.name,
-      price: amountAsMinorUnits(Number(item.price), groupCurrency),
+      price: stored.itemPrices[index],
       participantIds: item.participantIds,
     })) || []
 
@@ -135,10 +139,7 @@ export async function createExpense(
           groupId,
           expenseDate: expenseFormValues.expenseDate,
           categoryId: expenseFormValues.category,
-          amount: amountAsMinorUnits(
-            Number(expenseFormValues.amount),
-            groupCurrency,
-          ),
+          amount: stored.amount,
           // Stored in minor units of the currency the expense was entered in.
           originalAmount: expenseFormValues.originalAmount
             ? amountAsMinorUnits(
@@ -160,21 +161,18 @@ export async function createExpense(
           },
           paidBy: {
             createMany: {
-              data: expenseFormValues.paidBy.map((pb) => ({
+              data: expenseFormValues.paidBy.map((pb, index) => ({
                 participantId: pb.participant,
-                amount: amountAsMinorUnits(Number(pb.amount), groupCurrency),
+                amount: stored.paidBy[index],
               })),
             },
           },
           paidFor: {
             createMany: {
-              data: expenseFormValues.paidFor.map((pf) => ({
+              data: expenseFormValues.paidFor.map((pf, index) => ({
                 participantId: pf.participant,
                 // Shares are stored as integers (cents if splitMode is BY_AMOUNT)
-                shares:
-                  expenseFormValues.splitMode === 'BY_AMOUNT'
-                    ? amountAsMinorUnits(Number(pf.shares), groupCurrency)
-                    : Math.round(Number(pf.shares) * 100),
+                shares: stored.paidForShares[index],
               })),
             },
           },
@@ -569,11 +567,19 @@ export async function updateExpense(
     existingExpense.expenseDate,
   )
 
+  const stored = toStoredAmounts(expenseFormValues, groupCurrency)
+  const storedShares = new Map(
+    expenseFormValues.paidFor.map((pf, index) => [
+      pf.participant,
+      stored.paidForShares[index],
+    ]),
+  )
+
   const itemData =
-    expenseFormValues.items?.map((item) => ({
+    expenseFormValues.items?.map((item, index) => ({
       id: item.id || randomId(),
       name: item.name,
-      price: amountAsMinorUnits(Number(item.price), groupCurrency),
+      price: stored.itemPrices[index],
       participantIds: item.participantIds,
       expenseId, // needed for createMany
     })) || []
@@ -593,10 +599,7 @@ export async function updateExpense(
       where: { id: expenseId, groupId },
       data: {
         expenseDate: expenseFormValues.expenseDate,
-        amount: amountAsMinorUnits(
-          Number(expenseFormValues.amount),
-          groupCurrency,
-        ),
+        amount: stored.amount,
         // Stored in minor units of the currency the expense was entered in.
         originalAmount: expenseFormValues.originalAmount
           ? amountAsMinorUnits(
@@ -613,9 +616,9 @@ export async function updateExpense(
         paidBy: {
           deleteMany: { expenseId },
           createMany: {
-            data: expenseFormValues.paidBy.map((pb) => ({
+            data: expenseFormValues.paidBy.map((pb, index) => ({
               participantId: pb.participant,
-              amount: amountAsMinorUnits(Number(pb.amount), groupCurrency),
+              amount: stored.paidBy[index],
             })),
           },
         },
@@ -629,10 +632,7 @@ export async function updateExpense(
             )
             .map((paidFor) => ({
               participantId: paidFor.participant,
-              shares:
-                expenseFormValues.splitMode === 'BY_AMOUNT'
-                  ? amountAsMinorUnits(Number(paidFor.shares), groupCurrency)
-                  : Math.round(Number(paidFor.shares) * 100),
+              shares: storedShares.get(paidFor.participant)!,
             })),
           update: expenseFormValues.paidFor.map((paidFor) => ({
             where: {
@@ -642,10 +642,7 @@ export async function updateExpense(
               },
             },
             data: {
-              shares:
-                expenseFormValues.splitMode === 'BY_AMOUNT'
-                  ? amountAsMinorUnits(Number(paidFor.shares), groupCurrency)
-                  : Math.round(Number(paidFor.shares) * 100),
+              shares: storedShares.get(paidFor.participant)!,
             },
           })),
           deleteMany: existingExpense.paidFor.filter(
