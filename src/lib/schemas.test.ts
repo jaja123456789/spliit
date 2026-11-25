@@ -287,3 +287,36 @@ describe('groupFormSchema', () => {
     expect(withIcon('🏠🏡').success).toBe(false)
   })
 })
+
+describe('share signs', () => {
+  const income = (shares: string[], splitMode = 'BY_AMOUNT') =>
+    expenseFormSchema.safeParse({
+      expenseDate: new Date('2026-11-26'),
+      title: 'Refund',
+      category: 0,
+      paidBy: [{ participant: 'a', amount: '-10' }],
+      paidFor: shares.map((s, i) => ({ participant: `p${i}`, shares: s })),
+      splitMode,
+      saveDefaultSplittingOptions: false,
+      isReimbursement: false,
+      documents: [],
+      notes: '',
+      recurrenceRule: 'NONE',
+      items: [],
+    })
+  const messages = (result: ReturnType<typeof income>) =>
+    result.success ? [] : result.error.issues.map((issue) => issue.message)
+
+  it('splits an income by exact amounts', () => {
+    expect(income(['-4', '-6']).success).toBe(true)
+  })
+
+  it('says why when part of an income is not negative', () => {
+    expect(messages(income(['4', '-14']))).toContain('incomeSharesNegative')
+    expect(messages(income(['0', '-10']))).toContain('incomeSharesNegative')
+  })
+
+  it('still wants shares and percentages positive', () => {
+    expect(messages(income(['0', '1'], 'BY_SHARES'))).toContain('noZeroShares')
+  })
+})

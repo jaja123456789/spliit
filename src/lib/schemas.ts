@@ -166,18 +166,9 @@ export const expenseFormSchema = z
           ]),
         }),
       )
-      .min(1, 'paidForMin1')
-      .superRefine((paidFor, ctx) => {
-        for (const { shares } of paidFor) {
-          const shareNumber = Number(shares)
-          if (shareNumber <= 0) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: 'noZeroShares',
-            })
-          }
-        }
-      }),
+      // Whether a share may be negative depends on the split mode and the total, so it is checked
+      // with the whole expense below.
+      .min(1, 'paidForMin1'),
     items: z.array(expenseItemSchema).default([]),
     splitMode: z
       .enum<SplitMode, [SplitMode, ...SplitMode[]]>(
@@ -253,6 +244,23 @@ export const expenseFormSchema = z
         message: 'paymentToSelf',
         path: ['paidFor'],
       })
+    }
+
+    // Shares and percentages are positive. Exact amounts take the sign of the total: an income is
+    // negative, and so is each person's part of it. It used to demand every share be positive,
+    // which made an income impossible to split by exact amounts.
+    const isIncomeByAmount =
+      expense.splitMode === 'BY_AMOUNT' && totalAmount.isNegative()
+    for (const { shares } of expense.paidFor) {
+      const shareNumber = Number(shares)
+      if (isIncomeByAmount ? shareNumber >= 0 : shareNumber <= 0) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: isIncomeByAmount ? 'incomeSharesNegative' : 'noZeroShares',
+          path: ['paidFor'],
+        })
+        break
+      }
     }
 
     switch (expense.splitMode) {
