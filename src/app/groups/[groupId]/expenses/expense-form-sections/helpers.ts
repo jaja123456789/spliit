@@ -73,11 +73,18 @@ export const getDefaultSplittingOptions = (
       parsedDefaultSplitMode.paidFor = defaultValue.paidFor
     }
 
+    // Stored as the form had them — 50 for 50%, 2 for two shares — except Evenly, which is stored
+    // as 100 apiece. Reading every mode back divided by 100 turned a saved 50/25/25 into
+    // 0.5/0.25/0.25, which can never add up to 100, and two shares into "0.02". Evenly is one
+    // share each whatever was stored; every other mode comes back as it was typed.
+    const isEvenly = parsedDefaultSplitMode.splitMode === 'EVENLY'
     return {
       splitMode: parsedDefaultSplitMode.splitMode,
       paidFor: parsedDefaultSplitMode.paidFor.map((paidFor) => ({
         participant: paidFor.participant,
-        shares: (parseFloat(paidFor.shares.toString()) / 100).toString() as any,
+        shares: (isEvenly
+          ? '1'
+          : String(parseFloat(paidFor.shares.toString()))) as any,
       })),
     }
   } catch (e) {
