@@ -237,6 +237,34 @@ export function convertAmountParts(
 }
 
 /**
+ * The reverse of `convertAmountParts`: parts stored in the group currency (minor units), read back
+ * in the currency the expense was entered in, adding up to `originalTotal` (minor units) exactly.
+ *
+ * Each part is divided by the rate on its own and only the rounding is reconciled, which is what
+ * the forward conversion did. Spreading the stored parts over the original total by their weights
+ * instead could land a cent away from what the forward conversion started from, so reopening a
+ * converted expense and saving it unchanged moved stored cents (about 2% of two-payer USD→EUR
+ * expenses). This one round-trips: saving unchanged stores the same cents.
+ *
+ * It cannot always give back exactly what was typed. When a cent of the group currency is worth
+ * more than one of the original's, two typed amounts can store as the same figure.
+ */
+export function convertAmountPartsBack(
+  storedParts: number[],
+  rate: number,
+  groupCurrency: Currency,
+  originalTotal: number,
+  originalCurrency: Currency,
+) {
+  const scale =
+    10 ** originalCurrency.decimal_digits / 10 ** groupCurrency.decimal_digits
+  return allocateMinorUnits(
+    storedParts.map((part) => (part * scale) / rate),
+    originalTotal,
+  )
+}
+
+/**
  * Rounds a list of (possibly fractional) minor unit values to integers that add up to exactly
  * `total`, using the largest remainder method: the units that rounding would lose or gain go to
  * the values that were furthest away from a whole minor unit.

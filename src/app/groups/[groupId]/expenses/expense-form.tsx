@@ -18,7 +18,7 @@ import {
   cn,
   convertAmount,
   convertAmountParts,
-  distributeMinorUnits,
+  convertAmountPartsBack,
   formatAmountAsDecimal,
   getCurrencyFromGroup,
   randomId,
@@ -134,9 +134,12 @@ export function ExpenseForm({
   // accepts the string; the type says number because that is what it parses to.
   const toFormAmounts = (amountsInMinorUnits: number[]) =>
     (isConvertedExpense
-      ? distributeMinorUnits(
+      ? convertAmountPartsBack(
           amountsInMinorUnits,
+          initialRate!,
+          groupCurrency,
           originalTotalInMinorUnits,
+          initialExpenseCurrency,
         ).map((amount) => formatAmountAsDecimal(amount, initialExpenseCurrency))
       : amountsInMinorUnits.map((amount) =>
           formatAmountAsDecimal(amount, groupCurrency),
