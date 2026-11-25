@@ -1,6 +1,12 @@
 import { env } from '@/lib/env' // Import env
 import { MetadataRoute } from 'next'
 
+// Built per request, not once at build time. Whether a share target is offered follows the
+// receipt-extraction flag, which is a runtime setting — and a Docker image is built with every
+// flag off (`scripts/build.env`), so a prerendered manifest never offered "Share to Spliit",
+// whatever the container was started with.
+export const dynamic = 'force-dynamic'
+
 export default function manifest(): MetadataRoute.Manifest {
   const basePath = env.NEXT_PUBLIC_BASE_PATH || ''
   return {
