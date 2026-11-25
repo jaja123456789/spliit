@@ -42,8 +42,14 @@ export function distributeItems<I extends Item, P extends Payer>(
     )
     .toNumber()
 
-  // If the receipt was 100 and the group splits 80, payer amounts scale by 0.8.
-  const ratio = inputTotal > 0 ? splitTotal / inputTotal : 0
+  // If the receipt was 100 and the group splits 80, payer amounts scale by 0.8. An income is the
+  // same with both totals negative; it used to get a ratio of 0, recording its payer as receiving
+  // nothing while the shares still added up to the whole income.
+  // Multiplied then divided in Decimal: a float ratio (60/90) gives 39.999… for 40.
+  const scaled = (amount: number | string) =>
+    inputTotal !== 0
+      ? new Decimal(amount).mul(splitTotal).div(inputTotal).toNumber()
+      : 0
 
   const distribution: Record<string, number> = {}
   for (const item of includedItems) {
@@ -60,7 +66,7 @@ export function distributeItems<I extends Item, P extends Payer>(
     items: includedItems,
     paidBy: paidBy.map((pb) => ({
       ...pb,
-      amount: new Decimal(pb.amount).mul(ratio).toNumber(),
+      amount: scaled(pb.amount),
     })),
     paidFor: Object.entries(distribution).map(([participant, shares]) => ({
       participant,
