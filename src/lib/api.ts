@@ -9,6 +9,7 @@ import {
   encodeRestoredActivityData,
 } from '@/lib/activity-changes'
 import { getBalances } from '@/lib/balances'
+import { InvalidInputError } from '@/lib/errors'
 import {
   ExpenseFilters,
   expenseFiltersWhere,
@@ -72,7 +73,7 @@ export async function createExpense(
   options?: { expenseId?: string },
 ): Promise<Expense> {
   const group = await getGroup(groupId)
-  if (!group) throw new Error(`Invalid group ID: ${groupId}`)
+  if (!group) throw new InvalidInputError(`Invalid group ID: ${groupId}`)
 
   const alreadyCreated = async () => {
     if (!options?.expenseId) return null
@@ -80,7 +81,9 @@ export async function createExpense(
       where: { id: options.expenseId },
     })
     if (existing && existing.groupId !== groupId)
-      throw new Error(`Expense ID already in use: ${options.expenseId}`)
+      throw new InvalidInputError(
+        `Expense ID already in use: ${options.expenseId}`,
+      )
     return existing
   }
   const existing = await alreadyCreated()
@@ -96,7 +99,7 @@ export async function createExpense(
 
   for (const participant of allParticipantIds) {
     if (!group.participants.some((p) => p.id === participant))
-      throw new Error(`Invalid participant ID: ${participant}`)
+      throw new InvalidInputError(`Invalid participant ID: ${participant}`)
   }
 
   const itemData =
@@ -294,7 +297,8 @@ export async function deleteExpense(
   participantId?: string,
 ) {
   const existingExpense = await getExpense(groupId, expenseId)
-  if (!existingExpense) throw new Error(`Invalid expense ID: ${expenseId}`)
+  if (!existingExpense)
+    throw new InvalidInputError(`Invalid expense ID: ${expenseId}`)
   const activity = await prisma.$transaction(async (tx) => {
     const activity = await logActivity(
       groupId,
@@ -490,12 +494,13 @@ export async function updateExpense(
   participantId?: string,
 ) {
   const group = await getGroup(groupId)
-  if (!group) throw new Error(`Invalid group ID: ${groupId}`)
+  if (!group) throw new InvalidInputError(`Invalid group ID: ${groupId}`)
 
   const groupCurrency = getCurrencyFromGroup(group)
 
   const existingExpense = await getExpense(groupId, expenseId)
-  if (!existingExpense) throw new Error(`Invalid expense ID: ${expenseId}`)
+  if (!existingExpense)
+    throw new InvalidInputError(`Invalid expense ID: ${expenseId}`)
 
   // Validate participants
   const allParticipantIds = new Set([
@@ -505,7 +510,7 @@ export async function updateExpense(
 
   for (const participant of allParticipantIds) {
     if (!group.participants.some((p) => p.id === participant))
-      throw new Error(`Invalid participant ID: ${participant}`)
+      throw new InvalidInputError(`Invalid participant ID: ${participant}`)
   }
 
   // Record *what* changed, not merely that something did. `existingExpense` is already loaded
@@ -711,7 +716,7 @@ export async function updateGroup(
   participantId?: string,
 ) {
   const existingGroup = await getGroup(groupId)
-  if (!existingGroup) throw new Error('Invalid group ID')
+  if (!existingGroup) throw new InvalidInputError('Invalid group ID')
 
   const participantIdsToKeep = groupFormValues.participants
     .map((p) => p.id)
@@ -1302,16 +1307,18 @@ export async function createPayments(
   date?: Date,
 ) {
   const group = await getGroup(groupId)
-  if (!group) throw new Error(`Invalid group ID: ${groupId}`)
+  if (!group) throw new InvalidInputError(`Invalid group ID: ${groupId}`)
 
   const participantIds = new Set(group.participants.map((p) => p.id))
   for (const payment of payments) {
     for (const id of [payment.from, payment.to]) {
       if (!participantIds.has(id))
-        throw new Error(`Invalid participant ID: ${id}`)
+        throw new InvalidInputError(`Invalid participant ID: ${id}`)
     }
     if (payment.from === payment.to)
-      throw new Error('A payment cannot be from someone to themselves')
+      throw new InvalidInputError(
+        'A payment cannot be from someone to themselves',
+      )
   }
 
   return prisma.$transaction(async (tx) => {
