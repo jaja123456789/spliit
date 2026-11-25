@@ -45,7 +45,11 @@ function write(items: OutboxItem[]) {
 }
 
 export function enqueueExpense(item: Omit<OutboxItem, 'queuedAt'>) {
-  write([...readOutbox(), { ...item, queuedAt: new Date().toISOString() }])
+  // The same expense queued twice (Create pressed again) waits once, as its latest version.
+  write([
+    ...readOutbox().filter((queued) => queued.id !== item.id),
+    { ...item, queuedAt: new Date().toISOString() },
+  ])
 }
 
 export function removeFromOutbox(id: string) {
