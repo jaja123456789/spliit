@@ -3,6 +3,7 @@ import {
   decodeActivityData,
   describeExpenseChanges,
   encodeActivityData,
+  encodeActivityTitle,
   encodeCommentActivityData,
   encodeDeletedActivityData,
   encodeRecurringActivityData,
@@ -130,7 +131,11 @@ export async function createExpense(
       await logActivity(
         groupId,
         ActivityType.CREATE_EXPENSE,
-        { participantId, expenseId, data: expenseFormValues.title },
+        {
+          participantId,
+          expenseId,
+          data: encodeActivityTitle(expenseFormValues.title),
+        },
         tx,
       )
       return tx.expense.create({
@@ -541,6 +546,21 @@ export async function updateExpense(
       paidFor: expenseFormValues.paidFor.map((pf) => nameOf(pf.participant)),
     },
   )
+
+  // A document is attached by its id, and `connectOrCreate` connects whatever has that id — so an
+  // edit naming a document of another expense, in any group, would have moved it here. Only this
+  // expense's own documents and new ones are accepted.
+  const documentIds = expenseFormValues.documents.map((doc) => doc.id)
+  if (documentIds.length > 0) {
+    const elsewhere = await prisma.expenseDocument.count({
+      where: {
+        id: { in: documentIds },
+        NOT: { expenseId: expenseId },
+      },
+    })
+    if (elsewhere > 0)
+      throw new InvalidInputError('A document belongs to another expense')
+  }
 
   const isDeleteRecurrenceExpenseLink =
     existingExpense.recurrenceRule !== RecurrenceRule.NONE &&
@@ -1337,7 +1357,7 @@ export async function createPayments(
           activityType: ActivityType.CREATE_EXPENSE,
           participantId,
           expenseId,
-          data: payment.title,
+          data: encodeActivityTitle(payment.title),
         },
       })
       await tx.expense.create({

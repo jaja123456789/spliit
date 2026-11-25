@@ -1,5 +1,6 @@
 import type { getGroupExpenses } from '@/lib/api'
 import { getBalances } from '@/lib/balances'
+import { csvSafeText } from '@/lib/csv-safe'
 import { calculateShares } from '@/lib/totals'
 
 type Expense = NonNullable<Awaited<ReturnType<typeof getGroupExpenses>>>[number]
@@ -88,7 +89,7 @@ export type MonthlyStatement = ReturnType<typeof buildMonthlyStatement>
 
 /** RFC 4180 quoting: a field with a comma, quote or line break goes in quotes, quotes doubled. */
 function csvField(value: string | number) {
-  const text = String(value)
+  const text = typeof value === 'string' ? csvSafeText(value) : String(value)
   return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
 }
 

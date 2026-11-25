@@ -4,10 +4,11 @@ import { z } from 'zod'
 
 export const unsubscribeProcedure = protectedProcedure
   .input(z.object({ endpoint: z.string() }))
-  .mutation(async ({ input }) => {
-    // Delete the subscription with this specific endpoint
+  .mutation(async ({ ctx, input }) => {
+    // Only your own: any signed-in user who knew another's endpoint could switch their
+    // notifications off.
     await prisma.pushSubscription.deleteMany({
-      where: { endpoint: input.endpoint },
+      where: { endpoint: input.endpoint, userId: ctx.user.id },
     })
     return { success: true }
   })

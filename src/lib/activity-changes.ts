@@ -77,8 +77,20 @@ export function encodeActivityData(
   title: string,
   changes: ActivityChange[],
 ): string {
-  if (changes.length === 0) return title
+  if (changes.length === 0) return encodeActivityTitle(title)
   return JSON.stringify({ title, changes } satisfies ActivityData)
+}
+
+/**
+ * An activity line that is only a title. Stored as the title itself — except a title that starts
+ * with `{`, which the reader would take for structured data: anyone could name an expense
+ * `{"title":"Rent","changes":[…]}` and the feed would show changes nobody made, or a comment
+ * nobody wrote. Such a title is stored structured, as what it is.
+ */
+export function encodeActivityTitle(title: string): string {
+  return title.startsWith('{')
+    ? JSON.stringify({ title, changes: [] } satisfies ActivityData)
+    : title
 }
 
 /**

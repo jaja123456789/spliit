@@ -1,3 +1,4 @@
+import { csvSafeText } from '@/lib/csv-safe'
 import { getCurrency } from '@/lib/currency'
 import { calculateShares } from '@/lib/totals'
 import { formatAmountAsDecimal, getCurrencyFromGroup } from '@/lib/utils'
@@ -86,7 +87,7 @@ export async function GET(
     { label: 'Is Reimbursement', value: 'isReimbursement' },
     { label: 'Split mode', value: 'splitMode' },
     ...group.participants.map((participant) => ({
-      label: participant.name,
+      label: csvSafeText(participant.name),
       value: participant.name,
     })),
   ]
@@ -110,7 +111,9 @@ export async function GET(
 
     return {
       date: formatDate(expense.expenseDate),
-      title: expense.title,
+      // Anyone with the link can name an expense; a name like =HYPERLINK(…) would run as a
+      // formula in the spreadsheet this is opened in.
+      title: csvSafeText(expense.title),
       categoryName: expense.category?.name || '',
       currency: group.currencyCode ?? group.currency,
       amount: formatAmountAsDecimal(expense.amount, currency),
