@@ -263,3 +263,53 @@ test.describe('What is not an expense is not kept', () => {
     })
   }
 })
+
+/**
+ * A restore sets the form's values; the form's state beside them has to follow. An itemised draft
+ * came back with its lines hidden (yet still saved itemised), and typed exact amounts were spread
+ * evenly again.
+ */
+test.describe('A restored draft', () => {
+  async function leaveAndReturn(page: Page, groupId: string) {
+    await page.waitForTimeout(700)
+    await page.goto(`/groups/${groupId}/expenses`)
+    await page.goto(`/groups/${groupId}/expenses/create`)
+    await page.getByTestId('draft-restore').click()
+  }
+
+  test('keeps the amounts typed by hand', async ({ page }) => {
+    const groupId = await newGroup(page)
+    await openCreateForm(page, groupId)
+    await page.locator('[name="title"]').fill('Groceries')
+    await page.locator(AMOUNT_INPUT).fill('30')
+    await page.getByTestId('split-mode-more').click()
+    await page.getByTestId('split-mode-BY_AMOUNT').click()
+    const rows = page.getByTestId('paid-for-rows').getByRole('textbox')
+    await rows.nth(0).fill('20')
+    await rows.nth(0).blur()
+    await expect(rows.nth(1)).toHaveValue('5.00')
+
+    await leaveAndReturn(page, groupId)
+    await expect(rows.nth(0)).toHaveValue('20')
+    await expect(rows.nth(1)).toHaveValue('5.00')
+    await expect(rows.nth(2)).toHaveValue('5.00')
+  })
+
+  test('comes back itemised, with its lines', async ({ page }) => {
+    const groupId = await newGroup(page)
+    await openCreateForm(page, groupId)
+    await page.locator('[name="title"]').fill('Pizza night')
+    await page.locator(AMOUNT_INPUT).fill('30')
+    await page.getByTestId('split-mode-items').click()
+    await page.locator('input[name="items.0.name"]').fill('Margherita')
+
+    await leaveAndReturn(page, groupId)
+    await expect(page.getByTestId('split-mode-items')).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(page.locator('input[name="items.0.name"]')).toHaveValue(
+      'Margherita',
+    )
+  })
+})

@@ -505,7 +505,20 @@ export function ExpenseForm({
     form,
     draftScope,
     prefilled: importingReceipt || isCopy,
-    onRestored: () => setShowMoreOptions(true),
+    onRestored: (draft) => {
+      setShowMoreOptions(true)
+      // A reset sets the values, not this state beside them. An itemised draft came back with its
+      // lines hidden and the control on "By exact amount", yet still saved itemised; Evenly could
+      // not clear the lines either, since the switch was already off.
+      setIsItemized(draft.items.length > 0)
+      // The amounts in a By exact amount draft were typed. Treated as untouched, the jump from no
+      // total to the draft's total spread them evenly again: 20 + 10 came back as 15 + 15.
+      setManuallyEditedParticipants(
+        draft.splitMode === 'BY_AMOUNT' && draft.items.length === 0
+          ? new Set(draft.paidFor.map((p) => p.participant))
+          : new Set(),
+      )
+    },
   })
 
   useEffect(() => {

@@ -33,8 +33,11 @@ export function useExpenseDraft({
    * more specific intent than a leftover draft, so no draft is offered over it.
    */
   prefilled: boolean
-  /** Called after a draft has been poured back in — the form opens More options for it. */
-  onRestored: () => void
+  /**
+   * Called after a draft has been poured back in, with the draft. The form's own state beside the
+   * values — whether it is itemised, which rows were typed by hand — is the form's to set from it.
+   */
+  onRestored: (draft: ExpenseFormValues) => void
 }) {
   // Restored, not offered. Being asked "you have an unsaved expense — restore or discard?" makes
   // you read and decide, every time, about something you almost always want; the form simply comes
@@ -70,7 +73,7 @@ export function useExpenseDraft({
     // blank form they replaced, so leaving again immediately — having changed nothing — would
     // count as a change and re-stamp the draft's two-minute clock.
     initialValuesRef.current = fingerprintValues(pendingDraft)
-    onRestored()
+    onRestored(pendingDraft)
     setPendingDraft(null)
   }
 
