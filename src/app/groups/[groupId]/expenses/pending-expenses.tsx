@@ -3,7 +3,7 @@ import { useEnv } from '@/components/env-provider'
 import { Money } from '@/components/money'
 import { Button } from '@/components/ui/button'
 import { Currency } from '@/lib/currency'
-import { OutboxItem, removeFromOutbox } from '@/lib/outbox'
+import { OutboxItem, clearOutboxError, removeFromOutbox } from '@/lib/outbox'
 import { amountAsMinorUnits } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { CloudOff } from 'lucide-react'
@@ -69,14 +69,26 @@ export function PendingExpenses({
                     )}`}
               </span>
               {item.error && (
-                <Button
-                  variant="link"
-                  size="sm"
-                  className="h-auto p-0 text-xs"
-                  onClick={() => removeFromOutbox(item.id)}
-                >
-                  {t('discard')}
-                </Button>
+                <span className="flex shrink-0 gap-3">
+                  {/* A refusal can still be worth another go: a participant restored, a group
+                      setting changed back. Back in line, the next flush sends it. */}
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    onClick={() => clearOutboxError(item.id)}
+                  >
+                    {t('retry')}
+                  </Button>
+                  <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    onClick={() => removeFromOutbox(item.id)}
+                  >
+                    {t('discard')}
+                  </Button>
+                </span>
               )}
             </div>
           </div>

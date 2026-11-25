@@ -1,7 +1,7 @@
 'use client'
 import { useToast } from '@/components/ui/use-toast'
 import { RuntimeFeatureFlags } from '@/lib/featureFlags'
-import { isNetworkError } from '@/lib/network-error'
+import { isRetryableError } from '@/lib/network-error'
 import { enqueueExpense } from '@/lib/outbox'
 import { randomId } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
@@ -86,8 +86,9 @@ export function CreateExpenseForm({
               expenseId,
             })
           } catch (error) {
-            // A refusal is the form's to show; only a request that never arrived waits its turn.
-            if (!isNetworkError(error)) throw error
+            // A refusal is the form's to show. A request that never arrived, or that a struggling
+            // server could not answer, waits its turn: it carries its id, so it is created once.
+            if (!isRetryableError(error)) throw error
             queue()
           }
         }

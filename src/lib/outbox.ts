@@ -58,6 +58,15 @@ export function markOutboxError(id: string, error: string) {
   )
 }
 
+/** Puts a refused item back in line, to be sent with the next flush. */
+export function clearOutboxError(id: string) {
+  write(
+    readOutbox().map((item) =>
+      item.id === id ? { ...item, error: undefined } : item,
+    ),
+  )
+}
+
 /** Calls back on any change to the outbox, in this tab or another. Returns the unsubscribe. */
 export function onOutboxChange(callback: () => void) {
   const otherTab = (event: StorageEvent) => {

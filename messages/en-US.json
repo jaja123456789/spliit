@@ -953,7 +953,8 @@
     "pendingTitle": "Waiting to be added",
     "pending": "Waiting for a connection",
     "pendingError": "Could not be added: {error}",
-    "discard": "Discard"
+    "discard": "Discard",
+    "retry": "Try again"
   },
   "ExpenseComments": {
     "title": "Comments",

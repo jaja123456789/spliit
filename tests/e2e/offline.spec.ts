@@ -69,3 +69,97 @@ test('a group opened online works offline, and adds wait for the network', async
   ).toBeVisible()
   await expect(page.getByTestId('expense-title')).toHaveCount(2)
 })
+
+/**
+ * The browser can say it is online while a request fails anyway — flaky Wi-Fi, a server
+ * restarting. Nothing fires when that is over, so waiting expenses are tried again on a timer, and
+ * a server error is waited out rather than taken as a refusal.
+ */
+test.describe('the outbox keeps trying', () => {
+  async function openGroup(page: import('@playwright/test').Page) {
+    await page.goto('/groups')
+    const groupId = await createGroupViaAPI(page, `Retry ${randomId(4)}`, [
+      'Alice',
+      'Bob',
+    ])
+    await createExpenseViaAPI(page, groupId, {
+      title: 'Before',
+      amount: 1000,
+      payerName: 'Alice',
+    })
+    await navigateToGroup(page, groupId)
+    await expect(page.getByTestId('expense-title').first()).toHaveText('Before')
+    return groupId
+  }
+
+  async function addExpense(
+    page: import('@playwright/test').Page,
+    title: string,
+  ) {
+    await page.getByRole('link', { name: 'Create expense' }).first().click()
+    await page.waitForURL(/\/expenses\/create$/)
+    await page.locator('[name="title"]').fill(title)
+    await page.locator(AMOUNT_INPUT).fill('24.00')
+    await page.getByRole('button', { name: 'Create' }).click()
+    await page.waitForURL(/\/expenses$/)
+  }
+
+  test('a request lost while online is sent again later', async ({ page }) => {
+    await page.clock.install()
+    await openGroup(page)
+    let attempts = 0
+    await page.route('**/api/trpc/groups.expenses.create**', (route) =>
+      attempts++ === 0 ? route.abort('connectionreset') : route.continue(),
+    )
+    await addExpense(page, 'Flaky lunch')
+    const pending = page.locator('[data-testid^="pending-expense-"]')
+    await expect(pending).toHaveCount(1)
+
+    await page.clock.runFor(31_000)
+    await expect(pending).toHaveCount(0)
+    await expect(
+      page.getByTestId('expense-title').filter({ hasText: 'Flaky lunch' }),
+    ).toHaveCount(1)
+  })
+
+  test('a server error is waited out, not taken as a refusal', async ({
+    page,
+  }) => {
+    await page.clock.install()
+    await openGroup(page)
+    // The save itself and the outbox's first go both meet a server that cannot reach its
+    // database; the timer's go meets one that can.
+    let attempts = 0
+    await page.route('**/api/trpc/groups.expenses.create**', (route) =>
+      attempts++ < 2
+        ? route.fulfill({
+            status: 500,
+            contentType: 'application/json',
+            body: JSON.stringify({
+              error: {
+                json: {
+                  message: "Can't reach database server",
+                  code: -32603,
+                  data: { code: 'INTERNAL_SERVER_ERROR', httpStatus: 500 },
+                },
+              },
+            }),
+          })
+        : route.continue(),
+    )
+    await addExpense(page, 'Dinner during a restart')
+    const pending = page.locator('[data-testid^="pending-expense-"]')
+    await expect(pending).toHaveCount(1)
+    await expect.poll(() => attempts).toBe(2)
+    await expect(pending).not.toContainText('Could not be added')
+
+    await page.clock.runFor(31_000)
+    await expect(pending).toHaveCount(0)
+    await expect(
+      page
+        .getByTestId('expense-title')
+        .filter({ hasText: 'Dinner during a restart' }),
+    ).toHaveCount(1)
+    expect(attempts).toBe(3)
+  })
+})
