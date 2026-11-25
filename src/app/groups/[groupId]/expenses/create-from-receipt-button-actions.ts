@@ -1,6 +1,8 @@
 'use server'
 import { getCategories } from '@/lib/api'
+import { getCurrency } from '@/lib/currency'
 import { env } from '@/lib/env'
+import { expandReceiptItems } from '@/lib/receipt-items'
 import { formatCategoryForAIPrompt } from '@/lib/utils'
 import OpenAI from 'openai'
 import { z } from 'zod'
@@ -272,30 +274,11 @@ function parseReceiptJson(rawContent: string) {
 }
 
 function normalizeResponse(data: z.infer<typeof receiptSchema>) {
-  const expandedItems = (data?.items || []).flatMap((item) => {
-    const qty = Math.max(1, Math.round(item.quantity ?? 1))
-    const unitPrice =
-      item.unitPrice ?? (qty > 1 ? item.price / qty : item.price)
-    if (qty <= 1) {
-      return [{ name: item.name, price: item.price }]
-    }
-    // Expand into individual line items, distributing rounding to the last item
-    const basePrice = Math.round(unitPrice * 100) / 100
-    const distributed = Array.from({ length: qty }, () => ({
-      name: item.name,
-      price: basePrice,
-    }))
-    // Fix any rounding difference on the last item
-    const sumDiff =
-      Math.round(item.price * 100) -
-      distributed.reduce((acc, i) => acc + Math.round(i.price * 100), 0)
-    if (sumDiff !== 0) {
-      distributed[distributed.length - 1].price =
-        Math.round(distributed[distributed.length - 1].price * 100 + sumDiff) /
-        100
-    }
-    return distributed
-  })
+  // In the receipt's own currency: its decimals are the ones its prices can be split into.
+  const expandedItems = expandReceiptItems(
+    data?.items || [],
+    getCurrency(data?.currency),
+  )
 
   return {
     amount: data?.amount ?? undefined,

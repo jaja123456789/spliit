@@ -178,10 +178,14 @@ export function ItemizationBuilder({
   )
   const canSplitProportionally = subtotals.some((amount) => amount > 0)
 
+  // In the currency's own decimals: two was wrong for yen (none) and dinars (three).
+  const inCurrency = (value: number) =>
+    amountAsDecimal(amountAsMinorUnits(value, currency), currency)
+
   const addRemainderEvenly = () => {
     append({
       name: t('remainderName'),
-      price: Number(unassignedRemainder.toFixed(2)),
+      price: inCurrency(unassignedRemainder),
       participantIds: group.participants.map((p) => p.id),
     })
     setTimeout(() => trigger(['items', 'paidBy']), 0)
@@ -768,9 +772,7 @@ export function ItemizationBuilder({
             className="h-11 flex-1 justify-start rounded-none px-6 text-sm font-normal text-muted-foreground hover:text-foreground sm:h-10"
             onClick={() => {
               const nextAmount =
-                unassignedRemainder > 0
-                  ? Number(unassignedRemainder.toFixed(2))
-                  : 0
+                unassignedRemainder > 0 ? inCurrency(unassignedRemainder) : 0
               const previous = watchedItems[watchedItems.length - 1]
               const inherited = previous?.participantIds?.length
                 ? previous.participantIds
