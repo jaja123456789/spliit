@@ -22,6 +22,7 @@ import {
   InputGroupAddon,
 } from "@/components/ui/input-group"
 import { AmountCalculator } from "@/app/groups/[groupId]/expenses/amount-calculator"
+import { normalizeDecimalInput } from '@/lib/decimal-input'
 import { useMediaQuery, useMobilePopoverState } from '@/lib/hooks'
 import { useTranslations } from 'next-intl'
 
@@ -76,8 +77,8 @@ export function CalculatorInput({
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value
-    onValueChange(val)
+    // A European decimal keypad types a comma; everything downstream reads a point.
+    onValueChange(normalizeDecimalInput(e.target.value))
   }
 
   const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {

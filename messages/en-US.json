@@ -936,6 +936,8 @@
     "cancel": "Cancel",
     "record": "Record a payment",
     "sameParticipant": "Pick two different people.",
+    "invalidAmount": "Enter an amount greater than zero.",
+    "saveFailed": "The payment could not be recorded. Try again.",
     "defaultTitle": "Payment from {from} to {to}",
     "payWith": "Pay with",
     "payWithHint": "Opens {app}. Recording it here is separate.",

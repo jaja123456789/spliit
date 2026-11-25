@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select'
 import { readActiveUser } from '@/lib/active-user'
 import { Currency } from '@/lib/currency'
+import { normalizeDecimalInput } from '@/lib/decimal-input'
 import { PaymentProfile, getPaymentOptions } from '@/lib/payment-links'
 import {
   formatAmountAsDecimal,
@@ -130,6 +131,13 @@ export function PaymentForm({ group }: { group: Group }) {
       setError(t('sameParticipant'))
       return
     }
+    // The field already turns a decimal comma into a point; anything still not a number, or
+    // nothing, used to become 0 here and be refused by the server with nothing on screen.
+    const value = Number(normalizeDecimalInput(String(amount).trim()))
+    if (!String(amount).trim() || !Number.isFinite(value) || value <= 0) {
+      setError(t('invalidAmount'))
+      return
+    }
     setError(null)
     setIsSaving(true)
 
@@ -140,7 +148,7 @@ export function PaymentForm({ group }: { group: Group }) {
         title: t('defaultTitle', { from: fromName, to: toName }),
         expenseDate: new Date(date),
         category: 1,
-        paidBy: [{ participant: from, amount: Number(amount) || 0 }],
+        paidBy: [{ participant: from, amount: value }],
         paidFor: [{ participant: to, shares: '1' as any }],
         splitMode: 'EVENLY',
         isReimbursement: true,
@@ -161,7 +169,11 @@ export function PaymentForm({ group }: { group: Group }) {
     event.preventDefault()
     // Deliberately not react-hook-form: four fields, no cross-field arithmetic, and `SubmitButton`
     // would need a form context this screen has no other use for.
-    submit().catch(() => setIsSaving(false))
+    submit().catch((error) => {
+      console.error('Could not record the payment', error)
+      setError(t('saveFailed'))
+      setIsSaving(false)
+    })
   }
 
   return (

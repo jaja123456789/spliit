@@ -155,7 +155,9 @@ export const expenseFormSchema = z
                   code: z.ZodIssueCode.custom,
                   message: 'invalidNumber',
                 })
-              return value
+              // The normalised value, not the typed one: checking "12,50" and then returning it
+              // left every later step — the sums, Decimal, the database — to choke on the comma.
+              return normalizedValue
             }),
           ]),
         }),
