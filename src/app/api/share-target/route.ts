@@ -22,6 +22,13 @@ export async function GET(req: NextRequest) {
  * paths — never from anything the request said about itself.
  */
 export async function POST(req: NextRequest) {
+  // The OS share sheet's post is the browser's own (`Sec-Fetch-Site: none`). One from another site
+  // is a page submitting a form at Spliit: it could plant an image that the next group opened would
+  // hand to the receipt scanner. Browsers that send no such header are let through.
+  const site = req.headers.get('sec-fetch-site')
+  if (site === 'cross-site' || site === 'same-site')
+    return page(403, failureBody())
+
   // Refuse an oversized body before buffering it, when the client says how big it is.
   if (Number(req.headers.get('content-length')) > SHARE_MAX_UPLOAD_BYTES * 1.1)
     return page(413, failureBody())

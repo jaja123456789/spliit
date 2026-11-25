@@ -106,3 +106,29 @@ test.describe('Share target', () => {
     expect(await response.text()).not.toContain('sessionStorage')
   })
 })
+
+/**
+ * Another site can submit a form at the share target. The share sheet's own post is the browser's
+ * (`Sec-Fetch-Site: none`); one from another site is refused before any image is handed on.
+ */
+test('a post from another site is refused', async ({ page }) => {
+  const photo = await sharp({
+    create: { width: 40, height: 30, channels: 3, background: '#808080' },
+  })
+    .jpeg()
+    .toBuffer()
+  for (const [site, status] of [
+    ['cross-site', 403],
+    ['same-site', 403],
+    ['none', 200],
+  ] as const) {
+    const response = await page.request.post('/api/share-target', {
+      headers: { 'Sec-Fetch-Site': site },
+      multipart: {
+        file: { name: 'r.jpg', mimeType: 'image/jpeg', buffer: photo },
+      },
+      maxRedirects: 0,
+    })
+    expect(response.status(), site).toBe(status)
+  }
+})
