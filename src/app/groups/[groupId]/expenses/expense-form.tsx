@@ -30,7 +30,7 @@ import { RecurrenceRule } from '@prisma/client'
 import { ScanLine } from 'lucide-react'
 import { useLocale, useTranslations } from 'next-intl'
 import { useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useFieldArray, useForm, useWatch } from 'react-hook-form'
 import { CreateFromReceiptButton } from './create-from-receipt-button'
 import { AmountField } from './expense-form-sections/amount-field'
@@ -45,6 +45,7 @@ import { MoreOptions } from './expense-form-sections/more-options'
 import { OffscreenErrors } from './expense-form-sections/offscreen-errors'
 import { PayersAndDate } from './expense-form-sections/payers-and-date'
 import { RecentShortcuts } from './expense-form-sections/recent-shortcuts'
+import { RecipientField } from './expense-form-sections/recipient-field'
 import {
   SplitModeSheet,
   SplitSection,
@@ -565,6 +566,28 @@ export function ExpenseForm({
     if (totalAmount < 0) form.setValue('isReimbursement', false)
   }, [totalAmount, form])
 
+  // A payment goes to one person who is not its payer. Ticking "This is a reimbursement" on an
+  // expense split among everyone used to keep that split, payer included, with no way to see it;
+  // it now starts from someone else, and the recipient field shows who. Only on ticking: opening
+  // an older payment leaves its recipients as they are, and changing the payer afterwards does not
+  // move the recipient behind anyone's back — if the two end up the same, the field says so.
+  const wasReimbursement = useRef(isReimbursement)
+  useEffect(() => {
+    const ticked = isReimbursement && !wasReimbursement.current
+    wasReimbursement.current = isReimbursement
+    if (!ticked) return
+    const firstPayer = form.getValues('paidBy')[0]?.participant
+    const paidFor = form.getValues('paidFor')
+    if (paidFor.length === 1 && paidFor[0].participant !== firstPayer) return
+    const recipient =
+      paidFor.find((p) => p.participant !== firstPayer)?.participant ??
+      group.participants.find((p) => p.id !== firstPayer)?.id
+    if (!recipient) return
+    setIsItemized(false)
+    form.setValue('splitMode', 'EVENLY')
+    form.setValue('paidFor', [{ participant: recipient, shares: '1' as any }])
+  }, [isReimbursement, form, group.participants])
+
   // A rate only makes sense for the currency it was obtained (or entered) for, so picking another
   // currency drops it and goes back to the rate from the API.
   useEffect(() => {
@@ -679,13 +702,11 @@ export function ExpenseForm({
     if (newMode === 'EVENLY') {
       form.setValue(
         'paidFor',
-        form
-          .getValues('paidFor')
-          .map((p) => ({
-            ...p,
-            shares: '1' as any,
-            originalAmount: undefined,
-          })),
+        form.getValues('paidFor').map((p) => ({
+          ...p,
+          shares: '1' as any,
+          originalAmount: undefined,
+        })),
       )
     }
 
@@ -915,7 +936,13 @@ export function ExpenseForm({
                 isMultiPayer={isMultiPayer}
               />
 
-              {!isReimbursement && (
+              {isReimbursement ? (
+                <RecipientField
+                  form={form}
+                  group={group}
+                  activeUserId={activeUserId}
+                />
+              ) : (
                 <SplitSection
                   form={form}
                   group={group}
@@ -962,7 +989,7 @@ export function ExpenseForm({
             documents have none. A Create that did nothing, silently, was the result. */}
         <OffscreenErrors
           errors={form.formState.errors}
-          showPaidFor={splitControl !== 'OTHER'}
+          showPaidFor={!isReimbursement && splitControl !== 'OTHER'}
           showItems={!isItemized}
         />
 

@@ -231,6 +231,24 @@ export const expenseFormSchema = z
       })
     }
 
+    // A payment moves money from its payer to someone else. Paid only to its own payer it is
+    // nothing — it cancels out in the balances — and the list would show "Bob → Bob". Payments
+    // with several recipients, payer among them, are older data from when ticking the box kept
+    // the split; those stay valid.
+    if (
+      expense.isReimbursement &&
+      expense.paidFor.length > 0 &&
+      expense.paidFor.every(({ participant }) =>
+        expense.paidBy.some((payer) => payer.participant === participant),
+      )
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'paymentToSelf',
+        path: ['paidFor'],
+      })
+    }
+
     switch (expense.splitMode) {
       case 'BY_AMOUNT': {
         const sum = expense.paidFor.reduce(
