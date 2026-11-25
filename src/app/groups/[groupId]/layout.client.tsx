@@ -1,10 +1,11 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
+import { forgetActiveUserIfGone } from '@/lib/active-user'
 import { trpc } from '@/trpc/client'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
-import { PropsWithChildren } from 'react'
+import { PropsWithChildren, useEffect } from 'react'
 import { CurrentGroupProvider } from './current-group-context'
 import { GroupBarSummaryProvider } from './group-bar-summary'
 import { GroupHeader } from './group-header'
@@ -16,6 +17,14 @@ export function GroupLayoutClient({
 }: PropsWithChildren<{ groupId: string }>) {
   const { data, isLoading } = trpc.groups.get.useQuery({ groupId })
   const t = useTranslations('Groups.NotFound')
+
+  // On every page of the group, not only where the identity question is asked: Balances, a payment
+  // and a comment all act as "you", and a removed participant cannot.
+  const participantIds = data?.group?.participants.map((p) => p.id).join(',')
+  useEffect(() => {
+    if (participantIds !== undefined)
+      forgetActiveUserIfGone(groupId, participantIds.split(','))
+  }, [groupId, participantIds])
 
   // A group can genuinely disappear — deletion shipped, and a shared link can be stale. This used
   // to render the whole group: header, tab strip, an Expenses tab, a Balances tab, all of them

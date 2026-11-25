@@ -18,6 +18,7 @@ import {
   DrawerTitle,
 } from '@/components/ui/drawer'
 import {
+  forgetActiveUserIfGone,
   hasActiveUserChoice,
   seedActiveUser,
   writeActiveUser,
@@ -57,12 +58,18 @@ export function ActiveUserModal({ groupId }: { groupId: string }) {
     // "who are you?" on top of it would bury the thing the user came here to do; the question
     // keeps until their next visit.
     if (searchParams.get(FROM_SHARE_PARAM) === 'true') return
+    const participantIds = group.participants.map((p) => p.id)
+    // Someone since removed from the group is no answer: ask again.
+    forgetActiveUserIfGone(group.id, participantIds)
     if (hasActiveUserChoice(group.id)) return
     // Signed in, the account may already know — answered on another device. Wait to find out
     // rather than ask a question that has an answer.
     if (sessionStatus === 'loading') return
     if (sessionStatus === 'authenticated' && syncedPending) return
-    if (synced?.activeParticipantId) {
+    if (
+      synced?.activeParticipantId &&
+      participantIds.includes(synced.activeParticipantId)
+    ) {
       seedActiveUser(group.id, synced.activeParticipantId)
       return
     }

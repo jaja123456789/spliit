@@ -56,11 +56,20 @@ export function useDeleteExpense(groupId: string) {
     title: string
     participantId?: string
   }) => {
-    const { activityId } = await utils.client.groups.expenses.delete.mutate({
-      groupId,
-      expenseId,
-      participantId,
-    })
+    let activityId: string
+    try {
+      ;({ activityId } = await utils.client.groups.expenses.delete.mutate({
+        groupId,
+        expenseId,
+        participantId,
+      }))
+    } catch {
+      // Most often already deleted, by someone else. The rejection used to go unhandled: no
+      // message, and the row stayed on screen until something else refreshed the list.
+      utils.groups.invalidate()
+      toast({ title: t('deleteFailed'), variant: 'destructive' })
+      return
+    }
     utils.groups.invalidate()
     toast({
       title: t('title', { title }),

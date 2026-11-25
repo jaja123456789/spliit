@@ -76,7 +76,8 @@
       "title": "“{title}” deleted",
       "undo": "Undo",
       "restored": "“{title}” restored",
-      "restoreFailed": "The expense could not be restored."
+      "restoreFailed": "The expense could not be restored.",
+      "deleteFailed": "The expense could not be deleted. It may already be gone."
     },
     "balancesPanel": "Balances"
   },
@@ -978,6 +979,8 @@
     "send": "Send",
     "delete": "Delete",
     "someone": "Someone",
-    "count": "{count, plural, one {# comment} other {# comments}}"
+    "count": "{count, plural, one {# comment} other {# comments}}",
+    "postFailed": "The comment could not be posted. Try again.",
+    "deleteFailed": "The comment could not be deleted."
   }
 }

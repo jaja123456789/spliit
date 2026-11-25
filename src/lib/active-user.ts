@@ -84,6 +84,26 @@ export function seedActiveUser(groupId: string, participantId: string) {
   writeActiveUser(groupId, participantId)
 }
 
+/**
+ * Forgets "who you are" in a group when that participant is no longer in it — removed in the group
+ * settings, here or on another device. The stored id used to stay: comments and payments were then
+ * sent as somebody the server no longer knew and failed with nothing on screen, the balances header
+ * said "all settled", and the identity question was never asked again because it counted as
+ * answered. Forgotten, it is asked again.
+ *
+ * @returns whether anything was forgotten.
+ */
+export function forgetActiveUserIfGone(
+  groupId: string,
+  participantIds: string[],
+): boolean {
+  const current = readActiveUser(groupId)
+  if (!current || participantIds.includes(current)) return false
+  localStorage.removeItem(activeUserStorageKey(groupId))
+  window.dispatchEvent(new CustomEvent(CHANGE_EVENT, { detail: groupId }))
+  return true
+}
+
 /** Whether a choice has been recorded at all, including an explicit "nobody". */
 export function hasActiveUserChoice(groupId: string): boolean {
   if (typeof localStorage === 'undefined') return false

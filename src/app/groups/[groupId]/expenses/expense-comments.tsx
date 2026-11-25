@@ -2,6 +2,7 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Textarea } from '@/components/ui/textarea'
+import { useToast } from '@/components/ui/use-toast'
 import { useActiveUser } from '@/lib/hooks'
 import { formatDate } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
@@ -21,6 +22,7 @@ export function ExpenseComments({
   expenseId: string
 }) {
   const t = useTranslations('ExpenseComments')
+  const { toast } = useToast()
   const locale = useLocale()
   const { group } = useCurrentGroup()
   const activeUser = useActiveUser(groupId)
@@ -49,12 +51,19 @@ export function ExpenseComments({
     event.preventDefault()
     const comment = text.trim()
     if (!comment) return
-    await create.mutateAsync({
-      groupId,
-      expenseId,
-      text: comment,
-      participantId: activeUser ?? undefined,
-    })
+    try {
+      await create.mutateAsync({
+        groupId,
+        expenseId,
+        text: comment,
+        participantId: activeUser ?? undefined,
+      })
+    } catch {
+      // Offline, a server error, or "you" no longer in the group. The text stays to send again;
+      // before, the button simply came back and nothing said the comment was not posted.
+      toast({ title: t('postFailed'), variant: 'destructive' })
+      return
+    }
     setText('')
     await refresh()
   }
@@ -102,10 +111,17 @@ export function ExpenseComments({
                     className="h-auto p-0 text-xs text-muted-foreground"
                     disabled={remove.isPending}
                     onClick={async () => {
-                      await remove.mutateAsync({
-                        groupId,
-                        commentId: comment.id,
-                      })
+                      try {
+                        await remove.mutateAsync({
+                          groupId,
+                          commentId: comment.id,
+                        })
+                      } catch {
+                        toast({
+                          title: t('deleteFailed'),
+                          variant: 'destructive',
+                        })
+                      }
                       await refresh()
                     }}
                   >
