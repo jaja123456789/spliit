@@ -547,9 +547,17 @@ export async function updateExpense(
     expenseFormValues.recurrenceRule === RecurrenceRule.NONE &&
     existingExpense.recurringExpenseLink?.nextExpenseCreatedAt === null
 
+  // The schedule hangs off this expense until its next occurrence exists: the next date is one
+  // period after this one. So a new rule or a new date moves it — computed from the date as it now
+  // is. It used to move only for a new rule, and from the old date: moving a monthly expense from
+  // the 15th to the 20th kept the next one on the 15th, and switching it to weekly as well could
+  // schedule the next occurrence before the expense itself.
   const isUpdateRecurrenceExpenseLink =
-    existingExpense.recurrenceRule !== expenseFormValues.recurrenceRule &&
-    existingExpense.recurringExpenseLink?.nextExpenseCreatedAt === null
+    expenseFormValues.recurrenceRule !== RecurrenceRule.NONE &&
+    existingExpense.recurringExpenseLink?.nextExpenseCreatedAt === null &&
+    (existingExpense.recurrenceRule !== expenseFormValues.recurrenceRule ||
+      existingExpense.expenseDate.getTime() !==
+        expenseFormValues.expenseDate.getTime())
 
   const isCreateRecurrenceExpenseLink =
     existingExpense.recurrenceRule === RecurrenceRule.NONE &&
@@ -564,7 +572,7 @@ export async function updateExpense(
 
   const updatedRecurrenceExpenseLinkNextExpenseDate = calculateNextDate(
     expenseFormValues.recurrenceRule as RecurrenceRule,
-    existingExpense.expenseDate,
+    expenseFormValues.expenseDate,
   )
 
   const stored = toStoredAmounts(expenseFormValues, groupCurrency)
@@ -1401,7 +1409,7 @@ export async function createRecurringExpenses(groupId?: string | string[]) {
     },
     include: {
       currentFrameExpense: {
-        include: { paidBy: true, paidFor: true, documents: true },
+        include: { paidBy: true, paidFor: true, documents: true, items: true },
       },
     },
   })
@@ -1432,7 +1440,7 @@ async function catchUpRecurringExpense(
   link: Prisma.RecurringExpenseLinkGetPayload<{
     include: {
       currentFrameExpense: {
-        include: { paidBy: true; paidFor: true; documents: true }
+        include: { paidBy: true; paidFor: true; documents: true; items: true }
       }
     }
   }>,
@@ -1442,6 +1450,7 @@ async function catchUpRecurringExpense(
     paidBy,
     paidFor,
     documents,
+    items,
     id: _templateId,
     createdAt: _templateCreatedAt,
     ...template
@@ -1504,6 +1513,21 @@ async function catchUpRecurringExpense(
         })),
       ),
     })
+    // An itemised expense recurs itemised: without its lines, every occurrence reopened as a plain
+    // By exact amount split.
+    if (items.length > 0) {
+      await tx.expenseItem.createMany({
+        data: occurrences.flatMap(({ expenseId }) =>
+          items.map((item) => ({
+            id: randomId(),
+            expenseId,
+            name: item.name,
+            price: item.price,
+            participantIds: item.participantIds,
+          })),
+        ),
+      })
+    }
     await tx.recurringExpenseLink.createMany({
       data: occurrences.map(({ expenseId, linkId, nextExpenseDate }) => ({
         id: linkId,
