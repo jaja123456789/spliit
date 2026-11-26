@@ -98,7 +98,7 @@ function ParticipantStack({
       ))}
       {/* Bare, not a plate: the count is a label about the stack, not another member of it. */}
       {extra > 0 && (
-        <span className="ml-1 font-mono text-[10px] font-semibold text-subtle-foreground">
+        <span className="ml-1 font-sans tabular-nums text-[10px] font-semibold text-subtle-foreground">
           +{extra}
         </span>
       )}
@@ -537,7 +537,7 @@ export function ItemizationBuilder({
                                   field's full height as a target — a 28x44 hit area on a 28x28
                                   face, which costs no layout at all. */}
                               <div className="flex h-11 w-[104px] items-center gap-0.5 rounded-md border border-input bg-card pl-1.5 transition-shadow focus-within:ring-2 focus-within:ring-primary [&_button]:relative [&_button]:h-7 [&_button]:w-7 [&_button]:after:absolute [&_button]:after:inset-x-0 [&_button]:after:-inset-y-2 [&_button]:after:content-[''] sm:[&_button]:after:hidden">
-                                <span className="font-mono text-xs text-subtle-foreground">
+                                <span className="font-sans tabular-nums text-xs text-subtle-foreground">
                                   {currency.symbol || group.currency}
                                 </span>
                                 <FormControl>
@@ -553,7 +553,7 @@ export function ItemizationBuilder({
                                     value={field.value === 0 ? '' : field.value}
                                     placeholder="0.00"
                                     className="h-full min-w-0 flex-1 border-0 bg-transparent shadow-none"
-                                    inputClassName="h-full w-full border-0 bg-transparent px-0 text-right font-mono text-base font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                                    inputClassName="h-full w-full border-0 bg-transparent px-0 text-right font-sans tabular-nums text-base font-semibold shadow-none focus-visible:ring-0"
                                     onValueChange={(val: string) => {
                                       field.onChange(val)
                                       trigger('items')
@@ -596,7 +596,7 @@ export function ItemizationBuilder({
                           >
                             {currentItem.name || t('itemNamePlaceholder')}
                           </span>
-                          <span className="shrink-0 font-mono font-semibold tabular-nums">
+                          <span className="shrink-0 font-sans tabular-nums font-semibold">
                             {formatCurrency(currency, itemPrice, locale, true)}
                           </span>
                         </span>
@@ -1161,7 +1161,7 @@ function YourShare({
   if (!show) return null
   if (!isMine)
     return (
-      <span className="shrink-0 font-mono text-xs font-medium text-subtle-foreground">
+      <span className="shrink-0 font-sans tabular-nums text-xs font-medium text-subtle-foreground">
         —
       </span>
     )
@@ -1169,7 +1169,7 @@ function YourShare({
   // colour made it read as two things rather than one figure. The concept drew it in the accent,
   // but green text means money you are owed, and your share of a line is what you spent.
   return (
-    <span className="flex shrink-0 items-baseline justify-end gap-1 font-mono text-xs font-semibold text-foreground">
+    <span className="flex shrink-0 items-baseline justify-end gap-1 font-sans tabular-nums text-xs font-semibold text-foreground">
       {withLabel && <span>{t('yourShareShort')}</span>}
       <Money
         currency={currency}

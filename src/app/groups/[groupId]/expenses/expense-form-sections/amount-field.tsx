@@ -95,7 +95,7 @@ export function AmountField({
                           title={t('changeCurrency')}
                           /* Symbol and code rather than the symbol alone: "$" is a dozen
                                      currencies, and the code is the half that says which. */
-                          className="flex h-12 shrink-0 items-center gap-1 rounded-lg border border-input bg-background px-2.5 font-mono text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                          className="flex h-12 shrink-0 items-center gap-1 rounded-lg border border-input bg-background px-2.5 font-sans tabular-nums text-sm font-medium text-foreground transition-colors hover:bg-muted"
                         >
                           <span>
                             {expenseCurrency.symbol || group.currency}
@@ -112,7 +112,7 @@ export function AmountField({
               ) : (
                 // No chevron here on purpose: with no exchange rate to convert from there
                 // is nothing to pick, and this is a label, not a control.
-                <span className="grid h-12 shrink-0 place-items-center rounded-lg border border-input bg-background px-3 font-mono text-sm font-medium text-muted-foreground">
+                <span className="grid h-12 shrink-0 place-items-center rounded-lg border border-input bg-background px-3 font-sans tabular-nums text-sm font-medium text-muted-foreground">
                   {expenseCurrency.symbol || group.currency}
                 </span>
               )}

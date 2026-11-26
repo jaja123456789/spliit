@@ -61,7 +61,7 @@ export function ProfileAvatar({
     <div
       aria-hidden="true"
       className={cn(
-        'flex items-center justify-center shrink-0 font-mono font-semibold',
+        'flex items-center justify-center shrink-0 font-sans font-bold',
         // Inset both ways, so marking you costs no layout: an offset ring would need clear space
         // the 26px chips in a two-column grid do not have. Ink, not the accent: green is kept for
         // the filled action and for money, and an ink ring reads on every plate in both themes.

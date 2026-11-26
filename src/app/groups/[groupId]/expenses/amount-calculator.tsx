@@ -181,12 +181,11 @@ export function AmountCalculator({
     >
       {/* Display Area */}
       <div className="bg-muted/30 border rounded-lg p-4 mb-4 flex flex-col items-end justify-center h-24 overflow-hidden">
-        <div className="text-sm text-muted-foreground font-mono h-5 uppercase tracking-wider mb-1">
+        <div className="text-sm text-muted-foreground font-sans tabular-nums h-5 uppercase tracking-wider mb-1">
           {formula}
         </div>
-        {/* font-semibold, not font-bold: --font-mono ships 400/500/600 and a 700 request here would
-            be synthesised rather than drawn. */}
-        <div className="text-4xl font-semibold font-mono tracking-tight w-full text-right">
+        {/* The UI face with tabular figures, like every other amount in the app. */}
+        <div className="text-4xl font-semibold font-sans tabular-nums tracking-tight w-full text-right">
           {display}
         </div>
       </div>

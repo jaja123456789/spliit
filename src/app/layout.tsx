@@ -37,22 +37,12 @@ const nunitoSans = Nunito_Sans({
 })
 
 /**
- * The second voice, for figures only.
+ * For strings that are code — the MCP tokens in Settings — and nothing else.
  *
- * This is a money app whose figures were set in the same face as its prose, at the same weight, so
- * an amount read as another word in the sentence. A mono face separates the two registers and — the
- * part that actually matters — puts every glyph on the same advance, so a column of amounts lines
- * up on the decimal without any per-row measurement. Nunito Sans has tabular figures, but tabular
- * figures still sit in a proportional face; the sign column this design depends on needs a fixed
- * advance to sit in.
- *
- * IBM Plex Mono rather than a technical mono: it is humanist, with the same open apertures and
- * slightly soft terminals as Nunito Sans, and its 0/O and 1/l are unambiguous at 12px.
- *
- * Three weights: 400 so a bare `font-mono` (the MCP token strings) gets a face rather than the
- * nearest substitute, 500 for row figures, 600 for headline ones. Deliberately no 700 — nothing in
- * the app should ask the browser to synthesise a weight that was never downloaded, which means
- * `font-mono font-bold` is a mistake wherever it appears.
+ * Figures used to be set in it too, to give amounts a voice of their own and a fixed advance for
+ * the sign column. Next to Nunito Sans it read as a terminal, the most dated thing on every screen.
+ * Amounts are now Nunito Sans with its tabular figures (`tabular-nums`, on `Money`), which keeps the
+ * decimals of a column in line; the sign column is `1ch` wide, a figure's width either way.
  */
 const plexMono = IBM_Plex_Mono({
   subsets: ['latin'],

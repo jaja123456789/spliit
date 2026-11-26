@@ -224,14 +224,14 @@ export function PayersAndDate({
                                     up down the column, the box tracking its value, and the
                                     calculator inside the field rather than beside it. */}
                         <div className="flex h-11 items-center gap-1 rounded-md border border-input bg-card pl-2 transition-shadow focus-within:ring-2 focus-within:ring-primary [&_button]:h-8 [&_button]:w-8">
-                          <span className="font-mono text-xs text-subtle-foreground">
+                          <span className="font-sans tabular-nums text-xs text-subtle-foreground">
                             {expenseCurrency.symbol || group.currency}
                           </span>
                           <FormControl>
                             <CalculatorInput
                               placeholder="0.00"
                               className="h-11 min-w-0 flex-1 border-0 bg-transparent shadow-none has-[[data-slot=input-group-control]:focus-visible]:ring-0"
-                              inputClassName="h-11 w-full border-0 bg-transparent px-0 text-right font-mono text-base font-semibold tabular-nums shadow-none focus-visible:ring-0"
+                              inputClassName="h-11 w-full border-0 bg-transparent px-0 text-right font-sans tabular-nums text-base font-semibold shadow-none focus-visible:ring-0"
                               {...field}
                               onValueChange={(val) => {
                                 onPayerAmountChange(index, val)

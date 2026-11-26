@@ -208,7 +208,7 @@ export function PaidForList({
                 <FormControl>
                   <CalculatorInput
                     className="h-9 w-[104px] rounded-md border border-input bg-card shadow-none has-[[data-slot=input-group-control]:focus-visible]:ring-0"
-                    inputClassName="h-9 w-full border-0 bg-transparent px-2 text-right font-mono text-base tabular-nums shadow-none focus-visible:ring-0"
+                    inputClassName="h-9 w-full border-0 bg-transparent px-2 text-right font-sans tabular-nums text-base shadow-none focus-visible:ring-0"
                     placeholder="0.00"
                     decimalPlaces={expenseCurrency.decimal_digits}
                     value={currentShare}

@@ -66,7 +66,7 @@ export function Money({
         'tabular-nums whitespace-nowrap',
         headline
           ? 'font-sans font-extrabold tracking-tight'
-          : cn('font-mono', bold ? 'font-semibold' : 'font-medium'),
+          : cn('font-sans', bold ? 'font-semibold' : 'font-medium'),
         colored && direction === 'credit' && 'text-credit',
         colored && direction === 'debt' && 'text-debt',
         colored && direction === 'settled' && 'text-subtle-foreground',
@@ -75,7 +75,9 @@ export function Money({
     >
       {signed && (
         <span
-          className="inline-block w-[1ch] text-center"
+          // Set against the figure, as a sign is written. The fixed 1ch column it had was sized for a
+          // monospace face; in the UI font it left a gap, "- €37.33".
+          className="mr-px"
           // A middle dot is a typographic mark, not information — the figure that follows already
           // says zero. '+' and '-' are left audible because they are the whole point.
           aria-hidden={direction === 'settled' ? 'true' : undefined}
