@@ -8,8 +8,12 @@ test.describe('The front page and the groups home', () => {
   }) => {
     await page.goto('/')
     await expect(page).toHaveURL(/\/$/)
-    await expect(page.getByRole('link', { name: 'Open your groups' })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Create a group' })).toBeVisible()
+    await expect(
+      page.getByRole('link', { name: 'Open your groups' }),
+    ).toBeVisible()
+    await expect(
+      page.getByRole('link', { name: 'Create a group' }),
+    ).toBeVisible()
 
     // Having a group makes this browser a returning one.
     await createGroupViaAPI(page, `returning ${randomId(4)}`, ['Alice', 'Bob'])
