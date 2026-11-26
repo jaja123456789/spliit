@@ -1,4 +1,6 @@
-FROM node:22-alpine AS base
+# Node 24, the LTS line CI tests on and the newest that Next 16 and Prisma 6 both support. The tag
+# follows 24.x, so every rebuild picks up its security releases.
+FROM node:24-alpine AS base
 RUN apk add --no-cache libc6-compat openssl
 
 WORKDIR /usr/app
