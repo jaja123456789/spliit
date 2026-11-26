@@ -1,7 +1,6 @@
 import { Logo } from '@/components/logo'
 import { SkipLanding } from '@/components/skip-landing'
 import { Button } from '@/components/ui/button'
-import { Github } from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 
@@ -28,17 +27,20 @@ export default function HomePage() {
                 strong: (chunks) => <strong>{chunks}</strong>,
               })}
             </p>
-            <div className="flex gap-2">
-              <Button asChild>
+            {/* What someone arriving here came to do: start a group, or get back to theirs. The
+                GitHub button was the second of two; it is for people running a server, not using
+                one, and the footer keeps the credits. */}
+            <div className="mt-2 flex flex-wrap justify-center gap-2">
+              <Button asChild className="h-11 px-5">
+                <Link href="/groups/create">{t('Homepage.button.create')}</Link>
+              </Button>
+              <Button asChild variant="secondary" className="h-11 px-5">
                 <Link href="/groups">{t('Homepage.button.groups')}</Link>
               </Button>
-              <Button asChild variant="secondary">
-                <Link href="https://github.com/spliit-app/spliit">
-                  <Github className="w-4 h-4 mr-2" />
-                  {t('Homepage.button.github')}
-                </Link>
-              </Button>
             </div>
+            <p className="max-w-[28rem] text-sm text-muted-foreground">
+              {t('Homepage.joinHint')}
+            </p>
           </div>
         </section>
       </main>

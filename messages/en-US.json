@@ -1,9 +1,11 @@
 {
   "Homepage": {
     "title": "Share <strong>Expenses</strong> with <strong>Friends & Family</strong>",
-    "description": "Welcome to your new <strong>Spliit</strong> instance !",
+    "description": "Split rent, trips and dinners with the people you share them with. No accounts, no ads.",
+    "joinHint": "Got a link to a group from someone? Open it, and the group appears here.",
     "button": {
-      "groups": "Go to groups",
+      "create": "Create a group",
+      "groups": "Open your groups",
       "github": "GitHub"
     }
   },
