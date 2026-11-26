@@ -15,6 +15,7 @@ import { RuntimeFeatureFlags } from '@/lib/featureFlags'
 import { useActiveUser, useCurrencyRate } from '@/lib/hooks'
 import { ExpenseFormValues, expenseFormSchema } from '@/lib/schemas'
 import {
+  amountAsMinorUnits,
   cn,
   convertAmount,
   convertAmountParts,
@@ -639,7 +640,13 @@ export function ExpenseForm({
       if (form.getValues('items').length === 0) {
         itemAppend({
           name: '',
-          price: totalAmount || 0,
+          // "48.20", in the expense currency's decimals, as the line's field shows an amount.
+          price: (totalAmount
+            ? formatAmountAsDecimal(
+                amountAsMinorUnits(totalAmount, expenseCurrency),
+                expenseCurrency,
+              )
+            : 0) as number,
           participantIds: group.participants.map((p) => p.id),
         })
       }

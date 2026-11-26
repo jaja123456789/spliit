@@ -185,7 +185,8 @@ export default function BalancesAndReimbursements({
                 asChild
                 variant="link"
                 size="sm"
-                className="h-auto gap-1.5 p-0 text-sm"
+                // A full thumb's height on a phone; it was a 20px line of text there.
+                className="h-11 gap-1.5 px-0 text-sm sm:h-auto sm:py-0"
               >
                 <Link
                   href={`/groups/${groupId}/payments/create`}

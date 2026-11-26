@@ -182,36 +182,39 @@ export function PaymentForm({ group }: { group: Group }) {
         <SheetHeader
           label={t('amount')}
           figure={
-            // The same amount idiom as the expense form: the currency on a plate beside the field
-            // rather than inside it, so the caret never lands on the symbol.
-            <div className="flex items-center gap-3">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-muted text-lg font-semibold text-muted-foreground">
-                {currency.symbol || group.currency}
-              </span>
-              <div className="min-w-0 flex-1 rounded-md border border-input p-0.5 transition-colors focus-within:border-primary">
-                <Label htmlFor="payment-amount" className="sr-only">
-                  {t('amount')}
-                </Label>
-                <CalculatorInput
-                  id="payment-amount"
-                  data-testid="payment-amount"
-                  name="paymentAmount"
-                  value={amount}
-                  onValueChange={setAmount}
-                  // "3266.38" read like no other figure in the app. Grouped while it is not being
-                  // edited; the raw number comes back the moment the field is focused.
-                  formatDisplay={(raw) => {
-                    const value = Number(raw)
-                    return Number.isFinite(value)
-                      ? new Intl.NumberFormat(locale, {
-                          minimumFractionDigits: currency.decimal_digits,
-                          maximumFractionDigits: currency.decimal_digits,
-                        }).format(value)
-                      : raw
-                  }}
-                  className="h-11 sm:h-10 w-full border-0 bg-transparent shadow-none"
-                  inputClassName="h-11 sm:h-10 w-full border-0 bg-transparent px-2.5 text-2xl sm:text-2xl font-extrabold tracking-tight tabular-nums shadow-none focus-visible:ring-0"
-                />
+            // The expense form's amount box, so the two screens that ask for an amount ask the same
+            // way: one bordered box, the currency labelled at its left, the figure large and
+            // centred. This one had a grey plate outside a separate field, and a smaller figure.
+            <div className="rounded-xl border border-input bg-card px-3 py-3 transition-shadow focus-within:ring-2 focus-within:ring-primary">
+              <div className="flex items-center gap-3">
+                <span className="grid h-12 shrink-0 place-items-center rounded-lg border border-input bg-background px-3 text-sm font-medium text-muted-foreground">
+                  {currency.symbol || group.currency}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <Label htmlFor="payment-amount" className="sr-only">
+                    {t('amount')}
+                  </Label>
+                  <CalculatorInput
+                    id="payment-amount"
+                    data-testid="payment-amount"
+                    name="paymentAmount"
+                    value={amount}
+                    onValueChange={setAmount}
+                    // "3266.38" read like no other figure in the app. Grouped while it is not
+                    // being edited; the raw number comes back the moment the field is focused.
+                    formatDisplay={(raw) => {
+                      const value = Number(raw)
+                      return Number.isFinite(value)
+                        ? new Intl.NumberFormat(locale, {
+                            minimumFractionDigits: currency.decimal_digits,
+                            maximumFractionDigits: currency.decimal_digits,
+                          }).format(value)
+                        : raw
+                    }}
+                    className="h-12 w-full border-0 bg-transparent shadow-none has-[[data-slot=input-group-control]:focus-visible]:ring-0"
+                    inputClassName="h-12 w-full border-0 bg-transparent px-1 text-center text-4xl sm:text-4xl font-bold tabular-nums shadow-none focus-visible:ring-0"
+                  />
+                </div>
               </div>
             </div>
           }

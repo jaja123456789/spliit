@@ -32,6 +32,7 @@ import {
   amountAsMinorUnits,
   cn,
   distributeMinorUnits,
+  formatAmountAsDecimal,
   formatCurrency,
 } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
@@ -179,8 +180,13 @@ export function ItemizationBuilder({
   const canSplitProportionally = subtotals.some((amount) => amount > 0)
 
   // In the currency's own decimals: two was wrong for yen (none) and dinars (three).
+  // A string in the currency's decimals — "48.20", as an amount is written — not the 48.2 a
+  // number prints as.
   const inCurrency = (value: number) =>
-    amountAsDecimal(amountAsMinorUnits(value, currency), currency)
+    formatAmountAsDecimal(
+      amountAsMinorUnits(value, currency),
+      currency,
+    ) as unknown as number
 
   const addRemainderEvenly = () => {
     append({
