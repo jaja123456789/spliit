@@ -1,6 +1,7 @@
 'use client'
 
 import { GROUP_TABS, useGroupTabValue } from '@/app/groups/[groupId]/group-tabs'
+import { useEnv } from '@/components/env-provider'
 import {
   Drawer,
   DrawerContent,
@@ -10,24 +11,31 @@ import {
 } from '@/components/ui/drawer'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
-import { ChevronRight, MoreHorizontal, Plus } from 'lucide-react'
+import {
+  ChevronRight,
+  FileDown,
+  FileJson,
+  MoreHorizontal,
+  Plus,
+} from 'lucide-react'
 import { useTranslations } from 'next-intl'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 /**
- * Three tabs, add in the middle, and More. Add is the action the bar is for; Stats is the
- * destination opened least, so it went into More, with Settings.
+ * Three tabs, add in the middle, and More. Add is the action the bar is for. Stats is a tab and
+ * Activity sits in More with Settings and Export: Stats used to be the one in More, which left More
+ * holding two things and the colourful screen two taps away.
  */
-const PRIMARY_VALUES = ['expenses', 'balances', 'activity']
+const PRIMARY_VALUES = ['expenses', 'balances', 'stats']
 const PRIMARY = GROUP_TABS.filter((tab) => PRIMARY_VALUES.includes(tab.value))
 const OVERFLOW = GROUP_TABS.filter((tab) => !PRIMARY_VALUES.includes(tab.value))
 /** Their columns in the bar's five, the middle one being add's. */
 const COLUMN: Record<string, string> = {
   expenses: 'col-start-1',
   balances: 'col-start-2',
-  activity: 'col-start-4',
+  stats: 'col-start-4',
   more: 'col-start-5',
 }
 
@@ -63,6 +71,7 @@ export function GroupTabBar({ groupId }: { groupId: string }) {
   const tabValue = useGroupTabValue()
   const [open, setOpen] = useState(false)
   const showsTabBar = useShowsTabBar()
+  const basePath = useEnv().NEXT_PUBLIC_BASE_PATH ?? ''
 
   if (!showsTabBar) return null
 
@@ -157,6 +166,26 @@ export function GroupTabBar({ groupId }: { groupId: string }) {
                   aria-hidden="true"
                 />
               </Link>
+            ))}
+            {/* Export lived in the expense list's total card on a phone, an icon beside the
+                figure; it is rare enough to sit here instead. */}
+            {(
+              [
+                ['json', 'Expenses.exportJson', FileJson],
+                ['csv', 'Expenses.exportCsv', FileDown],
+              ] as const
+            ).map(([format, messageKey, Icon]) => (
+              <a
+                key={format}
+                href={`${basePath}/groups/${groupId}/expenses/export/${format}`}
+                target="_blank"
+                rel="noreferrer"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-3 border-b py-4 text-sm font-medium last:border-0"
+              >
+                <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
+                {t(messageKey)}
+              </a>
             ))}
           </div>
         </DrawerContent>

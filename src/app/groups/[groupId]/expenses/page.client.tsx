@@ -42,7 +42,10 @@ export default function GroupExpensesPageClient({
               enableReceiptExtract={enableReceiptExtract}
               actions={
                 <>
-                  <ExportButton groupId={groupId} />
+                  {/* On a phone, export is in the tab bar's More sheet. */}
+                  <span className="hidden sm:contents">
+                    <ExportButton groupId={groupId} />
+                  </span>
                   {/* Hidden on a phone, where add is in the bar and the form's first row is Scan
                       a receipt; still mounted, so a photo shared to the app still opens it. */}
                   {enableReceiptExtract && (
