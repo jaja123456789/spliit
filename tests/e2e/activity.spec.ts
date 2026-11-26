@@ -73,8 +73,8 @@ test('Log shows create', async ({ page }) => {
   // Verify expense title appears in activity
   await expect(page.getByText(expenseTitle)).toBeVisible()
 
-  // Verify "created" action text appears in activity (e.g., "Alice created Test Expense")
-  await expect(page.getByText(/created/i)).toBeVisible()
+  // Verify the "added" action text appears in activity ("Alice added “Test Expense”")
+  await expect(page.getByText(/ added /)).toBeVisible()
 })
 
 test('Log shows update', async ({ page }) => {
@@ -215,9 +215,7 @@ test('Log pagination', async ({ page }) => {
   await expect(activityListWrapper).toBeVisible()
 
   // Verify the most recent expense appears (last in array)
-  await expect(
-    page.getByText(`Expense “Expense ${numExpenses}” created`),
-  ).toBeVisible()
+  await expect(page.getByText(`added “Expense ${numExpenses}”`)).toBeVisible()
 
   // Scroll down to trigger infinite scroll pagination
   await page.mouse.wheel(0, 1000)
@@ -225,7 +223,9 @@ test('Log pagination', async ({ page }) => {
 
   // Verify all created expenses are loaded after scrolling
   for (let i = 1; i <= numExpenses; i++) {
-    await expect(page.getByText(`Expense “Expense ${i}” created`)).toBeVisible()
+    await expect(
+      page.getByText(`added “Expense ${i}”`, { exact: false }),
+    ).toBeVisible()
   }
 })
 

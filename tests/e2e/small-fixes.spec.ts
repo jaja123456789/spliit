@@ -94,9 +94,7 @@ test.describe('Smaller fixes', () => {
     await expect(page.getByTestId('expense-title')).toHaveCount(11)
     await navigateToTab(page, 'Activity')
     await expect(
-      page.getByText(
-        /10 occurrences of recurring expense .Daily coffee. added automatically/,
-      ),
+      page.getByText(/.Daily coffee. repeated 10 times, as scheduled/),
     ).toBeVisible()
   })
 })
