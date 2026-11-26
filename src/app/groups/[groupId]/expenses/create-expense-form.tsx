@@ -7,7 +7,7 @@ import { randomId } from '@/lib/utils'
 import { trpc } from '@/trpc/client'
 import { useTranslations } from 'next-intl'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useRef } from 'react'
+import { useState } from 'react'
 import { ExpenseForm } from './expense-form'
 
 export function CreateExpenseForm({
@@ -45,7 +45,8 @@ export function CreateExpenseForm({
     trpc.groups.expenses.create.useMutation()
 
   const utils = trpc.useUtils()
-  const expenseIdRef = useRef(randomId())
+  // Drawn once per form and never changed: state rather than a ref, so render may read it.
+  const [newExpenseId] = useState(randomId)
   const router = useRouter()
   const { toast } = useToast()
   const tOffline = useTranslations('Offline')
@@ -67,7 +68,7 @@ export function CreateExpenseForm({
         // still redirecting sends the same expense again, which the server answers with the one it
         // already made. A fresh id each time made two. It is also how the outbox sends it again
         // without making two.
-        const expenseId = expenseIdRef.current
+        const expenseId = newExpenseId
         const queue = () => {
           enqueueExpense({
             id: expenseId,
@@ -105,7 +106,7 @@ export function CreateExpenseForm({
         router.push(`/groups/${group.id}/expenses`)
       }}
       runtimeFeatureFlags={runtimeFeatureFlags}
-      newExpenseId={expenseIdRef.current}
+      newExpenseId={newExpenseId}
     />
   )
 }
