@@ -1,9 +1,9 @@
 'use client'
-// No category glyph on the row. It repeated the same icon down the whole list — a group's expenses
-// cluster in two or three categories — and cost 26px of every row's width to say something the
-// title already said. The category is still chosen and shown on the expense itself.
+// No category column on the row: a full icon repeated down the list cost 26px of every row's width.
+// The category is a small coloured badge on the payer's plate instead, which costs none.
 // The row leads with who paid instead: that changes from row to row, and a person's plate is the
 // same colour on every screen, so a long list can be read by person at a glance.
+import { CategoryIcon } from '@/app/groups/[groupId]/expenses/category-icon'
 import { DocumentsCount } from '@/app/groups/[groupId]/expenses/documents-count'
 import {
   ExpenseRowMenu,
@@ -15,6 +15,7 @@ import { ProfileAvatar } from '@/components/profile-avatar'
 import { Locale } from '@/i18n/request'
 import { getGroupExpenses } from '@/lib/api'
 import { getBalances } from '@/lib/balances'
+import { categoryColor, isUncategorized } from '@/lib/category-colors'
 import { Currency, getCurrency } from '@/lib/currency'
 import { useActiveUser } from '@/lib/hooks'
 import { cn, toDateInputValue } from '@/lib/utils'
@@ -251,15 +252,34 @@ export function ExpenseCard({
             </span>
           ) : (
             expense.paidBy[0] && (
-              <ProfileAvatar
-                name={expense.paidBy[0].participant.name}
-                hue={avatarHues?.get(expense.paidBy[0].participant.name)}
-                isActiveUser={
-                  !!activeUserId &&
-                  expense.paidBy[0].participant.id === activeUserId
-                }
-                size={32}
-              />
+              // The category rides on the payer's plate as a badge: colour and a glyph in the
+              // corner, where it costs the row no width — the reason a full category icon was taken
+              // off the row. General and Payment carry none; they would say nothing.
+              <span className="relative block">
+                <ProfileAvatar
+                  name={expense.paidBy[0].participant.name}
+                  hue={avatarHues?.get(expense.paidBy[0].participant.name)}
+                  isActiveUser={
+                    !!activeUserId &&
+                    expense.paidBy[0].participant.id === activeUserId
+                  }
+                  size={32}
+                />
+                {!isUncategorized(expense.category?.grouping) && (
+                  <span
+                    aria-hidden
+                    data-testid="category-badge"
+                    className="absolute -bottom-1.5 -right-2.5 grid h-[18px] w-[18px] place-items-center rounded-full bg-card ring-2 ring-card"
+                    style={{ color: categoryColor(expense.category?.grouping) }}
+                  >
+                    <CategoryIcon
+                      category={expense.category}
+                      className="h-3 w-3"
+                      strokeWidth={2.5}
+                    />
+                  </span>
+                )}
+              </span>
             )
           )}
         </div>

@@ -1,6 +1,8 @@
 'use client'
 import { SheetHeader } from '@/components/sheet-header'
 import { Card, CardContent } from '@/components/ui/card'
+import { assignAvatarHues } from '@/lib/avatar-hue'
+import { categoryColor } from '@/lib/category-colors'
 import { Currency } from '@/lib/currency'
 import { amountAsDecimal, formatCurrency, formatDateOnly } from '@/lib/utils'
 import { AppRouterOutput } from '@/trpc/routers/_app'
@@ -24,8 +26,9 @@ type StatsData = AppRouterOutput['groups']['stats']['get']
 // bars are neutral. The accent means "you" everywhere else in this app, so it is spent on exactly
 // one bar on this page — yours, in the by-member chart. Both steps are defined in globals.css and
 // validated against the surface they land on, which is what keeps them readable in dark mode.
-const YOU = 'hsl(var(--chart-1))'
+const YOU = 'hsl(var(--foreground))'
 const MARK = 'hsl(var(--chart-2))'
+const TIME = 'hsl(var(--chart-time))'
 const AXIS = 'hsl(var(--muted-foreground))'
 const GRID = 'hsl(var(--border))'
 
@@ -201,6 +204,9 @@ export function Charts({
 
   const categoryAxis = useNameAxis(categoryData.map((c) => c.label))
   const memberAxis = useNameAxis(data.participantSpending.map((p) => p.name))
+  const memberHues = assignAvatarHues(
+    data.participantSpending.map((p) => p.name),
+  )
 
   const formatBucket = (bucket: unknown) =>
     data.timeGranularity === 'month'
@@ -248,6 +254,10 @@ export function Charts({
             maxBarSize={24}
             radius={[0, 4, 4, 0]}
           >
+            {/* Each in its group's colour, the one its expenses wear in the list. */}
+            {categoryData.map((category) => (
+              <Cell key={category.id} fill={categoryColor(category.grouping)} />
+            ))}
             {/* The value at the tip, so the numbers are readable without a pointer. */}
             <LabelList
               dataKey="amount"
@@ -295,10 +305,16 @@ export function Charts({
           >
             {/* The one accented bar on this page. `participantSpending` carries the participant id,
                 so this is a direct match rather than a join through the group by name. */}
+            {/* Each person in their own plate colour, as everywhere else they appear; you are
+                outlined in ink, as your plate is ringed. */}
             {data.participantSpending.map((participant) => (
               <Cell
                 key={participant.id}
-                fill={participant.id === activeUserId ? YOU : MARK}
+                fill={`hsl(var(--avatar-${
+                  (memberHues.get(participant.name) ?? 0) + 1
+                }))`}
+                stroke={participant.id === activeUserId ? YOU : undefined}
+                strokeWidth={participant.id === activeUserId ? 2 : 0}
               />
             ))}
             <LabelList
@@ -353,7 +369,7 @@ export function Charts({
           />
           <Bar
             dataKey="amount"
-            fill={MARK}
+            fill={TIME}
             maxBarSize={24}
             radius={[4, 4, 0, 0]}
           />
