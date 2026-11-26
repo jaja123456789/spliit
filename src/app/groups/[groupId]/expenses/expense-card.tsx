@@ -160,16 +160,22 @@ function PaymentLine({
  */
 function usePaymentNote(expense: Expense) {
   const t = useTranslations('Payment')
+  const tCard = useTranslations('ExpenseCard')
   const from = expense.paidBy[0]?.participant.name ?? ''
   const to = expense.paidFor
     .map(({ participant }) => participant.name)
     .join(', ')
   const title = expense.title.trim()
+  const same = (a: string, b: string) =>
+    a.localeCompare(b, undefined, { sensitivity: 'base' }) === 0
   const generated =
     title === '' ||
     /^payment$/i.test(title) ||
     /^payment from .+ to .+$/i.test(title) ||
-    title === t('defaultTitle', { from, to })
+    title === t('defaultTitle', { from, to }) ||
+    // Written as the row already words it — "Tom paid Jonas" under "Tom paid Jonas" — it says
+    // nothing the line above does not.
+    same(title, tCard('paymentBetween', { from, to }))
   return generated ? null : title
 }
 
