@@ -276,6 +276,7 @@
       "link": "Back to the expenses"
     },
     "saveFailed": "The expense could not be saved. Check it and try again.",
+    "moreActions": "More actions",
     "recipientField": {
       "label": "Paid to",
       "placeholder": "Who received it"
