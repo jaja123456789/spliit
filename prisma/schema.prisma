@@ -64,6 +64,10 @@ model Expense {
   groupId          String
   isReimbursement  Boolean           @default(false)
   splitMode        SplitMode         @default(EVENLY)
+  /// Who gets the minor units an even split cannot divide. 1: the participants later in the list
+  /// (every expense from before this column). 2: an order drawn from the expense's id, so over
+  /// many expenses nobody is always first or last. Never changes for an existing expense.
+  remainderRule    Int               @default(1)
   createdAt        DateTime          @default(now())
   documents        ExpenseDocument[]
   notes            String?

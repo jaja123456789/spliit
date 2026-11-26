@@ -31,6 +31,29 @@ type ExpenseForShares = Pick<
   'amount' | 'paidFor' | 'splitMode' | 'isReimbursement' | 'paidBy'
 > & {
   expenseDate?: Expense['expenseDate']
+  /** With `remainderRule` 2, draws who gets the spare minor units. */
+  id?: string
+  /** See `remainderRule` on Expense in the schema. Absent means the original rule, 1. */
+  remainderRule?: number
+}
+
+/**
+ * A stable, well-spread 32-bit number for a string: FNV-1a, then MurmurHash3's finaliser. FNV alone
+ * leaves strings that differ only in their last character (`id:alice`, `id:bob`) close together, and
+ * one participant then won the draw half the time instead of a third; the finaliser spreads them.
+ */
+function hash32(text: string): number {
+  let h = 0x811c9dc5
+  for (let i = 0; i < text.length; i++) {
+    h ^= text.charCodeAt(i)
+    h = Math.imul(h, 0x01000193)
+  }
+  h ^= h >>> 16
+  h = Math.imul(h, 0x85ebca6b)
+  h ^= h >>> 13
+  h = Math.imul(h, 0xc2b2ae35)
+  h ^= h >>> 16
+  return h >>> 0
 }
 
 export function calculateShares(
@@ -112,12 +135,25 @@ export function calculateShares(
     // Largest-remainder method: whoever lost the most to truncation is first in line for the
     // leftover minor units, so nobody is off by more than one. Ties go to the later participant,
     // which keeps the allocation stable for a given expense without needing a random seed.
+    //
+    // Rule 1, every expense from before `remainderRule` existed: ties go to the later participant.
+    // In an even split everyone ties, so the first people in the list always got the smaller share
+    // and the last the spare cent, expense after expense. It stays for those expenses so that no
+    // existing balance moves.
+    //
+    // Rule 2, every expense since: ties go in an order drawn from the expense's id and each
+    // participant's — different for each expense, so the spare cents spread over everyone, and
+    // independent of the order the database returns the rows in.
     const orderIndex = new Map<string, number>(
       participantOrder.map((id, idx) => [id, idx]),
     )
+    const drawn = expense.remainderRule === 2 && !!expense.id
+    const draw = (participantId: string) =>
+      hash32(`${expense.id}:${participantId}`)
     fractions.sort((a, b) => {
       const cmp = b.frac.comparedTo(a.frac)
       if (cmp !== 0) return cmp
+      if (drawn) return draw(b.id) - draw(a.id)
       return (orderIndex.get(b.id) ?? 0) - (orderIndex.get(a.id) ?? 0)
     })
 

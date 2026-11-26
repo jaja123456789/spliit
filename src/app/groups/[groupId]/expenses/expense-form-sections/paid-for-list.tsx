@@ -14,6 +14,7 @@ import { AppRouterOutput } from '@/trpc/routers/_app'
 import { useLocale, useTranslations } from 'next-intl'
 import { UseFormReturn, useWatch } from 'react-hook-form'
 import { match } from 'ts-pattern'
+import { useShareIdentity } from './share-identity'
 
 type Group = NonNullable<AppRouterOutput['groups']['get']['group']>
 type Form = UseFormReturn<ExpenseFormValues>
@@ -52,8 +53,10 @@ export function PaidForList({
   const expenseDate = useWatch({ control: form.control, name: 'expenseDate' })
   const avatarHues = assignAvatarHues(group.participants.map((p) => p.name))
 
+  const shareIdentity = useShareIdentity()
   const getCalculatedShare = (participantId: string) => {
     return calculateShare(participantId, {
+      ...shareIdentity,
       amount: amountAsMinorUnits(totalAmount, expenseCurrency),
       expenseDate: expenseDate ?? new Date(),
       paidFor: paidForValues.map((pf: any) => ({

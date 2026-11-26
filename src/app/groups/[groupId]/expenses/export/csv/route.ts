@@ -96,6 +96,8 @@ export async function GET(
 
   const expenses = group.expenses.map((expense) => {
     const shares = calculateShares({
+      id: expense.id,
+      remainderRule: expense.remainderRule,
       amount: expense.amount,
       paidFor: expense.paidFor,
       splitMode: expense.splitMode,

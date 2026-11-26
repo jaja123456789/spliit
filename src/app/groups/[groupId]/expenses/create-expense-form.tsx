@@ -105,6 +105,7 @@ export function CreateExpenseForm({
         router.push(`/groups/${group.id}/expenses`)
       }}
       runtimeFeatureFlags={runtimeFeatureFlags}
+      newExpenseId={expenseIdRef.current}
     />
   )
 }

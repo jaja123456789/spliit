@@ -35,6 +35,8 @@ export type DeletedExpenseSnapshot = {
   createdAt: string
   isReimbursement: boolean
   splitMode: SplitMode
+  /** Absent from copies made before the rule existed: those expenses had rule 1. */
+  remainderRule?: number
   notes: string | null
   originalAmount: number | null
   originalCurrency: string | null

@@ -48,6 +48,7 @@ import { OffscreenErrors } from './expense-form-sections/offscreen-errors'
 import { PayersAndDate } from './expense-form-sections/payers-and-date'
 import { RecentShortcuts } from './expense-form-sections/recent-shortcuts'
 import { RecipientField } from './expense-form-sections/recipient-field'
+import { ShareIdentityContext } from './expense-form-sections/share-identity'
 import {
   SplitModeSheet,
   SplitSection,
@@ -64,6 +65,7 @@ export function ExpenseForm({
   onSubmit,
   onDelete,
   runtimeFeatureFlags,
+  newExpenseId,
 }: {
   group: NonNullable<AppRouterOutput['groups']['get']['group']>
   categories: AppRouterOutput['categories']['list']['categories']
@@ -76,8 +78,13 @@ export function ExpenseForm({
   onSubmit: (value: ExpenseFormValues, participantId?: string) => Promise<void>
   onDelete?: (participantId?: string) => Promise<void>
   runtimeFeatureFlags: RuntimeFeatureFlags
+  /** The id a new expense will be saved under, so its preview divides cents as it will. */
+  newExpenseId?: string
 }) {
   const t = useTranslations('ExpenseForm')
+  const shareIdentity = expense
+    ? { id: expense.id, remainderRule: expense.remainderRule }
+    : { id: newExpenseId, remainderRule: 2 }
   const tReceipt = useTranslations('CreateFromReceipt')
   const locale = useLocale() as Locale
   const isCreate = expense === undefined
@@ -782,19 +789,20 @@ export function ExpenseForm({
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(submit)}>
-        {pendingDraft && (
-          <DraftOffer onRestore={restoreDraft} onDiscard={discardDraft} />
-        )}
+    <ShareIdentityContext.Provider value={shareIdentity}>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(submit)}>
+          {pendingDraft && (
+            <DraftOffer onRestore={restoreDraft} onDiscard={discardDraft} />
+          )}
 
-        <Card bleed>
-          {/* Closed, the last thing in this card is the "More options" row — a ruled row that runs
+          <Card bleed>
+            {/* Closed, the last thing in this card is the "More options" row — a ruled row that runs
               the full width — and the card's own 24px of bottom padding left it floating above an
               empty band, reading as a list that had been cut off. Let its rule be the card's edge.
               Open, the last thing is ordinary content, which does want the padding. */}
-          <CardContent className={cn('flex flex-col gap-6 pb-0 pt-6')}>
-            {/* Reading a receipt is not a thing you do to the split — it is how you fill the whole
+            <CardContent className={cn('flex flex-col gap-6 pb-0 pt-6')}>
+              {/* Reading a receipt is not a thing you do to the split — it is how you fill the whole
                 expense in. `applyReceiptData` calls `form.reset`, so it does not add lines to what
                 you have written, it replaces what you have written. Offered from inside "By item",
                 that arrived after the title and the amount had been typed by hand and threw both
@@ -803,23 +811,23 @@ export function ExpenseForm({
                 Here it is the first thing on an empty form, which is the only moment "start from
                 a receipt" is both true and free. Create only — there is nothing to start on an
                 expense that already exists — and quiet, because most expenses are not receipts. */}
-            {isCreate && runtimeFeatureFlags.enableReceiptExtract && (
-              <CreateFromReceiptButton
-                onExtracted={applyReceiptData}
-                trigger={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    className="-mt-1 -mb-3 h-11 w-full justify-center gap-2 text-sm font-normal text-muted-foreground hover:text-foreground sm:h-10"
-                    data-testid="scan-receipt-in-form"
-                  >
-                    <ScanLine className="h-4 w-4" />
-                    {tReceipt('scanEntry')}
-                  </Button>
-                }
-              />
-            )}
-            {/* Title over amount, each with the control that qualifies it in a tinted square to
+              {isCreate && runtimeFeatureFlags.enableReceiptExtract && (
+                <CreateFromReceiptButton
+                  onExtracted={applyReceiptData}
+                  trigger={
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="-mt-1 -mb-3 h-11 w-full justify-center gap-2 text-sm font-normal text-muted-foreground hover:text-foreground sm:h-10"
+                      data-testid="scan-receipt-in-form"
+                    >
+                      <ScanLine className="h-4 w-4" />
+                      {tReceipt('scanEntry')}
+                    </Button>
+                  }
+                />
+              )}
+              {/* Title over amount, each with the control that qualifies it in a tinted square to
                 its left, over a rule. The amount used to be a 48px figure centred on its own line
                 with the title centred under it — which is the concept's hero, and the concept's
                 hero is a statement of a total already agreed, not a field you are filling in. On
@@ -829,158 +837,166 @@ export function ExpenseForm({
                 The category and the currency each sit beside the field they qualify. Both were a
                 row apiece further down before, the category behind More options — two taps and a
                 scroll from the words that determine it. */}
-            {isCreate &&
-              !isCopy &&
-              !importingReceipt &&
-              !isReimbursement &&
-              !title &&
-              totalAmount === 0 && (
-                <RecentShortcuts groupId={group.id} currency={groupCurrency} />
-              )}
-            <div className="flex min-w-0 flex-col gap-4">
-              <TitleField
-                form={form}
-                categories={categories}
-                sExpense={sExpense}
-                enableCategoryExtract={
-                  runtimeFeatureFlags.enableCategoryExtract
-                }
-              />
+              {isCreate &&
+                !isCopy &&
+                !importingReceipt &&
+                !isReimbursement &&
+                !title &&
+                totalAmount === 0 && (
+                  <RecentShortcuts
+                    groupId={group.id}
+                    currency={groupCurrency}
+                  />
+                )}
+              <div className="flex min-w-0 flex-col gap-4">
+                <TitleField
+                  form={form}
+                  categories={categories}
+                  sExpense={sExpense}
+                  enableCategoryExtract={
+                    runtimeFeatureFlags.enableCategoryExtract
+                  }
+                />
 
-              <AmountField
-                form={form}
-                sExpense={sExpense}
-                group={group}
-                conversionAvailable={conversionAvailable}
-                expenseCurrency={expenseCurrency}
-                groupCurrency={groupCurrency}
-                isMultiPayer={isMultiPayer}
-                payerCount={payerFields.length}
-                effectiveTotal={effectiveTotal}
-                effectiveRate={effectiveRate}
-                conversionRequired={conversionRequired}
-                splitControl={splitControl}
-                onAmountChange={(val) => handlePayerAmountChange(0, val)}
-              />
-            </div>
+                <AmountField
+                  form={form}
+                  sExpense={sExpense}
+                  group={group}
+                  conversionAvailable={conversionAvailable}
+                  expenseCurrency={expenseCurrency}
+                  groupCurrency={groupCurrency}
+                  isMultiPayer={isMultiPayer}
+                  payerCount={payerFields.length}
+                  effectiveTotal={effectiveTotal}
+                  effectiveRate={effectiveRate}
+                  conversionRequired={conversionRequired}
+                  splitControl={splitControl}
+                  onAmountChange={(val) => handlePayerAmountChange(0, val)}
+                />
+              </div>
 
-            {/* Paid By Section. */}
-            {/* Full-bleed so a row's hover runs to the sheet's edge; the rules that used to
+              {/* Paid By Section. */}
+              {/* Full-bleed so a row's hover runs to the sheet's edge; the rules that used to
                 close each of these are gone. What separates one row from the next is the space
                 between them, and what says a control is a control is its fill. */}
-            <div className="-mx-6">
-              <PayersAndDate
-                form={form}
-                sExpense={sExpense}
-                group={group}
-                isMultiPayer={isMultiPayer}
-                payerFields={payerFields}
-                paidByValues={paidByValues}
-                activeUserId={activeUserId}
-                expenseCurrency={expenseCurrency}
-                onAddPayer={handleAddPayer}
-                onRemovePayer={removePayer}
-                onPayerAmountChange={handlePayerAmountChange}
-              />
-
-              <MoreOptions
-                form={form}
-                open={showMoreOptions}
-                onOpenChange={setShowMoreOptions}
-                sExpense={sExpense}
-                group={group}
-                groupCurrency={groupCurrency}
-                expenseCurrency={expenseCurrency}
-                originalCurrency={originalCurrencyVal}
-                conversionRequired={conversionRequired}
-                effectiveRate={effectiveRate}
-                effectiveTotal={effectiveTotal}
-                exchangeRate={exchangeRate}
-                usingCustomConversionRate={usingCustomConversionRate}
-                onUsingCustomConversionRateChange={setUsingCustomConversionRate}
-                isIncome={isIncome}
-                isMultiPayer={isMultiPayer}
-              />
-
-              {isReimbursement ? (
-                <RecipientField
+              <div className="-mx-6">
+                <PayersAndDate
                   form={form}
+                  sExpense={sExpense}
                   group={group}
+                  isMultiPayer={isMultiPayer}
+                  payerFields={payerFields}
+                  paidByValues={paidByValues}
                   activeUserId={activeUserId}
-                />
-              ) : (
-                <SplitSection
-                  form={form}
-                  group={group}
-                  splitControl={splitControl}
-                  splitMode={splitMode}
-                  onSelect={selectSplitControl}
-                  onOpenSheet={() => setSplitSheetOpen(true)}
                   expenseCurrency={expenseCurrency}
-                  totalAmount={totalAmount}
-                  effectiveTotal={effectiveTotal}
-                  manuallyEditedParticipants={manuallyEditedParticipants}
-                  setManuallyEditedParticipants={setManuallyEditedParticipants}
-                  recalculateByAmount={recalculateByAmount}
-                  activeUserId={activeUserId}
-                  isItemized={isItemized}
-                  itemFields={itemFields}
-                  itemAppend={itemAppend}
-                  itemRemove={itemRemove}
+                  onAddPayer={handleAddPayer}
+                  onRemovePayer={removePayer}
+                  onPayerAmountChange={handlePayerAmountChange}
                 />
-              )}
-            </div>
-          </CardContent>
-        </Card>
-        {/* A plain sheet. The dashed double border framed the lines as a foreign object pasted
+
+                <MoreOptions
+                  form={form}
+                  open={showMoreOptions}
+                  onOpenChange={setShowMoreOptions}
+                  sExpense={sExpense}
+                  group={group}
+                  groupCurrency={groupCurrency}
+                  expenseCurrency={expenseCurrency}
+                  originalCurrency={originalCurrencyVal}
+                  conversionRequired={conversionRequired}
+                  effectiveRate={effectiveRate}
+                  effectiveTotal={effectiveTotal}
+                  exchangeRate={exchangeRate}
+                  usingCustomConversionRate={usingCustomConversionRate}
+                  onUsingCustomConversionRateChange={
+                    setUsingCustomConversionRate
+                  }
+                  isIncome={isIncome}
+                  isMultiPayer={isMultiPayer}
+                />
+
+                {isReimbursement ? (
+                  <RecipientField
+                    form={form}
+                    group={group}
+                    activeUserId={activeUserId}
+                  />
+                ) : (
+                  <SplitSection
+                    form={form}
+                    group={group}
+                    splitControl={splitControl}
+                    splitMode={splitMode}
+                    onSelect={selectSplitControl}
+                    onOpenSheet={() => setSplitSheetOpen(true)}
+                    expenseCurrency={expenseCurrency}
+                    totalAmount={totalAmount}
+                    effectiveTotal={effectiveTotal}
+                    manuallyEditedParticipants={manuallyEditedParticipants}
+                    setManuallyEditedParticipants={
+                      setManuallyEditedParticipants
+                    }
+                    recalculateByAmount={recalculateByAmount}
+                    activeUserId={activeUserId}
+                    isItemized={isItemized}
+                    itemFields={itemFields}
+                    itemAppend={itemAppend}
+                    itemRemove={itemRemove}
+                  />
+                )}
+              </div>
+            </CardContent>
+          </Card>
+          {/* A plain sheet. The dashed double border framed the lines as a foreign object pasted
             into the form, and the header repeated, word for word, the hint the split control
             directly above it already shows. */}
 
-        {runtimeFeatureFlags.enableExpenseDocuments && (
-          <DocumentsSection form={form} sExpense={sExpense} />
-        )}
+          {runtimeFeatureFlags.enableExpenseDocuments && (
+            <DocumentsSection form={form} sExpense={sExpense} />
+          )}
 
-        {/* The overflow half of the split control. A sheet rather than a menu: these are three
+          {/* The overflow half of the split control. A sheet rather than a menu: these are three
             mutually exclusive answers to one question, and the question deserves a title. */}
-        <SplitModeSheet
-          open={splitSheetOpen}
-          onOpenChange={setSplitSheetOpen}
-          splitControl={splitControl}
-          splitMode={splitMode}
-          onSelect={selectSplitControl}
-        />
+          <SplitModeSheet
+            open={splitSheetOpen}
+            onOpenChange={setSplitSheetOpen}
+            splitControl={splitControl}
+            splitMode={splitMode}
+            onSelect={selectSplitControl}
+          />
 
-        {/* What stops a save, when the field it is about is not on screen: the split's own
+          {/* What stops a save, when the field it is about is not on screen: the split's own
             message renders only beside the custom rows, the lines' only in By item, and the
             documents have none. A Create that did nothing, silently, was the result. */}
-        <OffscreenErrors
-          errors={form.formState.errors}
-          showPaidFor={!isReimbursement && splitControl !== 'OTHER'}
-          showItems={!isItemized}
-        />
+          <OffscreenErrors
+            errors={form.formState.errors}
+            showPaidFor={!isReimbursement && splitControl !== 'OTHER'}
+            showItems={!isItemized}
+          />
 
-        {/* Global Error Fallback */}
-        {form.formState.errors.root && (
-          <div
-            role="alert"
-            className="mt-4 text-sm font-medium text-destructive"
-          >
-            {form.formState.errors.root.message}
-          </div>
-        )}
+          {/* Global Error Fallback */}
+          {form.formState.errors.root && (
+            <div
+              role="alert"
+              className="mt-4 text-sm font-medium text-destructive"
+            >
+              {form.formState.errors.root.message}
+            </div>
+          )}
 
-        <SubmitBar
-          isCreate={isCreate}
-          duplicateHref={
-            expense
-              ? `/groups/${group.id}/expenses/create?duplicate=${expense.id}`
-              : undefined
-          }
-          onDelete={
-            onDelete ? () => onDelete(activeUserId ?? undefined) : undefined
-          }
-        />
-      </form>
-    </Form>
+          <SubmitBar
+            isCreate={isCreate}
+            duplicateHref={
+              expense
+                ? `/groups/${group.id}/expenses/create?duplicate=${expense.id}`
+                : undefined
+            }
+            onDelete={
+              onDelete ? () => onDelete(activeUserId ?? undefined) : undefined
+            }
+          />
+        </form>
+      </Form>
+    </ShareIdentityContext.Provider>
   )
 }

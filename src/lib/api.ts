@@ -156,6 +156,8 @@ export async function createExpense(
           conversionRate: expenseFormValues.conversionRate,
           title: expenseFormValues.title,
           splitMode: expenseFormValues.splitMode,
+          // Every expense made from now on spreads the spare cents fairly; see `calculateShares`.
+          remainderRule: 2,
           recurrenceRule: expenseFormValues.recurrenceRule,
           recurringExpenseLink: {
             ...(isCreateRecurrence
@@ -246,6 +248,7 @@ function snapshotOf(
     createdAt: expense.createdAt.toISOString(),
     isReimbursement: expense.isReimbursement,
     splitMode: expense.splitMode,
+    remainderRule: expense.remainderRule,
     notes: expense.notes,
     originalAmount: expense.originalAmount,
     originalCurrency: expense.originalCurrency,
@@ -372,6 +375,9 @@ export async function restoreExpense(
           createdAt: new Date(snapshot.createdAt),
           isReimbursement: snapshot.isReimbursement,
           splitMode: snapshot.splitMode,
+          // Comes back splitting its cents as it always did. Copies made before the rule existed
+          // are of expenses that had the original one.
+          remainderRule: snapshot.remainderRule ?? 1,
           notes: snapshot.notes,
           originalAmount: snapshot.originalAmount,
           originalCurrency: snapshot.originalCurrency,
@@ -865,6 +871,7 @@ export async function getGroupExpenses(
       expenseDate: true,
       id: true,
       isReimbursement: true,
+      remainderRule: true,
       paidBy: {
         select: {
           amount: true,
@@ -899,8 +906,10 @@ export async function getGroupExpenses(
  * flat take a few. This reads them flat and joins them here.
  *
  * The payers and shares are fetched with the same `expenseId IN (…)` the nested select issues, on
- * purpose. The order those rows arrive in decides who gets the spare cent of an even split (ties go
- * to the later participant, see `calculateShares`), and nothing in the schema fixes that order. A
+ * purpose. For expenses split under rule 1 (every one from before `remainderRule`), the order those
+ * rows arrive in decides who gets the spare cent of an even split (ties go to the later
+ * participant, see `calculateShares`), and nothing in the schema fixes that order. Rule 2 does not
+ * depend on it. A
  * query shaped differently — joining on the group instead — came back in a different order for 10
  * of 2,948 expenses on real data and moved cents between people. Same query shape, same order.
  *
@@ -924,6 +933,7 @@ export async function getAllGroupExpenses(
         id: true,
         isReimbursement: true,
         splitMode: true,
+        remainderRule: true,
         recurrenceRule: true,
         title: true,
       },
@@ -1065,9 +1075,11 @@ export async function getBalancesForGroups(
   await createRecurringExpenses([...new Set(requests.map((r) => r.groupId))])
   const expenses = await prisma.expense.findMany({
     select: {
+      id: true,
       groupId: true,
       amount: true,
       splitMode: true,
+      remainderRule: true,
       paidBy: { select: { amount: true, participantId: true } },
       paidFor: {
         select: { participant: { select: { id: true } }, shares: true },
@@ -1369,6 +1381,7 @@ export async function createPayments(
           amount: payment.amount,
           title: payment.title,
           splitMode: 'EVENLY',
+          remainderRule: 2,
           recurrenceRule: RecurrenceRule.NONE,
           isReimbursement: true,
           paidBy: {
@@ -1513,6 +1526,8 @@ async function catchUpRecurringExpense(
         id: expenseId,
         expenseDate,
         createdAt: now,
+        // An occurrence is a new expense, so it takes the current rule whatever its template had.
+        remainderRule: 2,
       })),
     })
     await tx.expensePaidBy.createMany({
