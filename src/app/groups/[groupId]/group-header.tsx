@@ -56,8 +56,11 @@ export const GroupHeader = () => {
   return (
     <>
       {/* `-mt-6` pulls the bar up through the page's own top padding, so it sits flush with the top
-          of the screen; `-mx-4` takes it to the edges on a phone. */}
-      <div className="sticky top-0 z-40 -mx-4 -mt-6 flex h-14 items-center gap-1 border-b bg-background px-1.5">
+          of the screen; `-mx-4` takes it to the edges on a phone. On a phone `-mb-[25px]` also
+          takes back the page's 24px gap below it, plus the pixel of the first sheet's top rule,
+          which the bar then covers: the gap read as an empty band between two hairlines on every
+          group screen. From `sm` the tab strip follows, and the gap is its breathing room. */}
+      <div className="sticky top-0 z-40 -mx-4 -mt-6 -mb-[25px] flex h-14 items-center gap-1 border-b bg-background px-1.5 sm:mb-0">
         {task ? (
           <Button
             asChild

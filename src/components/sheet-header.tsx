@@ -14,6 +14,8 @@ type Props = {
   figureTestId?: string
   /** One line. Never two. */
   context?: ReactNode
+  /** A step smaller below `sm`, for a screen whose figure is not the point of it. */
+  compact?: boolean
   actions?: ReactNode
   className?: string
 }
@@ -37,6 +39,7 @@ export function SheetHeader({
   context,
   actions,
   className,
+  compact = false,
 }: Props) {
   return (
     <div
@@ -55,7 +58,12 @@ export function SheetHeader({
         {figure !== undefined && (
           <div
             data-testid={figureTestId}
-            className="mt-1.5 min-h-[38px] text-3xl font-semibold leading-9 tracking-tight"
+            className={cn(
+              'mt-1.5 font-semibold tracking-tight',
+              compact
+                ? 'min-h-[32px] text-2xl leading-8 sm:min-h-[38px] sm:text-3xl sm:leading-9'
+                : 'min-h-[38px] text-3xl leading-9',
+            )}
           >
             {figure}
           </div>

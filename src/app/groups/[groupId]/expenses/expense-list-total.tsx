@@ -72,6 +72,9 @@ export function ExpenseListTotal({
         label={t('group')}
         figureTestId="expenses-group-total"
         actions={actions}
+        // A step smaller on a phone: the list is what this screen is for, and the total also
+        // collapses into the group bar once you scroll.
+        compact
         figure={
           ready ? (
             <Money

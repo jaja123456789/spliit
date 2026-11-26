@@ -47,7 +47,9 @@ export function TotalsPageClient() {
   )
 
   return (
-    <div className="space-y-4">
+    // On a phone the group bar takes back the page's top gap for screens that start with a sheet;
+    // this one starts with the month picker, so it gives the picker its room back.
+    <div className="space-y-4 pt-[25px] sm:pt-0">
       {/* All time, or one month — and for a month, its statement. */}
       <MonthPicker />
       {/* One sheet. `Totals` owns its own header now, so there is no CardHeader here repeating the
