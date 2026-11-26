@@ -63,17 +63,19 @@ export function GroupTabs({ groupId }: Props) {
   return (
     <Tabs
       value={value}
-      className="[&>*]:border w-full min-w-0"
+      className="w-full min-w-0"
       onValueChange={(value) => {
         router.push(`/groups/${groupId}/${value}`)
       }}
     >
-      <TabsList className="flex w-full h-10">
+      {/* Underlined, in ink: a tab strip on the page rather than a grey pill around it, which
+          read as a control panel. Green stays for actions and money. */}
+      <TabsList className="flex h-11 w-full justify-start gap-1 rounded-none border-b bg-transparent p-0">
         {GROUP_TABS.map(({ value, messageKey, Icon }) => (
           <TabsTrigger
             key={value}
             value={value}
-            className="flex-row gap-1.5 px-3 py-1.5 min-w-0"
+            className="-mb-px min-w-0 flex-row gap-1.5 rounded-none border-b-2 border-transparent px-3 pb-2.5 pt-2 text-muted-foreground hover:text-foreground data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none"
           >
             <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />
             <span className="text-sm leading-none truncate max-w-full">

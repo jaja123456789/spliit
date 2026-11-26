@@ -349,7 +349,7 @@ export function ExpenseCard({
           </div>
 
           <div className="flex justify-between items-baseline gap-3 mt-0.5">
-            <div className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+            <div className="text-xs text-muted-foreground leading-relaxed line-clamp-2 sm:text-sm">
               {/* The day leads the line it shares with the payer: a line of its own under every row
                 said the same thing as the rows around it. */}
               <time
@@ -379,7 +379,7 @@ export function ExpenseCard({
                 </>
               )}
             </div>
-            <div className="shrink-0 text-xs">
+            <div className="shrink-0 text-xs sm:text-sm">
               {original ? (
                 <Money
                   currency={original.currency}
